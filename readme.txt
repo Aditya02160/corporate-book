@@ -84,6 +84,7 @@ How it works:
 * Saving a locked book moves its full PDF into a protected folder. Only readers with access can load it.
 * Each book can override the global setting with **Required** or **Free**. Authors and editors always see the full book.
 * Pages with locked books are not cached, so one reader's view is never shown to another.
+* Image books: the lock limits the pages shown, but the image files stay public in the Media Library. Use a PDF book for paid content.
 
 On nginx, add this rule so the protected folder cannot be opened directly (Apache uses the included .htaccess):
 

@@ -256,6 +256,11 @@ class Corporate_Book_Settings {
       update_option( '_corporate_book_settings', $settings );
     }
     // Show confirmation
+    // Turning the lock on protects the PDFs of books saved before it.
+    if ( 'true' === $this->base->get_config( 'subscription_enable' ) ) {
+      Corporate_Book_Protected_PDF::protect_all();
+    }
+
     add_action( 'admin_notices', array( $this, 'updated_settings' ) );
     
   }

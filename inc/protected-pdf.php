@@ -18,7 +18,15 @@ class Corporate_Book_Protected_PDF {
   const DIR   = 'corporate-book-protected';
   const QUERY = 'corporate_book_pdf';
 
+  /**
+   * The running instance, used by protect_all().
+   *
+   * @var Corporate_Book_Protected_PDF
+   */
+  public static $instance;
+
   public function __construct() {
+    self::$instance = $this;
     add_action( 'init', array( $this, 'serve' ), 20 );
     // After save_meta_boxes() (save_post, priority 10) has stored the book settings.
     add_action( 'save_post', array( $this, 'protect' ), 20 );
@@ -33,6 +41,39 @@ class Corporate_Book_Protected_PDF {
    */
   public static function url( $book_id ) {
     return add_query_arg( self::QUERY, (int) $book_id, home_url( '/' ) );
+  }
+
+  /**
+   * Whether a URL points into the protected folder.
+   *
+   * @param string $url File URL.
+   *
+   * @return bool
+   */
+  public static function in_protected_dir( $url ) {
+    return 0 === strpos( set_url_scheme( (string) $url ), set_url_scheme( wp_get_upload_dir()['baseurl'] ) . '/' . self::DIR . '/' );
+  }
+
+  /**
+   * Whether a book's PDF already lives in the protected folder.
+   *
+   * @param int $book_id Book post ID.
+   *
+   * @return bool
+   */
+  public static function is_protected( $book_id ) {
+    $data = get_post_meta( $book_id, '_corporate_book_data', true );
+    return is_array( $data ) && ! empty( $data['pdf_source'] ) && self::in_protected_dir( $data['pdf_source'] );
+  }
+
+  /**
+   * Protects the PDFs of all locked books, e.g. right after the lock is turned on.
+   */
+  public static function protect_all() {
+    $ids = get_posts( array( 'post_type' => 'corporate_book', 'post_status' => 'any', 'numberposts' => -1, 'fields' => 'ids' ) );
+    foreach ( $ids as $id ) {
+      self::$instance->protect( $id );
+    }
   }
 
   /**
@@ -151,6 +192,10 @@ class Corporate_Book_Protected_PDF {
     }
     $data       = get_post_meta( $post_id, '_corporate_book_data', true );
     $attachment = attachment_url_to_postid( $data['pdf_source'] );
+    // Only move files the saving user may manage: their own attachments, or any file for admins.
+    if ( $attachment ? ! current_user_can( 'edit_post', $attachment ) : ! current_user_can( 'manage_options' ) ) {
+      return;
+    }
     // A random prefix keeps the file unguessable on servers that ignore .htaccess (nginx).
     $name   = wp_generate_password( 20, false ) . '-' . sanitize_file_name( basename( $path ) );
     $target = $dir . '/' . $name;

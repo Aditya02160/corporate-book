@@ -225,7 +225,7 @@ class Corporate_Book_Meta_boxes {
   private function preview_field( $post ) {
     $data    = get_post_meta( $post->ID, '_corporate_book_data', true );
     $preview = is_array( $data ) && ! empty( $data['preview_pdf'] ) ? (int) $data['preview_pdf'] : 0;
-    $url     = $preview ? wp_get_attachment_url( $preview ) : '';
+    $url     = $preview && current_user_can( 'edit_post', $preview ) ? wp_get_attachment_url( $preview ) : '';
     $percent = (int) $this->base->get_config( 'subscription_preview_percent' );
     ?>
     <div id="corporate_book_preview_pdf_box" class="df-box" data-condition="corporate_book_source_type:is(pdf)">
@@ -235,6 +235,9 @@ class Corporate_Book_Meta_boxes {
         <button type="button" class="button" id="corporate_book_create_preview" data-percent="<?php echo esc_attr( $percent ); ?>" data-endpoint="<?php echo esc_url( Corporate_Book_Protected_PDF::url( $post->ID ) ); ?>" data-protected="<?php echo esc_url( wp_get_upload_dir()['baseurl'] . '/' . Corporate_Book_Protected_PDF::DIR . '/' ); ?>"><?php esc_html_e( 'Create preview', '3d-corporate-book' ); ?></button>
         <span id="corporate_book_preview_status"><?php if ( $url ) { echo '<a href="' . esc_url( $url ) . '" target="_blank">' . esc_html__( 'Current preview', '3d-corporate-book' ) . '</a>'; } ?></span>
       </div>
+      <?php if ( $this->base->book_is_locked( $post->ID ) && is_array( $data ) && ! empty( $data['pdf_source'] ) && ! Corporate_Book_Protected_PDF::is_protected( $post->ID ) ) : ?>
+        <p class="cb-unprotected notice notice-warning inline"><?php esc_html_e( 'This PDF is not protected: anyone with its link can download it. Use a PDF from your Media Library, then update the book.', '3d-corporate-book' ); ?></p>
+      <?php endif; ?>
       <div class="df-desc"><?php echo esc_html( sprintf( /* translators: %d: preview percent */ __( 'Readers without a subscription get the first %d%% of pages. Create the preview again after changing the PDF.', '3d-corporate-book' ), $percent ) ); ?></div>
     </div>
     <?php
@@ -575,6 +578,16 @@ class Corporate_Book_Meta_boxes {
     $subscription = isset( $_POST['_corporate_book']['subscription'] ) ? sanitize_key( wp_unslash( $_POST['_corporate_book']['subscription'] ) ) : 'default';
     $sanitized_data['subscription'] = in_array( $subscription, array( 'default', 'required', 'free' ), true ) ? $subscription : 'default';
     $sanitized_data['preview_pdf'] = isset( $_POST['_corporate_book']['preview_pdf'] ) ? absint( wp_unslash( $_POST['_corporate_book']['preview_pdf'] ) ) : 0;
+    // A book may only use files its editor may use: not another book's protected PDF, not someone else's preview.
+    $old = get_post_meta( $post_id, '_corporate_book_data', true );
+    $old = is_array( $old ) ? $old : array();
+    if ( Corporate_Book_Protected_PDF::in_protected_dir( $sanitized_data['pdf_source'] ) && ( ! isset( $old['pdf_source'] ) || $old['pdf_source'] !== $sanitized_data['pdf_source'] ) ) {
+      $sanitized_data['pdf_source'] = isset( $old['pdf_source'] ) ? $old['pdf_source'] : '';
+    }
+    $preview = $sanitized_data['preview_pdf'];
+    if ( $preview && ( 'application/pdf' !== get_post_mime_type( $preview ) || ! current_user_can( 'edit_post', $preview ) ) ) {
+      $sanitized_data['preview_pdf'] = isset( $old['preview_pdf'] ) ? (int) $old['preview_pdf'] : 0;
+    }
 
     $page_list = array();
     $pages = isset($_POST['_corporate_book']['pages']) ? wp_unslash($_POST['_corporate_book']['pages']) : null;

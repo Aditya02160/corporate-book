@@ -45,6 +45,8 @@ async function waitFor(ready, ms) {
   fs.writeFileSync(path.join(fixtures, 'sample.pdf'), makePdf(3));
   fs.writeFileSync(path.join(fixtures, 'preview.pdf'), makePdf(1));
   fs.writeFileSync(path.join(fixtures, 'ten.pdf'), makePdf(10));
+  fs.writeFileSync(path.join(fixtures, 'bulk.pdf'), makePdf(2));
+  fs.writeFileSync(path.join(fixtures, 'other.pdf'), makePdf(2));
   const wp = spawn('npx', ['-y', CLI, 'server', `--port=${PORT}`,
     `--mount=${ROOT}:/wordpress/wp-content/plugins/3d-corporate-book`,
     `--mount=${fixtures}:/wordpress/wp-content/uploads/cb-test`,
@@ -66,7 +68,8 @@ async function waitFor(ready, ms) {
     const missingAssets = [];
     let dialogShown = false;
     page.on('pageerror', (e) => jsErrors.push(e.message));
-    page.on('dialog', (d) => { dialogShown = true; d.dismiss(); });
+    // Accept "leave page?" prompts from edit screens; any other dialog means injected script ran.
+    page.on('dialog', (d) => { if (d.type() === 'beforeunload') return d.accept(); dialogShown = true; return d.dismiss(); });
     page.on('response', (r) => { if (r.url().includes('3d-corporate-book') && r.status() >= 400) missingAssets.push(r.url()); });
 
     await page.goto(`${BASE}/wp-login.php`);
@@ -168,7 +171,7 @@ async function waitFor(ready, ms) {
 
     // Per-book Subscription setting and "Create preview" (plan Task 5), as the admin.
     await page.goto(`${BASE}/wp-admin/edit.php?post_type=corporate_book`);
-    const editUrl = await page.$eval('a.row-title', (a) => a.href);
+    const editUrl = await page.locator('a.row-title', { hasText: /^Test Book$/ }).first().getAttribute('href');
     await page.goto(editUrl);
     const preview = await page.evaluate(async (pdf) => {
       document.querySelector('#corporate_book_pdf_source').value = pdf;
@@ -213,6 +216,60 @@ async function waitFor(ready, ms) {
       if (originalStatus !== 404) await page.waitForTimeout(500);
     }
     check(originalStatus === 404, `original PDF moved out of public folder (${originalStatus})`);
+
+    // Final review fixes.
+    const statusOf = async (url, want) => {
+      let st = 0;
+      for (let i = 0; i < 10 && st !== want; i++) {
+        st = (await page.request.get(url)).status();
+        if (st !== want) await page.waitForTimeout(500);
+      }
+      return st;
+    };
+    check(await statusOf(`${BASE}/wp-content/uploads/cb-test/bulk.pdf`, 404) === 404, 'turning the lock on protects existing books');
+    await page.goto(editUrl);
+    const protectedUrl = await field('pdf_source');
+    const writer = await browser.newContext();
+    const w = await writer.newPage();
+    w.setDefaultTimeout(90000);
+    await w.goto(`${BASE}/wp-login.php`);
+    await w.fill('#user_login', 'writer');
+    await w.fill('#user_pass', 'password');
+    await Promise.all([w.waitForNavigation(), w.click('#wp-submit')]);
+    await w.goto(`${BASE}/wp-admin/post-new.php?post_type=corporate_book`).catch(() => w.goto(`${BASE}/wp-admin/post-new.php?post_type=corporate_book`));
+    await w.evaluate(([src, prev]) => {
+      document.querySelector('#title').value = 'Writer Book';
+      document.querySelector('#corporate_book_pdf_source').value = src;
+      document.querySelector('#corporate_book_preview_pdf').value = prev;
+      document.querySelector('#corporate_book_subscription').value = 'required';
+    }, [protectedUrl, preview.id]);
+    await Promise.all([w.waitForNavigation(), w.evaluate(() => document.querySelector('#save-post').click())]);
+    const writerBook = new URL(w.url()).searchParams.get('post');
+    const writerField = (id) => w.$eval(`#corporate_book_${id}`, (e) => e.value).catch(() => null);
+    check(await writerField('pdf_source') !== protectedUrl && await writerField('preview_pdf') !== preview.id, 'contributor cannot reuse protected files');
+    check((await w.request.get(`${BASE}/?corporate_book_pdf=${writerBook}`)).status() !== 200, 'contributor cannot download another book through a draft');
+    await w.evaluate((src) => { document.querySelector('#corporate_book_pdf_source').value = src; }, `${BASE}/wp-content/uploads/cb-test/other.pdf`);
+    await Promise.all([w.waitForNavigation(), w.evaluate(() => document.querySelector('#save-post').click())]);
+    check(await statusOf(`${BASE}/wp-content/uploads/cb-test/other.pdf`, 200) === 200, 'contributor cannot move other authors PDFs');
+    await writer.close();
+    // post-new.php rewrites its own URL while loading, which can abort the first navigation.
+    await page.goto(`${BASE}/wp-admin/post-new.php?post_type=corporate_book`).catch(() => page.goto(`${BASE}/wp-admin/post-new.php?post_type=corporate_book`));
+    await page.evaluate(() => {
+      document.querySelector('#title').value = 'External Book';
+      document.querySelector('#corporate_book_pdf_source').value = 'https://example.com/book.pdf';
+      document.querySelector('#corporate_book_subscription').value = 'required';
+    });
+    // Publishing a new post first rewrites the URL in place, so wait for the real edit screen.
+    await Promise.all([page.waitForURL(/post\.php\?post=\d+/), page.evaluate(() => document.querySelector('#publish').click())]);
+    const externalBody = await reloadUntil(page.url(), async () => (await page.content()).includes('cb-unprotected'));
+    check(externalBody.includes('cb-unprotected'), 'unprotected PDF is flagged in the editor');
+    await page.goto(editUrl);
+    await page.evaluate(() => { document.querySelector('#corporate_book_subscription').value = 'free'; });
+    await Promise.all([page.waitForNavigation(), page.evaluate(() => document.querySelector('#publish').click())]);
+    await reloadUntil(editUrl, async () => await field('subscription') === 'free');
+    v = await visit(null);
+    check(hasFile(v.body, '?corporate_book_pdf=') && (await v.p.request.get(`${BASE}/?corporate_book_pdf=${bookId}`)).status() === 200, 'unlocked book still loads its protected PDF');
+    await v.ctx.close();
   } catch (e) {
     check(false, e.message);
   } finally {

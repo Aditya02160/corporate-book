@@ -364,8 +364,8 @@ class Corporate_Book_ShortCode {
         $post_data['cbLock'] = $base->lock_options();
         wp_enqueue_script( 'corporate-book-lock', plugins_url( 'assets/js/corporate-book-lock.js', $base->file ), array( 'jquery' ), $base->version, true );
       }
-      // Readers with access load a locked book's full PDF through the protected link, never its file URL.
-      if ( ! $locked && 'pdf' === $source_type && $base->book_is_locked( $post_id ) && '' !== Corporate_Book_Protected_PDF::local_path( $post_id ) ) {
+      // Readers with access load a locked or protected book's full PDF through the protected link, never its file URL.
+      if ( ! $locked && 'pdf' === $source_type && ( $base->book_is_locked( $post_id ) || Corporate_Book_Protected_PDF::is_protected( $post_id ) ) && '' !== Corporate_Book_Protected_PDF::local_path( $post_id ) ) {
         $post_data['source'] = Corporate_Book_Protected_PDF::url( $post_id );
       }
       unset( $post_data['pages'] );
