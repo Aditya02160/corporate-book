@@ -69,6 +69,28 @@ All of these are set for every book at once in **Corporate Book > Global Setting
 * **PDF Attachment Page** - PDF media attachment pages show the PDF as a Corporate Book.
 * **PDF Partial Loading Size** - Tune how much of the PDF each request loads.
 
+### Subscription
+Lock Corporate Books behind a subscription. Set it up in **Corporate Book > Global Settings > Subscription**:
+
+1. Install a social login plugin (for example Nextend Social Login) so readers can sign in with Google or LinkedIn, and paste its shortcode in **Social Login Shortcode**.
+2. Set **Subscription Lock** to True and paste your **Subscribe Page Link**.
+3. In **Subscriber Roles**, list the roles your membership plugin gives paying members, for example `cb_member`. Do not use `subscriber`: WordPress gives it to every new account.
+4. In each book, click **Create preview** to make the free preview (the first 10% of pages by default), then click **Update**.
+
+How it works:
+
+* Readers who are not signed in see Sign in and Sign up buttons instead of the book.
+* Subscribers read every page. Everyone else reads the free preview, then sees your Subscribe link.
+* Saving a locked book moves its full PDF into a protected folder. Only readers with access can load it.
+* Each book can override the global setting with **Required** or **Free**. Authors and editors always see the full book.
+* Pages with locked books are not cached, so one reader's view is never shown to another.
+
+On nginx, add this rule so the protected folder cannot be opened directly (Apache uses the included .htaccess):
+
+`location ^~ /wp-content/uploads/corporate-book-protected/ { deny all; }`
+
+Developers can change who counts as subscribed with the `corporate_book_user_is_subscribed` filter ( `$subscribed`, `$user`, `$book_id` ).
+
 == Installation ==
 
 1. Upload the `3d-corporate-book` folder to `/wp-content/plugins/`, or upload the zip in **Plugins > Add New**.
@@ -79,3 +101,4 @@ All of these are set for every book at once in **Corporate Book > Global Setting
 
 = 1.0.0 =
 * First release of Corporate Book.
+* Subscription lock: sign-in gate, free preview, Subscribe link and protected PDFs.
