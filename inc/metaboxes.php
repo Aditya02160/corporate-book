@@ -86,6 +86,10 @@ class Corporate_Book_Meta_boxes {
     wp_register_script( $this->base->plugin_slug . '-metabox-script', plugins_url( '../assets/js/metaboxes.js', __FILE__ ),
       array( 'jquery-ui-sortable', 'jquery-ui-draggable', 'jquery-ui-resizable', 'wp-color-picker' ), $this->base->version, true );
     wp_enqueue_script( $this->base->plugin_slug . '-metabox-script' );
+    // "Create preview" builds the subscription preview PDF in the browser with pdf-lib.
+    wp_register_script( $this->base->plugin_slug . '-pdf-lib', plugins_url( '../assets/js/libs/pdf-lib.min.js', __FILE__ ), array(), '1.17.1', true );
+    wp_enqueue_script( $this->base->plugin_slug . '-preview', plugins_url( '../assets/js/corporate-book-preview.js', __FILE__ ),
+      array( 'jquery', 'wp-api-fetch', $this->base->plugin_slug . '-pdf-lib' ), $this->base->version, true );
 
     if(isset( $post->ID ) || isset($id)){
 //       Set the post_id for localization.
@@ -213,11 +217,36 @@ class Corporate_Book_Meta_boxes {
    * @since 1.0.0
    *
    */
+  /**
+   * Hidden preview PDF field with the "Create preview" button (subscription lock).
+   *
+   * @param object $post The current post object.
+   */
+  private function preview_field( $post ) {
+    $data    = get_post_meta( $post->ID, '_corporate_book_data', true );
+    $preview = is_array( $data ) && ! empty( $data['preview_pdf'] ) ? (int) $data['preview_pdf'] : 0;
+    $url     = $preview ? wp_get_attachment_url( $preview ) : '';
+    $percent = (int) $this->base->get_config( 'subscription_preview_percent' );
+    ?>
+    <div id="corporate_book_preview_pdf_box" class="df-box" data-condition="corporate_book_source_type:is(pdf)">
+      <div class="df-label"><label for="corporate_book_create_preview"><?php esc_html_e( 'Free Preview PDF', '3d-corporate-book' ); ?></label></div>
+      <div class="df-option">
+        <input type="hidden" name="_corporate_book[preview_pdf]" id="corporate_book_preview_pdf" value="<?php echo esc_attr( $preview ); ?>"/>
+        <button type="button" class="button" id="corporate_book_create_preview" data-percent="<?php echo esc_attr( $percent ); ?>"><?php esc_html_e( 'Create preview', '3d-corporate-book' ); ?></button>
+        <span id="corporate_book_preview_status"><?php if ( $url ) { echo '<a href="' . esc_url( $url ) . '" target="_blank">' . esc_html__( 'Current preview', '3d-corporate-book' ) . '</a>'; } ?></span>
+      </div>
+      <div class="df-desc"><?php echo esc_html( sprintf( /* translators: %d: preview percent */ __( 'Readers without a subscription get the first %d%% of pages. Create the preview again after changing the PDF.', '3d-corporate-book' ), $percent ) ); ?></div>
+    </div>
+    <?php
+  }
+
   public function source_tab( $post ) {
 
     $this->create_normal_setting( 'source_type', $post );
     $this->create_normal_setting( 'pdf_source', $post );
     $this->create_normal_setting( 'pdf_thumb', $post );
+    $this->create_normal_setting( 'subscription', $post );
+    $this->preview_field( $post );
 
     ?>
 
@@ -543,6 +572,9 @@ class Corporate_Book_Meta_boxes {
     $sanitized_data['source_type'] = isset($_POST['_corporate_book']['source_type']) ? sanitize_text_field( wp_unslash($_POST['_corporate_book']['source_type']) ) : null;
     $sanitized_data['pdf_source'] = isset($_POST['_corporate_book']['pdf_source']) ? esc_url_raw( wp_unslash($_POST['_corporate_book']['pdf_source']) ) : null;
     $sanitized_data['pdf_thumb'] = isset($_POST['_corporate_book']['pdf_thumb']) ? esc_url_raw( wp_unslash($_POST['_corporate_book']['pdf_thumb']) ) : null;
+    $subscription = isset( $_POST['_corporate_book']['subscription'] ) ? sanitize_key( wp_unslash( $_POST['_corporate_book']['subscription'] ) ) : 'default';
+    $sanitized_data['subscription'] = in_array( $subscription, array( 'default', 'required', 'free' ), true ) ? $subscription : 'default';
+    $sanitized_data['preview_pdf'] = isset( $_POST['_corporate_book']['preview_pdf'] ) ? absint( wp_unslash( $_POST['_corporate_book']['preview_pdf'] ) ) : 0;
 
     $page_list = array();
     $pages = isset($_POST['_corporate_book']['pages']) ? wp_unslash($_POST['_corporate_book']['pages']) : null;

@@ -44,6 +44,7 @@ async function waitFor(ready, ms) {
   const fixtures = fs.mkdtempSync(path.join(os.tmpdir(), 'corporate-book-'));
   fs.writeFileSync(path.join(fixtures, 'sample.pdf'), makePdf(3));
   fs.writeFileSync(path.join(fixtures, 'preview.pdf'), makePdf(1));
+  fs.writeFileSync(path.join(fixtures, 'ten.pdf'), makePdf(10));
   const wp = spawn('npx', ['-y', CLI, 'server', `--port=${PORT}`,
     `--mount=${ROOT}:/wordpress/wp-content/plugins/3d-corporate-book`,
     `--mount=${fixtures}:/wordpress/wp-content/uploads/cb-test`,
@@ -164,6 +165,26 @@ async function waitFor(ready, ms) {
     v = await visit('member');
     check(hasFile(v.body, 'cb-test/sample.pdf'), 'member gets full book');
     await v.ctx.close();
+
+    // Per-book Subscription setting and "Create preview" (plan Task 5), as the admin.
+    await page.goto(`${BASE}/wp-admin/edit.php?post_type=corporate_book`);
+    const editUrl = await page.$eval('a.row-title', (a) => a.href);
+    await page.goto(editUrl);
+    const preview = await page.evaluate(async (pdf) => {
+      document.querySelector('#corporate_book_pdf_source').value = pdf;
+      document.querySelector('#corporate_book_create_preview').click();
+      const status = document.querySelector('#corporate_book_preview_status');
+      for (let i = 0; i < 120 && !/created|failed/i.test(status.textContent); i++) await new Promise((r) => setTimeout(r, 500));
+      const id = document.querySelector('#corporate_book_preview_pdf').value;
+      const media = await (await fetch(`/?rest_route=/wp/v2/media/${id}`)).json();
+      const doc = await window.PDFLib.PDFDocument.load(await (await fetch(media.source_url)).arrayBuffer());
+      return { id, pages: doc.getPageCount(), status: status.textContent };
+    }, `${BASE}/wp-content/uploads/cb-test/ten.pdf`).catch((e) => ({ pages: e.message }));
+    check(preview.pages === 1, `preview has 10 percent of pages (${preview.pages} ${preview.status || ''})`);
+    await page.evaluate(() => { document.querySelector('#corporate_book_subscription').value = 'required'; });
+    await Promise.all([page.waitForNavigation(), page.evaluate(() => document.querySelector('#publish').click())]);
+    await reloadUntil(editUrl, async () => await field('subscription') === 'required');
+    check(await field('subscription') === 'required' && await field('preview_pdf') === preview.id, 'book subscription and preview are saved');
   } catch (e) {
     check(false, e.message);
   } finally {
