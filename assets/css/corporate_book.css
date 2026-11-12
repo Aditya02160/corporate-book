@@ -129,10 +129,6 @@
   content: "\e91a";
 }
 
-.df-icon-download:before, .df-ui-btn.ti-download:before {
-  content: "\e91b";
-}
-
 .df-icon-volume:before {
   content: "\e91c";
 }
@@ -167,10 +163,6 @@
 
 .df-icon-search:before, .df-ui-btn.ti-search:before {
   content: "\e924";
-}
-
-.df-icon-print:before, .df-ui-btn.ti-printer:before {
-  content: "\e925";
 }
 
 .df-icon-mail-outline:before {

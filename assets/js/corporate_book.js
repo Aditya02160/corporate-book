@@ -1579,10 +1579,7 @@ defaults_CORPORATE_BOOK_VIEWER._defaults = {
     autoOpenOutline: false,
     // set to true to show thumbnail on open (true|false)
     autoOpenThumbnail: false,
-    // enableDownload of PDF files (true|false)
-    showDownloadControl: true,
     showSearchControl: true,
-    showPrintControl: true,
     // if enable sound at start (true|false)
     enableSound: true,
     // duration of page turn in milliseconds
@@ -1622,7 +1619,6 @@ defaults_CORPORATE_BOOK_VIEWER._defaults = {
         'outline-close': 'df-icon-arrow-down',
         help: 'df-icon-help',
         more: 'df-icon-more',
-        download: 'df-icon-download',
         zoomin: 'df-icon-add-circle',
         zoomout: 'df-icon-minus-circle',
         resetzoom: 'df-icon-minus-circle',
@@ -1634,7 +1630,6 @@ defaults_CORPORATE_BOOK_VIEWER._defaults = {
         close: 'df-icon-close',
         doublepage: 'df-icon-double-page',
         singlepage: 'df-icon-file',
-        print: 'df-icon-print',
         play: 'df-icon-play',
         pause: 'df-icon-pause',
         search: 'df-icon-search',
@@ -1665,10 +1660,8 @@ defaults_CORPORATE_BOOK_VIEWER._defaults = {
         search: "Search in PDF",
         singlePageMode: "Single Page Mode",
         doublePageMode: "Double Page Mode",
-        downloadPDFFile: "Download PDF File",
         gotoFirstPage: "Goto First Page",
         gotoLastPage: "Goto Last Page",
-        print: "Print",
         play: "Start AutoPlay",
         pause: "Pause AutoPlay",
         share: "Share",
@@ -1704,11 +1697,11 @@ defaults_CORPORATE_BOOK_VIEWER._defaults = {
     },
     //valid control-names:
     //altPrev,pageNumber,altNext,outline,thumbnail,zoomIn,zoomOut,fullScreen,share
-    //more,download,pageMode,startPage,endPage,sound
-    allControls: "altPrev,pageNumber,altNext,play,outline,thumbnail,zoomIn,zoomOut,zoom,fullScreen,share,download,search,pageMode,startPage,endPage,sound,search,print,more",
-    moreControls: "download,pageMode,pageFit,startPage,endPage,sound",
+    //more,pageMode,startPage,endPage,sound
+    allControls: "altPrev,pageNumber,altNext,play,outline,thumbnail,zoomIn,zoomOut,zoom,fullScreen,share,search,pageMode,startPage,endPage,sound,search,more",
+    moreControls: "pageMode,pageFit,startPage,endPage,sound",
     leftControls: "outline,thumbnail",
-    rightControls: "fullScreen,share,download,more",
+    rightControls: "fullScreen,share,more",
     hideControls: "",
     hideShareControls: "",
     controlsPosition: defaults_CORPORATE_BOOK_VIEWER.CONTROLS_POSITION.BOTTOM,
@@ -2479,7 +2472,6 @@ var getAttributes = function getAttributes(element) {
         openPage: 'data-hash-page,df-page,data-df-page,data-page,page',
         target: '',
         height: '',
-        showDownloadControl: 'data-download',
         source: 'pdf-source,df-source,source',
         is3D: 'webgl,is3d',
         viewerType: 'viewertype,viewer-type',
@@ -2574,9 +2566,7 @@ utils.getCurveAngle = function(isRight, angle) {
     return cangle;
 };
 utils.sanitizeOptions = function(options) {
-    options.showDownloadControl = utils.parseBoolIfExists(options.showDownloadControl);
     options.showSearchControl = utils.parseBoolIfExists(options.showSearchControl);
-    options.showPrintControl = utils.parseBoolIfExists(options.showPrintControl);
     options.flipbook3DTiltAngleLeft = utils.parseIntIfExists(options.flipbook3DTiltAngleLeft);
     options.flipbook3DTiltAngleUp = utils.parseIntIfExists(options.flipbook3DTiltAngleUp);
     options.paddingLeft = utils.parseIntIfExists(options.paddingLeft);
@@ -9986,7 +9976,6 @@ var DocumentProvider = /*#__PURE__*/ function() {
         this.searchHitItemsCache = [];
         this.searchHits = [];
         this.PDFLinkItemsCache = [];
-        this.canPrint = true;
         this.textPostion = [];
         this.renderTime = 0;
     }
@@ -10417,15 +10406,7 @@ var PDFDocumentProvider = /*#__PURE__*/ function(DocumentProvider) {
             key: "_getPermissions",
             value: function _getPermissions() {
                 var app = this.app, provider = this;
-                provider.pdfDocument.getPermissions().then(function(permissions) {
-                    if (permissions !== null && Array.isArray(permissions)) {
-                        provider.canPrint = permissions.indexOf(pdfjsLib.PermissionFlag.PRINT) > -1;
-                        if (provider.canPrint == false) {
-                            console.log("PDF printing is disabled.");
-                            app.options.showPrintControl = app.options.showPrintControl && provider.canPrint;
-                        }
-                    }
-                })["finally"](function() {
+                provider.pdfDocument.getPermissions()["finally"](function() {
                     provider._documentLoaded();
                 });
             }
@@ -11156,18 +11137,6 @@ var UI = /*#__PURE__*/ function() {
                 this.endPage = controls.endPage = controls_utils.createBtn('end', icons['end'], text.gotoLastPage).on("click", function() {
                     app.end();
                 });
-                if (app.options.showPrintControl === true && controls_utils.isMobile !== true && typeof app.options.source === 'string') {
-                    this.print = controls.print = controls_utils.createBtn('print', icons['print'], text.print).on("click", function() {
-                        defaults_CORPORATE_BOOK_VIEWER.printHandler = defaults_CORPORATE_BOOK_VIEWER.printHandler || new PrintHandler();
-                        defaults_CORPORATE_BOOK_VIEWER.printHandler.printPDF(app.options.source);
-                    });
-                }
-                if (app.options.showDownloadControl === true && typeof app.options.source === 'string') {
-                    var downloadClass = "df-ui-btn df-ui" + "-download " + icons['download'];
-                    this.download = controls.download = controls_jQuery('<a download target="_blank" class="' + downloadClass + '"><span>' + text.downloadPDFFile + '</span></a>');
-                    controls.download.attr("href", controls_utils.httpsCorrection(app.options.source)).attr("title", text.downloadPDFFile);
-                //moreContainer.append(download);
-                }
                 //endregion
                 //region MoreContainer
                 ui.moreContainer = controls_jQuery(div, {
@@ -11499,38 +11468,6 @@ var DVLightBox = /*#__PURE__*/ function() {
         }
     ]);
     return DVLightBox;
-}();
-var PrintHandler = /*#__PURE__*/ function() {
-    "use strict";
-    function PrintHandler() {
-        controls_class_call_check(this, PrintHandler);
-        //cache this
-        var printHandler = this;
-        printHandler.frame = controls_jQuery('<iframe id="df-print-frame" style="display:none" src="about:blank">').appendTo(controls_jQuery("body"));
-        printHandler.frame.on("load", function() {
-            try {
-                printHandler.frame[0].contentWindow.print();
-            } catch (e) {
-                console.log(e);
-            }
-        });
-        return printHandler;
-    }
-    controls_create_class(PrintHandler, [
-        {
-            key: "printPDF",
-            value: function printPDF(source) {
-                //bypass corporate_book chrome extension
-                if (source.indexOf("?") == -1) {
-                    source += "?print=true";
-                } else {
-                    source += "&print=true";
-                }
-                this.frame[0].src = source;
-            }
-        }
-    ]);
-    return PrintHandler;
 }();
 var Sidemenu = /*#__PURE__*/ function() {
     "use strict";
@@ -11993,7 +11930,7 @@ defaults_CORPORATE_BOOK_VIEWER.initControls = function() {
     if (defaults_CORPORATE_BOOK_VIEWER.defaults.autoPDFLinktoViewer !== false) {
         body.on('click', 'a[href$=".pdf"]', function(event) {
             var app = controls_jQuery(this);
-            //prevent Download button to trigger Flipbook!
+            //links and viewer buttons must not open the book
             if (app.attr("download") !== undefined || app.attr("target") === "_blank" || app.hasClass("df-ui-btn") || app.parents(".df-app").length > 0) {} else {
                 event.preventDefault();
                 app.data('df-source', app.attr('href'));
@@ -13250,10 +13187,6 @@ var updateOptions = function updateOptions(options) {
     if (options.soundEnable !== void 0) {
         options.enableSound = utils.isTrue(options.soundEnable);
         delete options.soundEnable;
-    }
-    if (options.enableDownload !== void 0) {
-        options.showDownloadControl = utils.isTrue(options.enableDownload);
-        delete options.enableDownload;
     }
     if (options.autoEnableOutline !== void 0) {
         options.autoOpenOutline = utils.isTrue(options.autoEnableOutline);

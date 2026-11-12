@@ -377,7 +377,6 @@ class Corporate_Book_Meta_boxes {
     $this->create_global_setting( 'bg_image', $post, '' );
     $this->base->create_separator( 'Controls' );
     $this->create_global_setting( 'auto_sound', $post, 'global' );
-    $this->create_global_setting( 'enable_download', $post, 'global' );
     $this->create_global_setting( 'controls_position', $post, 'global' );
     ?>
 
@@ -616,7 +615,6 @@ class Corporate_Book_Meta_boxes {
     $sanitized_data['height'] = isset($_POST['_corporate_book']['height']) ? sanitize_text_field( wp_unslash($_POST['_corporate_book']['height']) ) : null;
     $sanitized_data['texture_size'] = isset($_POST['_corporate_book']['texture_size']) ? sanitize_text_field( wp_unslash($_POST['_corporate_book']['texture_size']) ) : null;
     $sanitized_data['auto_sound'] = isset($_POST['_corporate_book']['auto_sound']) ? sanitize_text_field( wp_unslash($_POST['_corporate_book']['auto_sound']) ) : null;
-    $sanitized_data['enable_download'] = isset($_POST['_corporate_book']['enable_download']) ? sanitize_text_field( wp_unslash($_POST['_corporate_book']['enable_download']) ) : null;
     $sanitized_data['page_mode'] = isset($_POST['_corporate_book']['page_mode']) ? sanitize_text_field( wp_unslash($_POST['_corporate_book']['page_mode']) ) : null;
     $sanitized_data['single_page_mode'] = isset($_POST['_corporate_book']['single_page_mode']) ? sanitize_text_field( wp_unslash($_POST['_corporate_book']['single_page_mode']) ) : null;
     $sanitized_data['controls_position'] = isset($_POST['_corporate_book']['controls_position']) ? sanitize_text_field( wp_unslash($_POST['_corporate_book']['controls_position']) ) : null;

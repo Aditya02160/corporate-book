@@ -46,11 +46,11 @@ class Corporate_Book_Settings {
    * @var array
    */
   public $tab_keys = array(
-      'general' => array( 'viewerType', 'webgl', 'hard', 'bg_color', 'height', 'duration', 'texture_size', 'page_mode', 'single_page_mode', 'controls_position', 'auto_sound', 'enable_download', 'autoplay', 'autoplay_duration', 'autoplay_start' ),
+      'general' => array( 'viewerType', 'webgl', 'hard', 'bg_color', 'height', 'duration', 'texture_size', 'page_mode', 'single_page_mode', 'controls_position', 'auto_sound', 'autoplay', 'autoplay_duration', 'autoplay_start' ),
       'layout' => array( 'padding_left', 'padding_right', 'zoom_ratio', 'scroll_wheel', 'stiffness' ),
-      'controls' => array( 'more_controls', 'hide_controls', 'enable_search', 'enable_print', 'share_prefix' ),
+      'controls' => array( 'more_controls', 'hide_controls', 'enable_search', 'share_prefix' ),
       'pdf' => array( 'enable_annotation', 'link_target', 'range_size', 'attachment_lightbox' ),
-      'translate' => array( 'external_translate', 'text_toggle_sound', 'text_toggle_thumbnails', 'text_toggle_outline', 'text_previous_page', 'text_next_page', 'text_toggle_fullscreen', 'text_zoom_in', 'text_zoom_out', 'text_toggle_help', 'text_single_page_mode', 'text_double_page_mode', 'text_download_PDF_file', 'text_goto_first_page', 'text_goto_last_page', 'text_share', 'text_mail_subject', 'text_mail_body', 'text_loading', 'text_sign_in', 'text_subscribe', 'text_locked' ),
+      'translate' => array( 'external_translate', 'text_toggle_sound', 'text_toggle_thumbnails', 'text_toggle_outline', 'text_previous_page', 'text_next_page', 'text_toggle_fullscreen', 'text_zoom_in', 'text_zoom_out', 'text_toggle_help', 'text_single_page_mode', 'text_double_page_mode', 'text_goto_first_page', 'text_goto_last_page', 'text_share', 'text_mail_subject', 'text_mail_body', 'text_loading', 'text_sign_in', 'text_subscribe', 'text_locked' ),
       'subscription' => array( 'subscription_enable', 'subscription_url', 'subscription_preview_percent', 'subscription_roles', 'subscription_login_shortcode' ),
       'advanced' => array( 'selectiveScriptLoading', 'enable_analytics' ),
   );

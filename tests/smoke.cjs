@@ -6,7 +6,8 @@ const os = require('os');
 const path = require('path');
 const { chromium } = require('playwright');
 
-const ROOT = path.resolve(__dirname, '..');
+// CORPORATE_BOOK_DIR tests another copy of the plugin, e.g. the unpacked release zip.
+const ROOT = process.env.CORPORATE_BOOK_DIR || path.resolve(__dirname, '..');
 const PORT = 9400;
 const BASE = `http://127.0.0.1:${PORT}`;
 const CLI = '@wp-playground/cli@3.1.64';
@@ -98,6 +99,9 @@ async function waitFor(ready, ms) {
     html = await (await page.goto(settingsUrl)).text();
     check(!PHP_ERRORS.test(html), 'Global Settings page has no PHP errors');
     check(await page.$('#corporate_book_zoom_ratio') !== null && await page.$('#corporate_book_text_share') !== null, 'TOP FEATURES fields are shown');
+    check(await page.$('#corporate_book_enable_download') === null && await page.$('#corporate_book_enable_print') === null
+      && await page.$('#corporate_book_text_download_PDF_file') === null
+      && !/download|print/i.test(await field('more_controls') || ''), 'settings have no download or print options');
     await page.evaluate((xss) => {
       document.querySelector('#corporate_book_zoom_ratio').value = '2.5';
       document.querySelector('#corporate_book_scroll_wheel').value = 'true';
@@ -133,6 +137,10 @@ async function waitFor(ready, ms) {
     await page.waitForTimeout(5000);
     const found = `title=${(html.match(/<title>([^<]*)/) || [])[1]} _df_book=${(html.match(/_df_book/g) || []).length}`;
     check(await page.$$eval('.df-container', (e) => e.length) >= 1, `embedded book renders (${found})`);
+    check(await page.$$eval('.df-ui-download, .df-ui-print, a[download]', (e) => e.length) === 0
+      && !/downloadPDFFile|enableDownload|showPrintControl/.test(html), 'viewer has no download or print control');
+    const viewerJs = await (await page.request.get(`${BASE}/wp-content/plugins/3d-corporate-book/assets/js/corporate_book.min.js`)).text();
+    check(!/showDownloadControl|showPrintControl|printHandler|df-print-frame|downloadPDFFile|df-ui-download|canPrint/.test(viewerJs), 'viewer script has no download or print code');
     check(await page.$$eval('._df_thumb', (e) => e.length) === 1, 'popup thumb renders');
     const zoomRatio = await page.evaluate(() => window.corporateBookWPGlobal && window.corporateBookWPGlobal.zoomRatio);
     check(zoomRatio === 2.5, 'saved zoom ratio reaches the viewer as a number');
@@ -173,6 +181,7 @@ async function waitFor(ready, ms) {
     await page.goto(`${BASE}/wp-admin/edit.php?post_type=corporate_book`);
     const editUrl = await page.locator('a.row-title', { hasText: /^Test Book$/ }).first().getAttribute('href');
     await page.goto(editUrl);
+    check(await page.$('#corporate_book_enable_download') === null, 'book editor has no download option');
     const preview = await page.evaluate(async (pdf) => {
       document.querySelector('#corporate_book_pdf_source').value = pdf;
       document.querySelector('#corporate_book_create_preview').click();

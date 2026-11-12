@@ -121,7 +121,6 @@ if ( !class_exists( 'Corporate_Book' ) ) {
           'text_toggle_help'       => __( "Toggle Help", '3d-corporate-book' ),
           'text_single_page_mode'  => __( "Single Page Mode", '3d-corporate-book' ),
           'text_double_page_mode'  => __( "Double Page Mode", '3d-corporate-book' ),
-          'text_download_PDF_file' => __( "Download PDF File", '3d-corporate-book' ),
           'text_goto_first_page'   => __( "Goto First Page", '3d-corporate-book' ),
           'text_goto_last_page'    => __( "Goto Last Page", '3d-corporate-book' ),
           'text_share'             => __( "Share", '3d-corporate-book' ),
@@ -133,7 +132,7 @@ if ( !class_exists( 'Corporate_Book' ) ) {
               'std'     => 'false',
           ),
           'more_controls'      => array(
-              'std'         => "download,pageMode,startPage,endPage,sound",
+              'std'         => "pageMode,startPage,endPage,sound",
           ),
           'hide_controls'      => array(
               'std'         => "",
@@ -196,21 +195,7 @@ if ( !class_exists( 'Corporate_Book' ) ) {
               'title'   => __( 'Auto Enable Sound', '3d-corporate-book' ),
               'desc'    => __( 'Sound will play from the start.', '3d-corporate-book' ),
           ),
-          'enable_download'    => array(
-              'std'     => 'true',
-              'choices' => array(
-                  'global' => __( 'Global Setting', '3d-corporate-book' ),
-                  'true'   => __( 'True', '3d-corporate-book' ),
-                  'false'  => __( 'False', '3d-corporate-book' )
-              ),
-              'class'   => '',
-              'title'   => __( 'Enable Download', '3d-corporate-book' ),
-              'desc'    => __( 'Enable PDF download', '3d-corporate-book' ),
-          ),
         'enable_search'              => array(
-          'std'       => 'false',
-        ),
-        'enable_print'               => array(
           'std'       => 'false',
         ),
           'enable_annotation'  => array(
@@ -455,10 +440,9 @@ if ( !class_exists( 'Corporate_Book' ) ) {
           'stiffness' => array( 'title' => __( 'Paper Flexibility', '3d-corporate-book' ), 'type' => 'number', 'attr' => array( 'step' => 'any' ), 'desc' => __( 'Higher is stiffer paper (3D mode)', '3d-corporate-book' ) ),
           'padding_left' => array( 'title' => __( 'Stage Padding Left', '3d-corporate-book' ), 'type' => 'number', 'attr' => array( 'step' => 'any' ) ),
           'padding_right' => array( 'title' => __( 'Stage Padding Right', '3d-corporate-book' ), 'type' => 'number', 'attr' => array( 'step' => 'any' ) ),
-          'more_controls' => array( 'title' => __( 'More Controls', '3d-corporate-book' ), 'type' => 'text', 'desc' => __( 'Comma separated, e.g. download,pageMode,startPage,endPage,sound', '3d-corporate-book' ) ),
+          'more_controls' => array( 'title' => __( 'More Controls', '3d-corporate-book' ), 'type' => 'text', 'desc' => __( 'Comma separated, e.g. pageMode,startPage,endPage,sound', '3d-corporate-book' ) ),
           'hide_controls' => array( 'title' => __( 'Hide Controls', '3d-corporate-book' ), 'type' => 'text', 'desc' => __( 'Comma separated control names to hide', '3d-corporate-book' ) ),
           'enable_search' => array( 'title' => __( 'Search Control', '3d-corporate-book' ), 'choices' => $bool ),
-          'enable_print' => array( 'title' => __( 'Print Control', '3d-corporate-book' ), 'choices' => $bool ),
           'share_prefix' => array( 'title' => __( 'Share Prefix', '3d-corporate-book' ), 'type' => 'text' ),
           'enable_annotation' => array( 'title' => __( 'PDF Links', '3d-corporate-book' ), 'choices' => $bool ),
           'link_target' => array( 'title' => __( 'PDF Links Target', '3d-corporate-book' ), 'choices' => array( '1' => __( 'Same Tab', '3d-corporate-book' ), '2' => __( 'New Tab', '3d-corporate-book' ) ) ),
@@ -600,7 +584,6 @@ if ( !class_exists( 'Corporate_Book' ) ) {
               'toggleHelp'       => $this->get_translate( 'text_toggle_help' ),
               'singlePageMode'   => $this->get_translate( 'text_single_page_mode' ),
               'doublePageMode'   => $this->get_translate( 'text_double_page_mode' ),
-              'downloadPDFFile'  => $this->get_translate( 'text_download_PDF_file' ),
               'gotoFirstPage'    => $this->get_translate( 'text_goto_first_page' ),
               'gotoLastPage'     => $this->get_translate( 'text_goto_last_page' ),
               'share'            => $this->get_translate( 'text_share' ),
@@ -620,9 +603,7 @@ if ( !class_exists( 'Corporate_Book' ) ) {
           'controlsPosition' => $this->get_config( 'controls_position' ),
           'duration'         => $this->get_config( 'duration' ),
           'soundEnable'      => $this->get_config( 'auto_sound' ),
-          'enableDownload'   => $this->get_config( 'enable_download' ),
           'showSearchControl'=> $this->get_config( 'enable_search' ),
-          'showPrintControl' => $this->get_config( 'enable_print' ),
           'enableAnnotation' => $this->get_config( 'enable_annotation' ) == "true",
           'enableAnalytics'  => $this->get_config( 'enable_analytics' ),
           'webgl'            => $this->get_config( 'webgl' ),

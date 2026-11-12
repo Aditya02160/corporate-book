@@ -47,18 +47,17 @@ Corporate Book creates a PDF Corporate Book, 3D Corporate Book, PDF viewer and P
 * **Deep linking** to specific pages via the share button.
 * Categories for organizing Corporate Books, and a shortcode to show a whole category.
 * **RTL mode** for right-to-left languages.
-* PDF download enable and disable option.
 * Supports more than 1000 pages and files over 500MB.
 * Partial loading (on-demand pages): large files start with a small amount of data.
 
 ### TOP FEATURES
 All of these are set for every book at once in **Corporate Book > Global Settings**.
 
-* **Global Settings** - Control display mode, size, background, flip duration, page mode, sound, download and autoplay for all Corporate Books at once.
+* **Global Settings** - Control display mode, size, background, flip duration, page mode, sound and autoplay for all Corporate Books at once.
 * **PDF Links** - Links inside your PDFs are clickable.
 * **PDF Links Target** - Open PDF links in the same tab or a new tab.
 * **Controls Customization** - Choose which controls to show or hide.
-* **Search and Print Controls** - Add search and print buttons to the toolbar.
+* **Search Control** - Add a search button to the toolbar.
 * **Paper Flexibility** - Set how stiff the 3D pages are.
 * **Text Translation** - Translate the text of the controls and buttons, or use your translation plugin.
 * **Google Analytics** - Track when readers open Corporate Books.

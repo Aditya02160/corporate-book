@@ -263,7 +263,6 @@ class Corporate_Book_ShortCode {
       }
 
       //conversion
-      $post_data['enableDownload'] = isset( $post_data['enable_download'] ) ? $post_data['enable_download'] : null;
       $post_data['backgroundColor'] = isset( $post_data['bg_color'] ) ? $post_data['bg_color'] : null;
       $post_data['backgroundImage'] = isset( $post_data['bg_image'] ) ? $post_data['bg_image'] : null;
       $post_data['autoEnableOutline'] = isset( $post_data['auto_outline'] ) ? $post_data['auto_outline'] : null;
@@ -299,7 +298,6 @@ class Corporate_Book_ShortCode {
           'autoEnableOutline'   => $base->get_default( 'auto_outline' ),
           'autoEnableThumbnail' => $base->get_default( 'auto_thumbnail' ),
           'overwritePDFOutline' => $base->get_default( 'overwrite_outline' ),
-          'enableDownload'      => $base->get_default( 'enable_download' ),
           'backgroundImage'     => $base->get_default( 'bg_image' ),
           'direction'           => $base->get_default( 'direction' ),
           'pageSize'            => $base->get_default( 'page_size' ),
