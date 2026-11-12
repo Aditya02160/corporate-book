@@ -43,8 +43,7 @@ async function waitFor(ready, ms) {
 (async () => {
   const fixtures = fs.mkdtempSync(path.join(os.tmpdir(), 'corporate-book-'));
   fs.writeFileSync(path.join(fixtures, 'sample.pdf'), makePdf(3));
-  // One worker: Playground workers do not reliably share saved data between requests.
-  const wp = spawn('npx', ['-y', CLI, 'server', `--port=${PORT}`, '--workers=1',
+  const wp = spawn('npx', ['-y', CLI, 'server', `--port=${PORT}`,
     `--mount=${ROOT}:/wordpress/wp-content/plugins/3d-corporate-book`,
     `--mount=${fixtures}:/wordpress/wp-content/uploads/cb-test`,
     `--mount=${path.join(__dirname, 'setup-plugin')}:/wordpress/wp-content/plugins/corporate-book-test-setup`,
@@ -80,6 +79,17 @@ async function waitFor(ready, ms) {
     check(!PHP_ERRORS.test(html), 'Plugins screen has no PHP errors');
 
     const settingsUrl = `${BASE}/wp-admin/edit.php?post_type=corporate_book&page=corporate_book-settings`;
+    const field = (id) => page.$eval(`#corporate_book_${id}`, (e) => e.value).catch(() => null);
+    // Playground's workers can serve a stale read right after a save, so reload until it shows up.
+    const reloadUntil = async (url, ready) => {
+      let body = '';
+      for (let i = 0; i < 10; i++) {
+        body = await (await page.goto(url)).text();
+        if (await ready()) break;
+        await page.waitForTimeout(500);
+      }
+      return body;
+    };
     html = await (await page.goto(settingsUrl)).text();
     check(!PHP_ERRORS.test(html), 'Global Settings page has no PHP errors');
     check(await page.$('#corporate_book_zoom_ratio') !== null && await page.$('#corporate_book_text_share') !== null, 'TOP FEATURES fields are shown');
@@ -89,27 +99,30 @@ async function waitFor(ready, ms) {
       document.querySelector('#corporate_book_text_share').value = xss;
     }, XSS);
     await Promise.all([page.waitForNavigation(), page.evaluate(() => document.querySelector('[name="corporate_book_settings_submit"]').click())]);
-    await page.goto(settingsUrl);
+    await reloadUntil(settingsUrl, async () => await field('zoom_ratio') === '2.5');
     check(await page.inputValue('#corporate_book_zoom_ratio') === '2.5', 'settings persist after save');
 
     // Subscription tab (plan Task 1).
-    const saveSettings = async (values) => {
+    const saveSettings = async (values, expected = values) => {
       await page.goto(settingsUrl);
       await page.evaluate((v) => { for (const [id, val] of Object.entries(v)) document.querySelector(`#corporate_book_${id}`).value = val; }, values);
       await Promise.all([page.waitForNavigation(), page.evaluate(() => document.querySelector('[name="corporate_book_settings_submit"]').click())]);
-      return (await page.goto(settingsUrl)).text();
+      return reloadUntil(settingsUrl, async () => {
+        for (const [id, val] of Object.entries(expected)) if (await field(id) !== val) return false;
+        return true;
+      });
     };
-    const field = (id) => page.$eval(`#corporate_book_${id}`, (e) => e.value).catch(() => null);
-    await saveSettings({ subscription_url: 'javascript:alert(1)' }).catch(() => '');
+    await saveSettings({ subscription_url: 'javascript:alert(1)' }, { subscription_url: '' }).catch(() => '');
     check(await field('subscription_url') === '', 'unsafe subscribe link rejected');
     html = await saveSettings({ subscription_roles: 'subscriber' }).catch(() => '');
     check(html.includes('cb-role-warning'), 'subscriber role warning shown');
-    await saveSettings({ subscription_enable: 'true', subscription_url: SUBSCRIBE_URL, subscription_preview_percent: '10', subscription_roles: 'cb_member, Bad Role!' }).catch(() => '');
-    check(await field('subscription_enable') === 'true' && await field('subscription_url') === SUBSCRIBE_URL
-      && await field('subscription_preview_percent') === '10' && await field('subscription_roles') === 'cb_member,badrole', 'subscription settings persist');
+    await saveSettings({ subscription_enable: 'true', subscription_url: SUBSCRIBE_URL, subscription_preview_percent: '10', subscription_roles: 'cb_member, Bad Role!' },
+      { subscription_enable: 'true', subscription_url: SUBSCRIBE_URL, subscription_preview_percent: '10', subscription_roles: 'cb_member,badrole' }).catch(() => '');
+    const got = [await field('subscription_enable'), await field('subscription_url'), await field('subscription_preview_percent'), await field('subscription_roles')].join(' ');
+    check(got === `true ${SUBSCRIBE_URL} 10 cb_member,badrole`, `subscription settings persist (${got})`);
 
     jsErrors.length = 0;
-    html = await (await page.goto(`${BASE}/?pagename=book-test`)).text();
+    html = await reloadUntil(`${BASE}/?pagename=book-test`, () => page.evaluate(() => (window.corporateBookWPGlobal || {}).zoomRatio === 2.5));
     check(!PHP_ERRORS.test(html), 'front page has no PHP errors (includes unknown book id)');
     await page.waitForSelector('.df-container', { timeout: 30000 }).catch(() => {});
     await page.waitForTimeout(5000);
