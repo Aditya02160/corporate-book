@@ -362,6 +362,7 @@ class Corporate_Book_ShortCode {
           $post_data['source'] = array_slice( $post_data['source'], 0, $base->preview_pages( count( $post_data['source'] ) ) );
         }
         $post_data['cbLock'] = $base->lock_options();
+        wp_enqueue_script( 'corporate-book-lock', plugins_url( 'assets/js/corporate-book-lock.js', $base->file ), array( 'jquery' ), $base->version, true );
       }
       unset( $post_data['pages'] );
       unset( $post_data['pdf_source'] );

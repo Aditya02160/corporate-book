@@ -158,6 +158,8 @@ async function waitFor(ready, ms) {
     await v.ctx.close();
     v = await visit('reader');
     check(hasFile(v.body, 'cb-test/preview.pdf') && !hasFile(v.body, 'cb-test/sample.pdf'), 'reader gets preview only');
+    await v.p.waitForSelector(`.cb-lock a[href="${SUBSCRIBE_URL}"]`, { state: 'visible', timeout: 30000 }).catch(() => {});
+    check(await v.p.isVisible(`.cb-lock a[href="${SUBSCRIBE_URL}"]`), 'reader sees lock after preview');
     await v.ctx.close();
     v = await visit('member');
     check(hasFile(v.body, 'cb-test/sample.pdf'), 'member gets full book');
