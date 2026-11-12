@@ -232,7 +232,7 @@ class Corporate_Book_Meta_boxes {
       <div class="df-label"><label for="corporate_book_create_preview"><?php esc_html_e( 'Free Preview PDF', '3d-corporate-book' ); ?></label></div>
       <div class="df-option">
         <input type="hidden" name="_corporate_book[preview_pdf]" id="corporate_book_preview_pdf" value="<?php echo esc_attr( $preview ); ?>"/>
-        <button type="button" class="button" id="corporate_book_create_preview" data-percent="<?php echo esc_attr( $percent ); ?>"><?php esc_html_e( 'Create preview', '3d-corporate-book' ); ?></button>
+        <button type="button" class="button" id="corporate_book_create_preview" data-percent="<?php echo esc_attr( $percent ); ?>" data-endpoint="<?php echo esc_url( Corporate_Book_Protected_PDF::url( $post->ID ) ); ?>" data-protected="<?php echo esc_url( wp_get_upload_dir()['baseurl'] . '/' . Corporate_Book_Protected_PDF::DIR . '/' ); ?>"><?php esc_html_e( 'Create preview', '3d-corporate-book' ); ?></button>
         <span id="corporate_book_preview_status"><?php if ( $url ) { echo '<a href="' . esc_url( $url ) . '" target="_blank">' . esc_html__( 'Current preview', '3d-corporate-book' ) . '</a>'; } ?></span>
       </div>
       <div class="df-desc"><?php echo esc_html( sprintf( /* translators: %d: preview percent */ __( 'Readers without a subscription get the first %d%% of pages. Create the preview again after changing the PDF.', '3d-corporate-book' ), $percent ) ); ?></div>

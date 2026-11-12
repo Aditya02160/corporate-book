@@ -32,6 +32,9 @@
     var status = $('#corporate_book_preview_status');
     var source = $('#corporate_book_pdf_source').val();
     var percent = parseInt(button.data('percent'), 10) || 10;
+    if (source && button.data('protected') && source.indexOf(button.data('protected')) === 0) {
+      source = button.data('endpoint'); // a protected file is only readable through the protected link
+    }
     if (!source) {
       status.text('Select a PDF file first.');
       return;

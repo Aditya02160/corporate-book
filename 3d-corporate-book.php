@@ -543,6 +543,9 @@ if ( !class_exists( 'Corporate_Book' ) ) {
       //include the post-type that manages the custom post
       include_once dirname( __FILE__ ) . '/inc/post-type.php';
 
+      //protected full PDFs for books behind the subscription lock
+      include_once dirname( __FILE__ ) . '/inc/protected-pdf.php';
+
     }
 
     /**

@@ -163,7 +163,7 @@ async function waitFor(ready, ms) {
     check(await v.p.isVisible(`.cb-lock a[href="${SUBSCRIBE_URL}"]`), 'reader sees lock after preview');
     await v.ctx.close();
     v = await visit('member');
-    check(hasFile(v.body, 'cb-test/sample.pdf'), 'member gets full book');
+    check(hasFile(v.body, '?corporate_book_pdf=') && !hasFile(v.body, 'cb-test/preview.pdf'), 'member gets full book through the protected link');
     await v.ctx.close();
 
     // Per-book Subscription setting and "Create preview" (plan Task 5), as the admin.
@@ -185,6 +185,29 @@ async function waitFor(ready, ms) {
     await Promise.all([page.waitForNavigation(), page.evaluate(() => document.querySelector('#publish').click())]);
     await reloadUntil(editUrl, async () => await field('subscription') === 'required');
     check(await field('subscription') === 'required' && await field('preview_pdf') === preview.id, 'book subscription and preview are saved');
+
+    // Protected full PDF (plan Task 6): saving the book as Required moved its PDF out of the public folder.
+    const bookId = new URL(editUrl).searchParams.get('post');
+    const fetchPdf = async (user, headers = {}) => {
+      const ctx = await browser.newContext();
+      const p = await ctx.newPage();
+      p.setDefaultTimeout(90000);
+      if (user) {
+        await p.goto(`${BASE}/wp-login.php`);
+        await p.fill('#user_login', user);
+        await p.fill('#user_pass', 'password');
+        await Promise.all([p.waitForNavigation(), p.click('#wp-submit')]);
+      }
+      const res = await p.request.get(`${BASE}/?corporate_book_pdf=${bookId}`, { headers });
+      const result = { status: res.status(), length: (await res.body()).length };
+      await ctx.close();
+      return result;
+    };
+    check((await fetchPdf(null)).status === 403, 'guest cannot fetch full PDF');
+    check((await fetchPdf('reader')).status === 403, 'reader cannot fetch full PDF');
+    const ranged = await fetchPdf('member', { Range: 'bytes=0-99' });
+    check(ranged.status === 206 && ranged.length === 100, `member gets byte range (${ranged.status} ${ranged.length})`);
+    check((await page.request.get(`${BASE}/wp-content/uploads/cb-test/ten.pdf`)).status() === 404, 'original PDF moved out of public folder');
   } catch (e) {
     check(false, e.message);
   } finally {
