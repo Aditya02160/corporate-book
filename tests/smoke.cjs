@@ -43,6 +43,7 @@ async function waitFor(ready, ms) {
 (async () => {
   const fixtures = fs.mkdtempSync(path.join(os.tmpdir(), 'corporate-book-'));
   fs.writeFileSync(path.join(fixtures, 'sample.pdf'), makePdf(3));
+  fs.writeFileSync(path.join(fixtures, 'preview.pdf'), makePdf(1));
   const wp = spawn('npx', ['-y', CLI, 'server', `--port=${PORT}`,
     `--mount=${ROOT}:/wordpress/wp-content/plugins/3d-corporate-book`,
     `--mount=${fixtures}:/wordpress/wp-content/uploads/cb-test`,
@@ -134,6 +135,33 @@ async function waitFor(ready, ms) {
     check(!dialogShown, 'script in a saved setting does not run');
     check(jsErrors.length === 0, `no JavaScript errors ${jsErrors.join(' | ')}`);
     check(missingAssets.length === 0, `no missing plugin files ${missingAssets.join(' ')}`);
+
+    // Subscription lock (plan Tasks 2-3): guest, non-subscriber and subscriber see different books.
+    const hasFile = (body, file) => body.replace(/\\\//g, '/').includes(file);
+    const visit = async (user) => {
+      const ctx = await browser.newContext();
+      const p = await ctx.newPage();
+      p.setDefaultTimeout(90000);
+      if (user) {
+        await p.goto(`${BASE}/wp-login.php`);
+        await p.fill('#user_login', user);
+        await p.fill('#user_pass', 'password');
+        await Promise.all([p.waitForNavigation(), p.click('#wp-submit')]);
+      }
+      const res = await p.goto(`${BASE}/?pagename=book-test`);
+      return { ctx, p, res, body: await res.text() };
+    };
+    let v = await visit(null);
+    check(v.body.includes('cb-sign-in') && v.body.includes('wp-login.php') && v.body.includes('action=register')
+      && !hasFile(v.body, 'cb-test/sample.pdf'), 'guest sees sign-in box');
+    check(/no-cache|no-store/.test(v.res.headers()['cache-control'] || ''), 'locked page is not cacheable');
+    await v.ctx.close();
+    v = await visit('reader');
+    check(hasFile(v.body, 'cb-test/preview.pdf') && !hasFile(v.body, 'cb-test/sample.pdf'), 'reader gets preview only');
+    await v.ctx.close();
+    v = await visit('member');
+    check(hasFile(v.body, 'cb-test/sample.pdf'), 'member gets full book');
+    await v.ctx.close();
   } catch (e) {
     check(false, e.message);
   } finally {

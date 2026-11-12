@@ -6,11 +6,21 @@
 add_action(
 	'init',
 	function () {
+		if ( ! get_role( 'cb_member' ) ) {
+			add_role( 'cb_member', 'Corporate Book Member', array( 'read' => true ) );
+		}
+		foreach ( array( 'member' => 'cb_member', 'reader' => 'subscriber' ) as $login => $role ) {
+			if ( ! username_exists( $login ) ) {
+				wp_insert_user( array( 'user_login' => $login, 'user_pass' => 'password', 'user_email' => $login . '@example.com', 'role' => $role ) );
+			}
+		}
+		update_option( 'users_can_register', 1 );
 		if ( get_page_by_path( 'book-test' ) ) {
 			return;
 		}
 		$book = wp_insert_post( array( 'post_type' => 'corporate_book', 'post_status' => 'publish', 'post_title' => 'Test Book' ) );
-		update_post_meta( $book, '_corporate_book_data', array( 'source_type' => 'pdf', 'pdf_source' => home_url( '/wp-content/uploads/cb-test/sample.pdf' ) ) );
+		$preview = wp_insert_attachment( array( 'post_mime_type' => 'application/pdf', 'post_title' => 'Preview', 'post_status' => 'inherit' ), 'cb-test/preview.pdf' );
+		update_post_meta( $book, '_corporate_book_data', array( 'source_type' => 'pdf', 'pdf_source' => home_url( '/wp-content/uploads/cb-test/sample.pdf' ), 'preview_pdf' => $preview ) );
 		wp_insert_post(
 			array(
 				'post_type'    => 'page',

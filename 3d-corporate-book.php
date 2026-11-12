@@ -528,6 +528,8 @@ if ( !class_exists( 'Corporate_Book' ) ) {
       //some custom js that need to be passed
       add_action( 'wp_print_footer_scripts', array( $this, 'hook_script' ) );
 
+      add_action( 'template_redirect', array( $this, 'no_cache_locked_pages' ) );
+
     }
 
     /**
@@ -668,6 +670,97 @@ if ( !class_exists( 'Corporate_Book' ) ) {
 
       return $value;
 
+    }
+
+    /**
+     * Whether a book is behind the subscription lock: the book's own setting first, then the global one.
+     *
+     * @param int $book_id Book post ID.
+     *
+     * @return bool
+     */
+    public function book_is_locked( $book_id ) {
+      $data = get_post_meta( $book_id, '_corporate_book_data', true );
+      $mode = is_array( $data ) && isset( $data['subscription'] ) ? $data['subscription'] : 'global';
+      if ( 'free' === $mode ) {
+        return false;
+      }
+      return 'required' === $mode || 'true' === $this->get_config( 'subscription_enable' );
+    }
+
+    /**
+     * Whether the current reader may read every page of a book.
+     *
+     * @param int $book_id Book post ID.
+     *
+     * @return bool
+     */
+    public function user_has_access( $book_id ) {
+      if ( ! $this->book_is_locked( $book_id ) ) {
+        return true;
+      }
+      if ( ! is_user_logged_in() ) {
+        return false;
+      }
+      // Authors and editors of the book always read it in full.
+      if ( current_user_can( 'edit_post', $book_id ) ) {
+        return true;
+      }
+      $user       = wp_get_current_user();
+      $roles      = array_filter( explode( ',', (string) $this->get_config( 'subscription_roles' ) ) );
+      $subscribed = array() !== array_intersect( $roles, (array) $user->roles );
+      return (bool) apply_filters( 'corporate_book_user_is_subscribed', $subscribed, $user, (int) $book_id );
+    }
+
+    /**
+     * URL of the book's preview PDF, or '' when it has none.
+     *
+     * @param int $book_id Book post ID.
+     *
+     * @return string
+     */
+    public function preview_url( $book_id ) {
+      $data = get_post_meta( $book_id, '_corporate_book_data', true );
+      $id   = is_array( $data ) && ! empty( $data['preview_pdf'] ) ? (int) $data['preview_pdf'] : 0;
+      $url  = $id ? wp_get_attachment_url( $id ) : '';
+      return $url ? $url : '';
+    }
+
+    /**
+     * Number of free preview pages for a book of $total pages (at least 1).
+     *
+     * @param int $total Page count.
+     *
+     * @return int
+     */
+    public function preview_pages( $total ) {
+      return max( 1, (int) ceil( $total * (int) $this->get_config( 'subscription_preview_percent' ) / 100 ) );
+    }
+
+    /**
+     * Options the viewer needs to show the lock after the preview.
+     *
+     * @return array
+     */
+    public function lock_options() {
+      return array(
+          'url'    => esc_url_raw( $this->get_config( 'subscription_url' ) ),
+          'text'   => $this->get_translate( 'text_locked' ),
+          'button' => $this->get_translate( 'text_subscribe' ),
+      );
+    }
+
+    /**
+     * Stops browsers and page caches from storing pages with locked books, which differ per reader.
+     */
+    public function no_cache_locked_pages() {
+      $post = get_queried_object();
+      if ( 'true' === $this->get_config( 'subscription_enable' ) && $post instanceof WP_Post && has_shortcode( $post->post_content, 'corporate_book' ) ) {
+        nocache_headers();
+        if ( ! defined( 'DONOTCACHEPAGE' ) ) {
+          define( 'DONOTCACHEPAGE', true );
+        }
+      }
     }
 
     public function get_global_config( $key ) {
