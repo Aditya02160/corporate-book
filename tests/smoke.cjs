@@ -11,6 +11,7 @@ const PORT = 9400;
 const BASE = `http://127.0.0.1:${PORT}`;
 const CLI = '@wp-playground/cli@3.1.64';
 const PHP_ERRORS = /Fatal error|Warning:|Notice:|Deprecated:/;
+const SUBSCRIBE_URL = 'https://example.com/subscribe';
 const XSS = '"></script><img src=x onerror=alert(1)>';
 
 // Minimal valid PDF with one line of text per page, so no binary fixture is needed.
@@ -42,7 +43,8 @@ async function waitFor(ready, ms) {
 (async () => {
   const fixtures = fs.mkdtempSync(path.join(os.tmpdir(), 'corporate-book-'));
   fs.writeFileSync(path.join(fixtures, 'sample.pdf'), makePdf(3));
-  const wp = spawn('npx', ['-y', CLI, 'server', `--port=${PORT}`,
+  // One worker: Playground workers do not reliably share saved data between requests.
+  const wp = spawn('npx', ['-y', CLI, 'server', `--port=${PORT}`, '--workers=1',
     `--mount=${ROOT}:/wordpress/wp-content/plugins/3d-corporate-book`,
     `--mount=${fixtures}:/wordpress/wp-content/uploads/cb-test`,
     `--mount=${path.join(__dirname, 'setup-plugin')}:/wordpress/wp-content/plugins/corporate-book-test-setup`,
@@ -58,6 +60,7 @@ async function waitFor(ready, ms) {
     await waitFor(() => serverLog.includes('Ready!'), 300000); // the port answers before WordPress is ready
     browser = await chromium.launch();
     const page = await browser.newPage();
+    page.setDefaultTimeout(90000);
     const jsErrors = [];
     const missingAssets = [];
     let dialogShown = false;
@@ -88,6 +91,22 @@ async function waitFor(ready, ms) {
     await Promise.all([page.waitForNavigation(), page.evaluate(() => document.querySelector('[name="corporate_book_settings_submit"]').click())]);
     await page.goto(settingsUrl);
     check(await page.inputValue('#corporate_book_zoom_ratio') === '2.5', 'settings persist after save');
+
+    // Subscription tab (plan Task 1).
+    const saveSettings = async (values) => {
+      await page.goto(settingsUrl);
+      await page.evaluate((v) => { for (const [id, val] of Object.entries(v)) document.querySelector(`#corporate_book_${id}`).value = val; }, values);
+      await Promise.all([page.waitForNavigation(), page.evaluate(() => document.querySelector('[name="corporate_book_settings_submit"]').click())]);
+      return (await page.goto(settingsUrl)).text();
+    };
+    const field = (id) => page.$eval(`#corporate_book_${id}`, (e) => e.value).catch(() => null);
+    await saveSettings({ subscription_url: 'javascript:alert(1)' }).catch(() => '');
+    check(await field('subscription_url') === '', 'unsafe subscribe link rejected');
+    html = await saveSettings({ subscription_roles: 'subscriber' }).catch(() => '');
+    check(html.includes('cb-role-warning'), 'subscriber role warning shown');
+    await saveSettings({ subscription_enable: 'true', subscription_url: SUBSCRIBE_URL, subscription_preview_percent: '10', subscription_roles: 'cb_member, Bad Role!' }).catch(() => '');
+    check(await field('subscription_enable') === 'true' && await field('subscription_url') === SUBSCRIBE_URL
+      && await field('subscription_preview_percent') === '10' && await field('subscription_roles') === 'cb_member,badrole', 'subscription settings persist');
 
     jsErrors.length = 0;
     html = await (await page.goto(`${BASE}/?pagename=book-test`)).text();

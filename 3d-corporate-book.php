@@ -470,6 +470,16 @@ if ( !class_exists( 'Corporate_Book' ) ) {
       foreach ( $top_features as $key => $meta ) {
         $this->defaults[ $key ] = array_merge( $this->defaults[ $key ], $meta );
       }
+      // Subscription lock: readers sign in; only subscribers read past the free preview.
+      $this->defaults['subscription_enable']          = array( 'std' => 'false', 'title' => __( 'Subscription Lock', '3d-corporate-book' ), 'desc' => __( 'Readers must sign in to read. Only subscribers read past the free preview.', '3d-corporate-book' ), 'choices' => $bool );
+      $this->defaults['subscription_url']             = array( 'std' => '', 'title' => __( 'Subscribe Page Link', '3d-corporate-book' ), 'desc' => __( 'Link to your subscription page, shown when the preview ends.', '3d-corporate-book' ), 'type' => 'url' );
+      $this->defaults['subscription_preview_percent'] = array( 'std' => 10, 'title' => __( 'Free Preview (%)', '3d-corporate-book' ), 'type' => 'number', 'attr' => array( 'min' => '1', 'max' => '100' ) );
+      $this->defaults['subscription_roles']           = array( 'std' => '', 'title' => __( 'Subscriber Roles', '3d-corporate-book' ), 'desc' => __( 'Comma separated roles that count as subscribed, set by your membership plugin, e.g. cb_member.', '3d-corporate-book' ), 'type' => 'text' );
+      $this->defaults['subscription_login_shortcode'] = array( 'std' => '', 'title' => __( 'Social Login Shortcode', '3d-corporate-book' ), 'desc' => __( 'Shortcode of your social login plugin (Google, LinkedIn), e.g. [nextend_social_login]', '3d-corporate-book' ), 'type' => 'text' );
+      $this->defaults['text_sign_in']                 = __( 'Sign in to read', '3d-corporate-book' );
+      $this->defaults['text_subscribe']               = __( 'Subscribe to read the full book', '3d-corporate-book' );
+      $this->defaults['text_locked']                  = __( 'You have reached the end of the free preview.', '3d-corporate-book' );
+
 
       $this->selective_script_loading = $this->get_config( 'selectiveScriptLoading' ) == "true";
       $external_translate = $this->get_config( 'external_translate' );

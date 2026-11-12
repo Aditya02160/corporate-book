@@ -50,7 +50,8 @@ class Corporate_Book_Settings {
       'layout' => array( 'padding_left', 'padding_right', 'zoom_ratio', 'scroll_wheel', 'stiffness' ),
       'controls' => array( 'more_controls', 'hide_controls', 'enable_search', 'enable_print', 'share_prefix' ),
       'pdf' => array( 'enable_annotation', 'link_target', 'range_size', 'attachment_lightbox' ),
-      'translate' => array( 'external_translate', 'text_toggle_sound', 'text_toggle_thumbnails', 'text_toggle_outline', 'text_previous_page', 'text_next_page', 'text_toggle_fullscreen', 'text_zoom_in', 'text_zoom_out', 'text_toggle_help', 'text_single_page_mode', 'text_double_page_mode', 'text_download_PDF_file', 'text_goto_first_page', 'text_goto_last_page', 'text_share', 'text_mail_subject', 'text_mail_body', 'text_loading' ),
+      'translate' => array( 'external_translate', 'text_toggle_sound', 'text_toggle_thumbnails', 'text_toggle_outline', 'text_previous_page', 'text_next_page', 'text_toggle_fullscreen', 'text_zoom_in', 'text_zoom_out', 'text_toggle_help', 'text_single_page_mode', 'text_double_page_mode', 'text_download_PDF_file', 'text_goto_first_page', 'text_goto_last_page', 'text_share', 'text_mail_subject', 'text_mail_body', 'text_loading', 'text_sign_in', 'text_subscribe', 'text_locked' ),
+      'subscription' => array( 'subscription_enable', 'subscription_url', 'subscription_preview_percent', 'subscription_roles', 'subscription_login_shortcode' ),
       'advanced' => array( 'selectiveScriptLoading', 'enable_analytics' ),
   );
 
@@ -114,6 +115,7 @@ class Corporate_Book_Settings {
         'controls' => __( 'Controls', '3d-corporate-book' ),
         'pdf' => __( 'PDF', '3d-corporate-book' ),
         'translate' => __( 'Translate', '3d-corporate-book' ),
+        'subscription' => __( 'Subscription', '3d-corporate-book' ),
         'advanced' => __( 'Advanced', '3d-corporate-book' )
     );
     
@@ -157,6 +159,9 @@ class Corporate_Book_Settings {
                     $setting = is_array( $this->base->defaults[ $key ] ) ? null : array( 'title' => 'std', 'type' => 'text' );
                     $this->base->create_setting( $key, $setting );
                   }
+                  if ( 'subscription' === $id ) {
+                    $this->subscription_role_warning();
+                  }
                   echo '<div class="corporate-book-box"></div>';
                   
                   ?>
@@ -185,6 +190,15 @@ class Corporate_Book_Settings {
    */
   public function sanitize_setting( $key, $value ) {
     $setting = $this->base->defaults[ $key ];
+    if ( 'subscription_url' === $key ) {
+      return esc_url_raw( $value );
+    }
+    if ( 'subscription_roles' === $key ) {
+      return implode( ',', array_filter( array_map( 'sanitize_key', explode( ',', $value ) ) ) );
+    }
+    if ( 'subscription_preview_percent' === $key ) {
+      return is_numeric( $value ) ? max( 1, min( 100, (int) ceil( $value ) ) ) : 10;
+    }
     if ( is_array( $setting ) && isset( $setting['choices'] ) ) {
       return ( 'global' !== $value && array_key_exists( $value, $setting['choices'] ) ) ? $value : $this->base->get_default( $key );
     }
@@ -192,6 +206,16 @@ class Corporate_Book_Settings {
       return is_numeric( $value ) ? 0 + $value : $this->base->get_default( $key );
     }
     return sanitize_text_field( $value );
+  }
+
+  /**
+   * Warns when the default WordPress role "subscriber" counts as a paid subscription.
+   */
+  public function subscription_role_warning() {
+    $roles = explode( ',', (string) $this->base->get_config( 'subscription_roles' ) );
+    if ( in_array( 'subscriber', $roles, true ) ) {
+      echo '<div class="notice notice-warning inline cb-role-warning"><p>' . esc_html__( 'Warning: WordPress gives the "subscriber" role to every new account, so everyone who signs up would read the full book.', '3d-corporate-book' ) . '</p></div>';
+    }
   }
 
   public function update_settings() {
