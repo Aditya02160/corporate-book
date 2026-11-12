@@ -1,0 +1,21 @@
+{
+  "$schema": "https://playground.wordpress.net/blueprint-schema.json",
+  "login": true,
+  "steps": [
+    {
+      "step": "defineWpConfigConsts",
+      "consts": {
+        "WP_DEBUG": true,
+        "WP_DEBUG_DISPLAY": true
+      }
+    },
+    {
+      "step": "activatePlugin",
+      "pluginPath": "3d-corporate-book/3d-corporate-book.php"
+    },
+    {
+      "step": "activatePlugin",
+      "pluginPath": "corporate-book-test-setup/corporate-book-test-setup.php"
+    }
+  ]
+}

@@ -1,0 +1,81 @@
+=== Corporate Book - PDF Corporate Book, 3D Corporate Book, PDF embed, PDF viewer ===
+Contributors: aditya
+Tags: corporate book, 3d book, pdf viewer, pdf embed, pdf
+Requires at least: 4.6
+Tested up to: 7.1
+Requires PHP: 7.4
+Stable tag: 1.0.0
+License: GPLv2 or later
+License URI: https://www.gnu.org/licenses/gpl-2.0.html
+
+Turn any PDF into a realistic 3D Corporate Book, 2D Corporate Book, PDF viewer, PDF embed or PDF slider.
+
+== Description ==
+
+Corporate Book creates a PDF Corporate Book, 3D Corporate Book, PDF viewer and PDF embed for WordPress sites. Provide the PDF link, and Corporate Book transforms your PDF into an immersive 3D Corporate Book.
+
+**Engage with Dynamic 3D Corporate Books!** Transform your flat PDFs into captivating and immersive 3D Corporate Books. Say goodbye to static documents and bring your PDFs to life!
+
+### Viewer Modes available in Corporate Book
+- **3D Corporate Book** - Your PDFs and images become interactive, lifelike books, powered by WebGL.
+- **2D Corporate Book** - A classic flippable book built with CSS and HTML5. Faster on low-end devices.
+- **PDF embed and PDF Viewer** - A vertical reader that looks like a browser's embedded PDF viewer. Good for documents with irregular layouts.
+- **PDF Slider** - Shows PDF pages as slides.
+
+### File Formats Supported by Corporate Book
+- **PDF / PDF Corporate Book** - Built on PDF.js. All it takes is a link to the PDF file.
+- **Image / Image Corporate Book** - Turn a collection of images into a flippable album or portfolio.
+
+### How easy is Corporate Book? Just 5 Steps!
+
+1. Install the Corporate Book plugin.
+2. Create a new Corporate Book post.
+3. Provide a link to your PDF file and save the post.
+4. Copy the generated shortcode, for example `[corporate_book id="123"][/corporate_book]`, and paste it into a page or post.
+5. Publish the page or post, and your interactive 3D Corporate Book is ready to flip!
+
+### Corporate Book Feature List
+* **Realistic 3D Corporate Book** powered by WebGL.
+* **Reliable 2D Corporate Book** for low-end devices.
+* WordPress post structure for creating books, and a shortcode to display them.
+* Supports both **PDF and image formats**.
+* Embedded inline Corporate Book as the default display.
+* Popup (lightbox) display with `type="thumb"`, ideal for many books on one page.
+* Table of contents for PDF documents, plus a custom table of contents creator.
+* **Slider Mode** shows PDF pages as slides.
+* Page thumbnails preview.
+* **Deep linking** to specific pages via the share button.
+* Categories for organizing Corporate Books, and a shortcode to show a whole category.
+* **RTL mode** for right-to-left languages.
+* PDF download enable and disable option.
+* Supports more than 1000 pages and files over 500MB.
+* Partial loading (on-demand pages): large files start with a small amount of data.
+
+### TOP FEATURES
+All of these are set for every book at once in **Corporate Book > Global Settings**.
+
+* **Global Settings** - Control display mode, size, background, flip duration, page mode, sound, download and autoplay for all Corporate Books at once.
+* **PDF Links** - Links inside your PDFs are clickable.
+* **PDF Links Target** - Open PDF links in the same tab or a new tab.
+* **Controls Customization** - Choose which controls to show or hide.
+* **Search and Print Controls** - Add search and print buttons to the toolbar.
+* **Paper Flexibility** - Set how stiff the 3D pages are.
+* **Text Translation** - Translate the text of the controls and buttons, or use your translation plugin.
+* **Google Analytics** - Track when readers open Corporate Books.
+* **Stage Padding** - Set the padding between the 3D Corporate Book and its container.
+* **Zoom on Mouse Scroll** - Turn mouse-wheel zoom on or off.
+* **Zoom Ratio** - Choose how much each zoom step zooms.
+* **Share Prefix** - Change the share-link prefix. The default is `corporate-book-`.
+* **PDF Attachment Page** - PDF media attachment pages show the PDF as a Corporate Book.
+* **PDF Partial Loading Size** - Tune how much of the PDF each request loads.
+
+== Installation ==
+
+1. Upload the `3d-corporate-book` folder to `/wp-content/plugins/`, or upload the zip in **Plugins > Add New**.
+2. Activate **Corporate Book**.
+3. Go to **Corporate Book > Add New**.
+
+== Changelog ==
+
+= 1.0.0 =
+* First release of Corporate Book.
