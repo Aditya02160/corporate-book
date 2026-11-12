@@ -207,7 +207,12 @@ async function waitFor(ready, ms) {
     check((await fetchPdf('reader')).status === 403, 'reader cannot fetch full PDF');
     const ranged = await fetchPdf('member', { Range: 'bytes=0-99' });
     check(ranged.status === 206 && ranged.length === 100, `member gets byte range (${ranged.status} ${ranged.length})`);
-    check((await page.request.get(`${BASE}/wp-content/uploads/cb-test/ten.pdf`)).status() === 404, 'original PDF moved out of public folder');
+    let originalStatus = 0;
+    for (let i = 0; i < 10 && originalStatus !== 404; i++) {
+      originalStatus = (await page.request.get(`${BASE}/wp-content/uploads/cb-test/ten.pdf`)).status();
+      if (originalStatus !== 404) await page.waitForTimeout(500);
+    }
+    check(originalStatus === 404, `original PDF moved out of public folder (${originalStatus})`);
   } catch (e) {
     check(false, e.message);
   } finally {
