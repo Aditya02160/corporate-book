@@ -90,7 +90,17 @@ class Corporate_Book_Meta_boxes {
     wp_register_script( $this->base->plugin_slug . '-pdfjs', plugins_url( '../assets/js/libs/pdf.min.js', __FILE__ ), array(), '3.11.174', true );
     wp_register_script( $this->base->plugin_slug . '-pdf-lib', plugins_url( '../assets/js/libs/pdf-lib.min.js', __FILE__ ), array(), '1.17.1', true );
     wp_enqueue_script( $this->base->plugin_slug . '-preview', plugins_url( '../assets/js/corporate-book-preview.js', __FILE__ ),
-      array( 'jquery', 'wp-api-fetch', $this->base->plugin_slug . '-pdf-lib', $this->base->plugin_slug . '-pdfjs' ), $this->base->version, true );
+      array( 'jquery', $this->base->plugin_slug . '-pdf-lib', $this->base->plugin_slug . '-pdfjs' ), $this->base->version, true );
+    wp_localize_script(
+      $this->base->plugin_slug . '-preview',
+      'corporateBookUpload',
+      array(
+        'url'   => admin_url( 'admin-ajax.php' ),
+        'nonce' => wp_create_nonce( Corporate_Book_Upload::NONCE ),
+        'post'  => isset( $post->ID ) ? (int) $post->ID : 0,
+        'chunk' => Corporate_Book_Upload::chunk_size(),
+      )
+    );
 
     if(isset( $post->ID ) || isset($id)){
 //       Set the post_id for localization.

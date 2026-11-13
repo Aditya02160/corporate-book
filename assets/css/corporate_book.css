@@ -2543,3 +2543,18 @@ input.df-search-text:not(:placeholder-shown) ~ a.df-search-clear {
 .cb-preview-button:after{content:' \2197';color:#f5b400}
 .cb-featured-thumb{max-width:100%;height:auto}
 
+
+/* Account box: sign in, sign up, plans, sign out */
+.cb-account form{display:flex;flex-direction:column;gap:10px;max-width:320px;margin:0 auto}
+.cb-account form[hidden]{display:none}
+.cb-account input{padding:10px 12px;border:1px solid #ccc;border-radius:4px;font-size:16px;color:#111;background:#fff}
+.cb-account button{border:0;cursor:pointer;font-size:16px}
+.cb-account button:disabled{opacity:.6;cursor:wait}
+.cb-account button.cb-lock-signin{padding:10px 22px;border-radius:4px;font-weight:700;background:#4a9cf0;color:#fff}
+.cb-account .cb-plan{display:block;width:100%;max-width:320px;margin:0 auto 10px;padding:12px 16px;border-radius:4px;font-weight:700;background:#ffd60a;color:#111}
+.cb-account-links{margin:12px 0 0;font-size:14px}
+.cb-lock .cb-account-links a{color:#9cc8ff}
+.cb-account-status{margin:0 0 10px;font-size:18px}
+.cb-account-message{min-height:1.2em;margin:10px 0 0;font-size:14px;color:#ffb4a8}
+.cb-account-bar{margin:8px 0;font-size:14px;text-align:center}
+

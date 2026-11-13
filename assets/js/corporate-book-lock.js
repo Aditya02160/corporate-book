@@ -22,33 +22,21 @@
     return list;
   }
 
-  function isWebLink(url) {
-    return /^https?:\/\//i.test(url || '');
-  }
-
   function showLock(app, lock) {
     var panel = app.container.find('.cb-lock');
     if (!panel.length) {
-      panel = $('<div class="cb-lock"><div class="cb-lock-title"></div><div class="cb-lock-box"><p class="cb-lock-text"></p></div></div>');
-      var box = panel.find('.cb-lock-box');
+      panel = $('<div class="cb-lock"><div class="cb-lock-title"></div><div class="cb-lock-box"><p class="cb-lock-text"></p><div class="cb-lock-account"></div></div></div>');
       panel.find('.cb-lock-title').text(lock.title);
       panel.find('.cb-lock-text').text(lock.text);
-      if (isWebLink(lock.url)) {
-        $('<a class="cb-lock-subscribe"></a>').attr('href', lock.url).text(lock.button).appendTo(box);
-      }
-      if (isWebLink(lock.signInUrl)) {
-        if (isWebLink(lock.url)) {
-          $('<div class="cb-lock-or"></div>').text(lock.or).appendTo(box);
-        }
-        $('<a class="cb-lock-signin"></a>').attr('href', lock.signInUrl).text(lock.signIn).appendTo(box);
-      }
-      if (lock.login) {
-        // Output of the site's social login shortcode, set by an administrator.
-        $('<div class="cb-lock-login"></div>').html(lock.login).appendTo(box);
-      }
+      // Sign-in and sign-up forms, plans or the subscribe link: HTML rendered and escaped by the server.
+      panel.find('.cb-lock-account').html(lock.account);
       $('<button type="button" class="cb-lock-back"></button>').text(lock.back).on('click', function () {
         panel.hide();
-      }).appendTo(box);
+      }).appendTo(panel.find('.cb-lock-box'));
+      // Typing and pressing in the panel must not flip, drag or zoom the book underneath.
+      panel.on('mousedown touchstart pointerdown keydown keyup wheel', function (event) {
+        event.stopPropagation();
+      });
       app.container.append(panel);
     }
     panel.toggleClass('cb-lock-full', app.container.width() < 700).show();

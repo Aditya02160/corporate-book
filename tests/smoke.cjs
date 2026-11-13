@@ -185,7 +185,10 @@ async function waitFor(ready, ms) {
     await v.p.waitForSelector('.cb-lock', { state: 'visible', timeout: 30000 }).catch(() => {});
     check(await v.p.$eval('.cb-lock-title', (e) => e.textContent).catch(() => '') === 'Your free preview has ended'
       && await v.p.isVisible(`.cb-lock a.cb-lock-subscribe[href="${SUBSCRIBE_URL}"]`)
-      && await v.p.isVisible('.cb-lock a.cb-lock-signin[href*="wp-login.php"]'), 'guest sees the preview-ended panel with Subscribe and Sign in');
+      && await v.p.isVisible('.cb-lock form.cb-signin'), 'guest sees the preview-ended panel with Subscribe and a sign-in form');
+    await v.p.click('.cb-lock .cb-signin [name="log"]').catch(() => {});
+    await v.p.keyboard.type('ab');
+    check(await v.p.$eval('.cb-lock .cb-signin [name="log"]', (e) => e.value).catch(() => '') === 'ab', 'readers can type in the sign-in form over the book');
     check(/no-cache|no-store/.test(v.res.headers()['cache-control'] || ''), 'locked page is not cacheable');
     await v.ctx.close();
     v = await visit('reader');
@@ -361,6 +364,70 @@ async function waitFor(ready, ms) {
       return `${preview.value} ${document.querySelector('#corporate_book_preview_status').textContent}`;
     }, `${BASE}/wp-content/uploads/cb-test/auto.pdf`).catch((e) => e.message);
     check(parseInt(autoPreview, 10) > 0, `preview is created automatically when a PDF is chosen (${autoPreview})`);
+
+    // Built-in accounts and Razorpay subscription. Razorpay's API is faked by the test setup plugin.
+    const razorpay = { razorpay_key_id: 'rzp_test_SMOKE', razorpay_key_secret: 'smokesecret' };
+    await saveSettings(razorpay, razorpay).catch(() => '');
+    const acct = await browser.newContext();
+    const a = await acct.newPage();
+    a.setDefaultTimeout(90000);
+    const openAccount = async (ready) => {
+      for (let i = 0; i < 10; i++) {
+        await a.goto(`${BASE}/?pagename=account-test`);
+        if (await ready()) return true;
+        await a.waitForTimeout(500);
+      }
+      return false;
+    };
+    const has = (selector) => async () => await a.$(selector) !== null;
+    check(await openAccount(has('.cb-account form.cb-signin')) && await a.$('.cb-account form.cb-signup') !== null, 'guests get sign-in and sign-up forms');
+    await a.fill('.cb-signin [name="log"]', 'reader').catch(() => {});
+    await a.fill('.cb-signin [name="pwd"]', 'wrong-password').catch(() => {});
+    await a.click('.cb-signin button[type="submit"]').catch(() => {});
+    await a.waitForFunction(() => document.querySelector('.cb-account-message').textContent !== '', null, { timeout: 30000 }).catch(() => {});
+    check(await a.$eval('.cb-account-message', (e) => e.textContent).catch(() => '') === 'Incorrect email or password.', 'a wrong password is refused with a plain message');
+    await a.click('.cb-show-signup').catch(() => {});
+    await a.fill('.cb-signup [name="email"]', 'newreader@example.com').catch(() => {});
+    await a.fill('.cb-signup [name="pwd"]', 'long-password-1').catch(() => {});
+    await Promise.all([a.waitForNavigation({ timeout: 30000 }), a.click('.cb-signup button[type="submit"]')]).catch(() => {});
+    const offered = await openAccount(has('.cb-plan'));
+    check(await a.$('.cb-signout') !== null, 'sign up creates the account and signs the reader in');
+    const plans = await a.$$eval('.cb-plan', (els) => els.map((e) => e.textContent).join(' | ')).catch(() => '');
+    check(offered && /Monthly.*399/.test(plans) && /Yearly.*3,?999/.test(plans), `plans are offered with their prices (${plans})`);
+    const ajax = (data) => a.evaluate(async (d) => {
+      const form = new FormData();
+      Object.entries({ ...d, _ajax_nonce: (window.corporateBookAccount || {}).nonce }).forEach(([k, v]) => form.append(k, v));
+      return (await fetch('/wp-admin/admin-ajax.php', { method: 'POST', body: form, credentials: 'same-origin' })).json().catch(() => ({}));
+    }, data);
+    const order = (await ajax({ action: 'corporate_book_order', plan: '0' })).data || {};
+    check(order.amount === 39900 && /^order_/.test(order.order_id || '') && order.key === 'rzp_test_SMOKE', `an order is created for the plan price (${order.amount})`);
+    const paymentId = String(order.order_id).replace('order_', 'pay_');
+    const sign = (o, p) => require('crypto').createHmac('sha256', 'smokesecret').update(`${o}|${p}`).digest('hex');
+    const pay = (signature) => ajax({ action: 'corporate_book_verify', order_id: String(order.order_id), payment_id: paymentId, signature });
+    check((await pay(sign(order.order_id, 'pay_OTHER'))).success !== true, 'a forged payment signature is refused');
+    let paid = {};
+    for (let i = 0; i < 10 && paid.success !== true; i++) {
+      paid = await pay(sign(order.order_id, paymentId));
+      if (paid.success !== true) await a.waitForTimeout(500);
+    }
+    const active = await openAccount(has('.cb-account-status'));
+    const until = await a.$eval('.cb-account-status', (e) => e.textContent).catch(() => '');
+    check(paid.success === true && active && /Subscription active until/.test(until), 'a verified payment starts the subscription');
+    await a.waitForTimeout(2000);
+    await pay(sign(order.order_id, paymentId));
+    await openAccount(has('.cb-account-status'));
+    check(until !== '' && await a.$eval('.cb-account-status', (e) => e.textContent).catch(() => '') === until, 'replaying the same payment does not extend the subscription');
+    await page.goto(`${BASE}/wp-admin/edit.php?post_type=corporate_book`);
+    const bulkId = new URL(await page.locator('a.row-title', { hasText: /^Bulk Book$/ }).first().getAttribute('href')).searchParams.get('post');
+    let subscriberPdf = 0;
+    for (let i = 0; i < 10 && subscriberPdf !== 200; i++) {
+      subscriberPdf = (await a.request.get(`${BASE}/?corporate_book_pdf=${bulkId}`)).status();
+      if (subscriberPdf !== 200) await a.waitForTimeout(500);
+    }
+    check(subscriberPdf === 200, `a paid subscriber can load a locked book (${subscriberPdf})`);
+    await Promise.all([a.waitForNavigation({ timeout: 30000 }), a.click('.cb-signout')]).catch(() => {});
+    check(await openAccount(has('.cb-account form.cb-signin')), 'sign out returns the reader to the sign-in form');
+    await acct.close();
   } catch (e) {
     check(false, e.message);
   } finally {

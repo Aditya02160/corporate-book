@@ -6,6 +6,60 @@
 (function ($) {
   'use strict';
 
+  // Reads the server's JSON answer even when warnings were printed around it, and says what came back when there is none.
+  function readAnswer(text, status) {
+    var start = text.indexOf('{"success"');
+    var answer = null;
+    if (start !== -1) {
+      try {
+        answer = JSON.parse(text.slice(start, text.lastIndexOf('}') + 1));
+      } catch (e) {
+        answer = null;
+      }
+    }
+    if (!answer) {
+      throw new Error('the server answered ' + status + ': ' + (text.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 200) || 'nothing'));
+    }
+    if (!answer.success) {
+      throw new Error(typeof answer.data === 'string' ? answer.data : 'the upload was refused');
+    }
+    return answer.data;
+  }
+
+  // Sends a file the browser built to the Media Library, in small chunks through admin-ajax.php,
+  // so it works without the REST API and under small server upload limits.
+  function upload(blob, name, kind) {
+    var cfg = window.corporateBookUpload;
+    var token = Array.prototype.map.call(window.crypto.getRandomValues(new Uint8Array(16)), function (byte) {
+      return ('0' + byte.toString(16)).slice(-2);
+    }).join('');
+    function send(offset) {
+      var end = Math.min(offset + cfg.chunk, blob.size);
+      var form = new FormData();
+      form.append('action', 'corporate_book_upload');
+      form.append('_ajax_nonce', cfg.nonce);
+      form.append('post_id', cfg.post);
+      form.append('kind', kind);
+      form.append('token', token);
+      form.append('name', name);
+      form.append('offset', offset);
+      if (end >= blob.size) {
+        form.append('last', '1');
+      }
+      form.append('file', blob.slice(offset, end), name);
+      return fetch(cfg.url, { method: 'POST', body: form, credentials: 'same-origin' })
+        .then(function (response) {
+          return response.text().then(function (text) {
+            return readAnswer(text, response.status);
+          });
+        })
+        .then(function (data) {
+          return end >= blob.size ? data : send(end);
+        });
+    }
+    return send(0);
+  }
+
   function buildPreview(bytes, percent) {
     return PDFLib.PDFDocument.load(bytes).then(function (full) {
       var total = full.getPageCount();
@@ -53,9 +107,7 @@
       })
       .then(function (result) {
         var name = (source.split('/').pop().replace(/\.pdf$/i, '') || 'book') + '-preview.pdf';
-        var form = new FormData();
-        form.append('file', new Blob([result.data], { type: 'application/pdf' }), name);
-        return wp.apiFetch({ path: '/wp/v2/media', method: 'POST', body: form }).then(function (media) {
+        return upload(new Blob([result.data], { type: 'application/pdf' }), name, 'preview').then(function (media) {
           $('#corporate_book_preview_pdf').val(media.id);
           status.text('Preview created: ' + result.count + ' of ' + result.total + ' pages. Update the book to save it.');
         });
@@ -81,6 +133,10 @@
     if (preview.data('protected') && source.indexOf(preview.data('protected')) === 0) {
       source = preview.data('endpoint');
     }
+    if (!window.pdfjsLib) {
+      status.text('Thumbnail failed: the PDF reader did not load. Reload the page and try again.');
+      return;
+    }
     button.prop('disabled', true);
     status.text('Creating thumbnail...');
     pdfjsLib.GlobalWorkerOptions.workerSrc = button.data('worker');
@@ -100,12 +156,13 @@
         });
       })
       .then(function (blob) {
-        var form = new FormData();
-        form.append('file', blob, (source.split('/').pop().split('?')[0].replace(/\.pdf$/i, '') || 'book') + '-thumb.png');
-        return wp.apiFetch({ path: '/wp/v2/media', method: 'POST', body: form });
+        if (!blob) {
+          throw new Error('the browser could not draw the page');
+        }
+        return upload(blob, (source.split('/').pop().split('?')[0].replace(/\.pdf$/i, '') || 'book') + '-thumb.png', 'thumb');
       })
       .then(function (media) {
-        $('#corporate_book_pdf_thumb').val(media.source_url).trigger('change');
+        $('#corporate_book_pdf_thumb').val(media.url).trigger('change');
         status.text('Thumbnail created. Update the book to save it.');
       })
       .catch(function (error) {

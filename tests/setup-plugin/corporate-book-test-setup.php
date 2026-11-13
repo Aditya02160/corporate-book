@@ -3,6 +3,42 @@
  * Plugin Name: Corporate Book Test Setup
  * Description: Test-only, mounted by tests/smoke.cjs. Creates a sample book and a page that embeds it.
  */
+// Small chunks, so every generated upload in the tests arrives in several pieces.
+add_filter(
+	'corporate_book_upload_chunk_size',
+	function () {
+		return 700;
+	}
+);
+
+// Stand-in for Razorpay's API: orders carry their amount in the id, and "pay_X" is the captured payment of "order_X".
+add_filter(
+	'pre_http_request',
+	function ( $pre, $args, $url ) {
+		$api = 'https://api.razorpay.com/v1/';
+		if ( 0 !== strpos( $url, $api ) ) {
+			return $pre;
+		}
+		$path   = substr( $url, strlen( $api ) );
+		$answer = function ( $data, $code = 200 ) {
+			return array( 'headers' => array(), 'body' => wp_json_encode( $data ), 'response' => array( 'code' => $code, 'message' => '' ), 'cookies' => array(), 'filename' => null );
+		};
+		if ( 'orders' === $path ) {
+			$body = json_decode( $args['body'], true );
+			return $answer( array( 'id' => 'order_TEST' . $body['amount'] . 'A' . wp_rand( 100000, 999999 ), 'amount' => $body['amount'], 'currency' => $body['currency'], 'status' => 'created' ) );
+		}
+		if ( preg_match( '#^payments/pay_(TEST(\d+)A\d+)$#', $path, $m ) ) {
+			return $answer( array( 'id' => 'pay_' . $m[1], 'order_id' => 'order_' . $m[1], 'amount' => (int) $m[2], 'currency' => 'INR', 'status' => 'captured' ) );
+		}
+		if ( preg_match( '#^orders/order_TEST\w+/payments$#', $path ) ) {
+			return $answer( array( 'entity' => 'collection', 'count' => 0, 'items' => array() ) );
+		}
+		return $answer( array( 'error' => array( 'description' => 'not found' ) ), 404 );
+	},
+	10,
+	3
+);
+
 add_action(
 	'init',
 	function () {
@@ -25,6 +61,7 @@ add_action(
 		$bulk     = wp_insert_post( array( 'post_type' => 'corporate_book', 'post_status' => 'publish', 'post_title' => 'Bulk Book', 'post_author' => 1 ) );
 		update_post_meta( $bulk, '_corporate_book_data', array( 'source_type' => 'pdf', 'pdf_source' => wp_get_attachment_url( $bulk_pdf ) ) );
 		wp_insert_attachment( array( 'post_mime_type' => 'application/pdf', 'post_title' => 'Other', 'post_status' => 'inherit', 'post_author' => 1 ), 'cb-test/other.pdf' );
+		wp_insert_post( array( 'post_type' => 'page', 'post_status' => 'publish', 'post_name' => 'account-test', 'post_title' => 'Account Test', 'post_content' => '[corporate_book_account]' ) );
 		wp_insert_post(
 			array(
 				'post_type'    => 'page',

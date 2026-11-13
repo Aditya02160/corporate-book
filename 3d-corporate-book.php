@@ -466,6 +466,13 @@ if ( !class_exists( 'Corporate_Book' ) ) {
       $this->defaults['text_locked']                  = __( 'Your free preview has ended', '3d-corporate-book' );
       $this->defaults['text_subscribe_button']        = __( 'Subscribe', '3d-corporate-book' );
       $this->defaults['text_preview']                 = __( 'Preview', '3d-corporate-book' );
+      // Accounts and Razorpay payments inside the book.
+      $this->defaults['subscription_signup']   = array( 'std' => 'true', 'title' => __( 'Sign Up in the Book', '3d-corporate-book' ), 'desc' => __( 'Lets readers create an account inside the book.', '3d-corporate-book' ), 'choices' => $bool );
+      $this->defaults['razorpay_key_id']       = array( 'std' => '', 'title' => __( 'Razorpay Key ID', '3d-corporate-book' ), 'desc' => __( 'From Razorpay Dashboard, Account and Settings, API Keys. Start with a Test Mode key.', '3d-corporate-book' ), 'type' => 'text' );
+      $this->defaults['razorpay_key_secret']   = array( 'std' => '', 'title' => __( 'Razorpay Key Secret', '3d-corporate-book' ), 'desc' => __( 'Kept on the server; never sent to readers.', '3d-corporate-book' ), 'type' => 'password' );
+      $this->defaults['subscription_currency'] = array( 'std' => 'INR', 'title' => __( 'Currency', '3d-corporate-book' ), 'type' => 'text' );
+      $this->defaults['subscription_plans']    = array( 'std' => "Monthly | 399 | 30\nYearly | 3999 | 365", 'title' => __( 'Subscription Plans', '3d-corporate-book' ), 'desc' => __( 'One plan per line: Name | Price | Days of access.', '3d-corporate-book' ), 'type' => 'textarea' );
+
       // Extra 3D and display features.
       $this->defaults['webgl']['choices']['hybrid'] = __( 'Hybrid: 3D on computers, 2D on phones', '3d-corporate-book' );
       $this->defaults['spiral']        = array( 'std' => 'false', 'title' => __( 'Spiral 3D Book', '3d-corporate-book' ), 'desc' => __( 'Shows a spiral binding on 3D books.', '3d-corporate-book' ), 'choices' => $bool );
@@ -541,6 +548,10 @@ if ( !class_exists( 'Corporate_Book' ) ) {
 
       //protected full PDFs for books behind the subscription lock
       include_once dirname( __FILE__ ) . '/inc/protected-pdf.php';
+
+      //reader accounts, Razorpay payments, and uploads made by the book editor
+      include_once dirname( __FILE__ ) . '/inc/account.php';
+      include_once dirname( __FILE__ ) . '/inc/upload.php';
 
     }
 
@@ -715,7 +726,7 @@ if ( !class_exists( 'Corporate_Book' ) ) {
       }
       $user       = wp_get_current_user();
       $roles      = array_filter( explode( ',', (string) $this->get_config( 'subscription_roles' ) ) );
-      $subscribed = array() !== array_intersect( $roles, (array) $user->roles );
+      $subscribed = array() !== array_intersect( $roles, (array) $user->roles ) || Corporate_Book_Account::is_active( $user->ID );
       return (bool) apply_filters( 'corporate_book_user_is_subscribed', $subscribed, $user, (int) $book_id );
     }
 
@@ -750,19 +761,12 @@ if ( !class_exists( 'Corporate_Book' ) ) {
      * @return array
      */
     public function lock_options() {
-      $guest          = ! is_user_logged_in();
-      $login_shortcode = (string) $this->get_config( 'subscription_login_shortcode' );
       return array(
-          'url'       => esc_url_raw( $this->get_config( 'subscription_url' ) ),
-          'title'     => $this->get_translate( 'text_locked' ),
-          'text'      => $this->get_translate( 'text_subscribe' ),
-          'button'    => $this->get_translate( 'text_subscribe_button' ),
-          'or'        => __( 'OR', '3d-corporate-book' ),
-          'back'      => __( 'Back to preview', '3d-corporate-book' ),
-          // Guests can sign in from the panel; signed-in readers only need to subscribe.
-          'signInUrl' => $guest ? wp_login_url( get_permalink() ? get_permalink() : home_url( '/' ) ) : '',
-          'signIn'    => $this->get_translate( 'text_sign_in' ),
-          'login'     => $guest && '' !== $login_shortcode ? do_shortcode( $login_shortcode ) : '',
+          'title'   => $this->get_translate( 'text_locked' ),
+          'text'    => $this->get_translate( 'text_subscribe' ),
+          'back'    => __( 'Back to preview', '3d-corporate-book' ),
+          // Sign-in and sign-up forms for guests; plans or the subscribe link for signed-in readers.
+          'account' => Corporate_Book_Account::box(),
       );
     }
 

@@ -51,7 +51,7 @@ class Corporate_Book_Settings {
       'controls' => array( 'more_controls', 'hide_controls', 'enable_search', 'share_prefix' ),
       'pdf' => array( 'enable_annotation', 'link_target', 'range_size', 'attachment_lightbox' ),
       'translate' => array( 'external_translate', 'text_toggle_sound', 'text_toggle_thumbnails', 'text_toggle_outline', 'text_previous_page', 'text_next_page', 'text_toggle_fullscreen', 'text_zoom_in', 'text_zoom_out', 'text_toggle_help', 'text_single_page_mode', 'text_double_page_mode', 'text_goto_first_page', 'text_goto_last_page', 'text_share', 'text_mail_subject', 'text_mail_body', 'text_loading', 'text_sign_in', 'text_subscribe', 'text_locked', 'text_subscribe_button', 'text_preview' ),
-      'subscription' => array( 'subscription_enable', 'subscription_url', 'subscription_preview_percent', 'subscription_roles', 'subscription_login_shortcode' ),
+      'subscription' => array( 'subscription_enable', 'subscription_url', 'subscription_preview_percent', 'subscription_roles', 'subscription_login_shortcode', 'subscription_signup', 'razorpay_key_id', 'razorpay_key_secret', 'subscription_currency', 'subscription_plans' ),
       'advanced' => array( 'selectiveScriptLoading', 'enable_analytics' ),
   );
 
@@ -218,6 +218,13 @@ class Corporate_Book_Settings {
     }
     if ( is_array( $setting ) && isset( $setting['type'] ) && 'number' === $setting['type'] ) {
       return is_numeric( $value ) ? 0 + $value : $this->base->get_default( $key );
+    }
+    if ( 'subscription_currency' === $key ) {
+      $currency = strtoupper( substr( preg_replace( '/[^a-zA-Z]/', '', $value ), 0, 3 ) );
+      return 3 === strlen( $currency ) ? $currency : 'INR';
+    }
+    if ( is_array( $setting ) && isset( $setting['type'] ) && 'textarea' === $setting['type'] ) {
+      return sanitize_textarea_field( $value );
     }
     return sanitize_text_field( $value );
   }

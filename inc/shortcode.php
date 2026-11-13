@@ -158,14 +158,7 @@ class Corporate_Book_ShortCode {
    */
   public function lock_box() {
     $lock = $this->base->lock_options();
-    $html = '<div class="cb-lock cb-lock-static"><div class="cb-lock-title">' . esc_html( $lock['title'] ) . '</div><div class="cb-lock-box"><p class="cb-lock-text">' . esc_html( $lock['text'] ) . '</p>';
-    if ( '' !== $lock['url'] ) {
-      $html .= '<a class="cb-lock-subscribe" href="' . esc_url( $lock['url'] ) . '">' . esc_html( $lock['button'] ) . '</a>';
-    }
-    if ( '' !== $lock['signInUrl'] ) {
-      $html .= '<div class="cb-lock-or">' . esc_html( $lock['or'] ) . '</div><a class="cb-lock-signin" href="' . esc_url( $lock['signInUrl'] ) . '">' . esc_html( $lock['signIn'] ) . '</a>' . $lock['login'];
-    }
-    return $html . '</div></div>';
+    return '<div class="cb-lock cb-lock-static"><div class="cb-lock-title">' . esc_html( $lock['title'] ) . '</div><div class="cb-lock-box"><p class="cb-lock-text">' . esc_html( $lock['text'] ) . '</p>' . $lock['account'] . '</div></div>';
   }
 
   public function book( $attr, $content = '', $multi = false ) {
@@ -444,6 +437,11 @@ class Corporate_Book_ShortCode {
 
       $html .= '<script class="df-shortcode-script" nowprocket type="application/javascript">' . $code . '</script>';
 
+    }
+
+    // Signed-in readers get a line under a locked book: who they are, their subscription, and sign out.
+    if ( 'book' === $type && $post != null && is_user_logged_in() && $base->book_is_locked( $post->ID ) ) {
+      $html .= Corporate_Book_Account::bar();
     }
 
     return $html;

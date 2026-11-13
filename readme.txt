@@ -93,6 +93,17 @@ How it works:
 * Pages with locked books are not cached, so one reader's view is never shown to another.
 * Image books: the lock limits the pages shown, but the image files stay public in the Media Library. Use a PDF book for paid content.
 
+### Accounts and Razorpay payments
+Readers sign in, create an account and sign out inside the book. To sell subscriptions without another plugin:
+
+1. In **Global Settings > Subscription**, paste your **Razorpay Key ID** and **Razorpay Key Secret**. Use Test Mode keys first.
+2. Set **Subscription Plans**, one per line: `Name | Price | Days of access`, for example `Monthly | 399 | 30`.
+3. Readers pick a plan in the "Your free preview has ended" panel and pay with Razorpay Checkout. Access runs for the plan's days; they pay again to renew.
+
+Add `[corporate_book_account]` to any page for a box with sign in, plans and sign out. Administrators see each reader's subscription in the Users list and can change the "Subscription active until" date on the reader's profile.
+
+Razorpay Checkout loads from checkout.razorpay.com when a reader picks a plan, and the plugin calls api.razorpay.com to create and confirm payments. See Razorpay's terms and privacy policy.
+
 On nginx, add this rule so the protected folder cannot be opened directly (Apache uses the included .htaccess):
 
 `location ^~ /wp-content/uploads/corporate-book-protected/ { deny all; }`
