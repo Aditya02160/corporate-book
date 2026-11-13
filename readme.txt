@@ -67,6 +67,14 @@ All of these are set for every book at once in **Corporate Book > Global Setting
 * **Share Prefix** - Change the share-link prefix. The default is `corporate-book-`.
 * **PDF Attachment Page** - PDF media attachment pages show the PDF as a Corporate Book.
 * **PDF Partial Loading Size** - Tune how much of the PDF each request loads.
+* **Spiral 3D Corporate Book** - Show a spiral binding on 3D books.
+* **3D Hybrid Corporate Book** - 3D on computers and the lighter 2D book on phones, chosen automatically.
+* **Calendar Mode** - 3D books bound at the top that flip upward, like a wall calendar.
+* **3D Tilt and Rotation** - Lean the 3D book back or to the side, and rotate PDF pages.
+* **Book Shelf** - `[corporate_book books="all" shelf="true"]` shows your books on a shelf.
+* **Trigger Lightbox and Link Lightbox** - Open a book in a popup from a button, a text link or your own HTML: `type="button"`, `type="link"` or `type="custom"`.
+* **Corporate Book Post URLs** - Give every book its own page at `/corporate-book/book-name/`.
+* **Auto Generate Thumb** - The book editor makes the thumbnail from the first page of the PDF.
 
 ### Subscription
 Lock Corporate Books behind a subscription. Set it up in **Corporate Book > Global Settings > Subscription**:

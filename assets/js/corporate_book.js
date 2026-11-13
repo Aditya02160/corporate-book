@@ -9533,6 +9533,8 @@ defaults_CORPORATE_BOOK_VIEWER.viewers = {};
 defaults_CORPORATE_BOOK_VIEWER.viewers["flipbook"] = FlipBook;
 defaults_CORPORATE_BOOK_VIEWER.viewers["default"] = defaults_CORPORATE_BOOK_VIEWER.viewers["reader"] = Reader;
 defaults_CORPORATE_BOOK_VIEWER.viewers["slider"] = Slider;
+// Lets corporate-book-extras.js add spiral binding and calendar mode.
+defaults_CORPORATE_BOOK_VIEWER.FlipBook3D = FlipBook3D;
 
 ;// CONCATENATED MODULE: ./src/js/corporate_book_viewer/utils/provider.js
 /* globals requirejs, jQuery*/ function provider_assert_this_initialized(self) {

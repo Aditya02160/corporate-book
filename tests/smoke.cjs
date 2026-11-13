@@ -279,6 +279,46 @@ async function waitFor(ready, ms) {
     v = await visit(null);
     check(hasFile(v.body, '?corporate_book_pdf=') && (await v.p.request.get(`${BASE}/?corporate_book_pdf=${bookId}`)).status() === 200, 'unlocked book still loads its protected PDF');
     await v.ctx.close();
+
+    // Extra features: tilt, hybrid 3D, spiral, shelf, link and custom triggers, book pages, calendar, thumbnails.
+    html = await (await page.goto(settingsUrl)).text();
+    check(['tilt_up', 'tilt_left', 'page_rotation', 'spiral', 'calendar_mode', 'shelf_image', 'post_urls'].every((k) => html.includes(`id="corporate_book_${k}"`))
+      && /<option value="hybrid"/.test(html), 'extra feature settings are shown');
+    const extras = { spiral: 'true', tilt_up: '20', post_urls: 'true', webgl: 'hybrid' };
+    await saveSettings(extras, extras).catch(() => '');
+    jsErrors.length = 0;
+    html = await reloadUntil(`${BASE}/?pagename=extras-test`, () => page.evaluate(() => (window.corporateBookWPGlobal || {}).flipbook3DTiltAngleUp === 20));
+    const sent = await page.evaluate(() => { const g = window.corporateBookWPGlobal || {}; return `${g.flipbook3DTiltAngleUp} ${g.hasSpiral}`; });
+    // The viewer consumes the webgl option, so check what the page sent; the spiral check below proves 3D is on.
+    check(sent === '20 true' && html.includes('"webgl":"hybrid"'), `tilt, hybrid and spiral settings reach the viewer (${sent})`);
+    check(html.includes('df-has-shelf') && await page.$$eval('.df-has-shelf ._df_thumb', (e) => e.length) >= 1, 'book shelf renders');
+    check(await page.$('.cb-trigger-custom .cb-custom-inner') !== null, 'custom trigger keeps its HTML');
+    await page.click('.cb-trigger-link').catch(() => {});
+    await page.waitForSelector('.df-lightbox-wrapper', { state: 'visible', timeout: 30000 }).catch(() => {});
+    check(await page.isVisible('.df-lightbox-wrapper'), 'link opens the book in a lightbox');
+    const lightboxViewer = () => { const box = window.CORPORATE_BOOK && window.CORPORATE_BOOK.activeLightBox; return box && box.app && box.app.viewer; };
+    await page.waitForFunction(`(${lightboxViewer})() && (${lightboxViewer})().spiral`, null, { timeout: 30000 }).catch(() => {});
+    const rings = await page.evaluate(`(() => { const v = (${lightboxViewer})(); return v && v.spiral ? v.spiral.children.length : 0; })()`);
+    check(rings > 0, `spiral rings are drawn (${rings})`);
+    check(jsErrors.length === 0, `extras page has no JavaScript errors ${jsErrors.join(' | ')}`);
+    const bookPage = await reloadUntil(`${BASE}/?corporate_book=test-book`, async () => (await page.content()).includes('_df_book'));
+    check(bookPage.includes('_df_book'), 'book has its own page');
+    const calendar = { calendar_mode: 'true', spiral: 'false' };
+    await saveSettings(calendar, calendar).catch(() => '');
+    jsErrors.length = 0;
+    await reloadUntil(`${BASE}/?pagename=book-test`, () => page.evaluate(() => (window.corporateBookWPGlobal || {}).calendarMode === true));
+    await page.waitForFunction(() => { const a = window.jQuery('._df_book').data('df-app'); return a && a.viewer && a.pageCount; }, null, { timeout: 30000 }).catch(() => {});
+    await page.waitForTimeout(3000);
+    const vertical = await page.evaluate(() => { const a = window.jQuery('._df_book').data('df-app'); return !!(a && a.viewer && a.viewer.isVertical && a.viewer.isVertical()); });
+    check(vertical && jsErrors.length === 0, `calendar mode flips vertically without errors ${jsErrors.join(' | ')}`);
+    await page.goto(editUrl);
+    const thumb = await page.evaluate(async () => {
+      document.querySelector('#corporate_book_create_thumb').click();
+      const status = document.querySelector('#corporate_book_thumb_status');
+      for (let i = 0; i < 120 && !/created|failed/i.test(status.textContent); i++) await new Promise((r) => setTimeout(r, 500));
+      return `${document.querySelector('#corporate_book_pdf_thumb').value} ${status.textContent}`;
+    }).catch((e) => e.message);
+    check(/\.png /.test(thumb), `thumbnail is generated from the PDF (${thumb.slice(0, 120)})`);
   } catch (e) {
     check(false, e.message);
   } finally {

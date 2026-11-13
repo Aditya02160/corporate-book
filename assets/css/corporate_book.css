@@ -2514,3 +2514,6 @@ input.df-search-text:not(:placeholder-shown) ~ a.df-search-clear {
 ._df_book {
   min-height: 400px;
 }
+/* Link and custom lightbox triggers */
+.cb-trigger-link { display: inline; cursor: pointer; text-decoration: underline; }
+.cb-trigger-custom { display: inline-block; cursor: pointer; }

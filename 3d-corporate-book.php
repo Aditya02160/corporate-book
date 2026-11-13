@@ -464,6 +464,16 @@ if ( !class_exists( 'Corporate_Book' ) ) {
       $this->defaults['text_sign_in']                 = __( 'Sign in to read', '3d-corporate-book' );
       $this->defaults['text_subscribe']               = __( 'Subscribe to read the full book', '3d-corporate-book' );
       $this->defaults['text_locked']                  = __( 'You have reached the end of the free preview.', '3d-corporate-book' );
+      // Extra 3D and display features.
+      $this->defaults['webgl']['choices']['hybrid'] = __( 'Hybrid: 3D on computers, 2D on phones', '3d-corporate-book' );
+      $this->defaults['spiral']        = array( 'std' => 'false', 'title' => __( 'Spiral 3D Book', '3d-corporate-book' ), 'desc' => __( 'Shows a spiral binding on 3D books.', '3d-corporate-book' ), 'choices' => $bool );
+      $this->defaults['calendar_mode'] = array( 'std' => 'false', 'title' => __( 'Calendar Mode', '3d-corporate-book' ), 'desc' => __( '3D books are bound at the top and flip upward, like a wall calendar.', '3d-corporate-book' ), 'choices' => $bool );
+      $this->defaults['tilt_up']       = array( 'std' => 0, 'title' => __( '3D Tilt Up', '3d-corporate-book' ), 'desc' => __( 'Degrees the 3D book leans back, e.g. 20.', '3d-corporate-book' ), 'type' => 'number', 'attr' => array( 'step' => 'any' ) );
+      $this->defaults['tilt_left']     = array( 'std' => 0, 'title' => __( '3D Tilt Left', '3d-corporate-book' ), 'desc' => __( 'Degrees the 3D book turns to the left.', '3d-corporate-book' ), 'type' => 'number', 'attr' => array( 'step' => 'any' ) );
+      $this->defaults['page_rotation'] = array( 'std' => '0', 'title' => __( 'PDF Page Rotation', '3d-corporate-book' ), 'choices' => array( '0' => '0', '90' => '90', '180' => '180', '270' => '270' ) );
+      $this->defaults['shelf_image']   = array( 'std' => '', 'title' => __( 'Book Shelf Image', '3d-corporate-book' ), 'desc' => __( 'Optional shelf picture for [corporate_book books="all" shelf="true"].', '3d-corporate-book' ), 'type' => 'url' );
+      $this->defaults['post_urls']     = array( 'std' => 'false', 'title' => __( 'Book Post URLs', '3d-corporate-book' ), 'desc' => __( 'Gives every book its own page at /corporate-book/book-name/.', '3d-corporate-book' ), 'choices' => $bool );
+
 
 
       $this->selective_script_loading = $this->get_config( 'selectiveScriptLoading' ) == "true";
@@ -541,11 +551,13 @@ if ( !class_exists( 'Corporate_Book' ) ) {
 
       //register scripts and style
       wp_register_script( 'corporate-book-script', plugins_url( 'assets/js/corporate_book.min.js', __FILE__ ), array( "jquery" ), $this->version, true );
+      wp_register_script( 'corporate-book-extras', plugins_url( 'assets/js/corporate-book-extras.js', __FILE__ ), array( 'corporate-book-script' ), $this->version, true );
       wp_register_style( 'corporate-book-style', plugins_url( 'assets/css/corporate_book.min.css', __FILE__ ), array(), $this->version );
 
       if ( $this->selective_script_loading != true ) {
         //enqueue scripts and style
       wp_enqueue_script( 'corporate-book-script' );
+      wp_enqueue_script( 'corporate-book-extras' );
       wp_enqueue_style( 'corporate-book-style' );
       }
 
@@ -619,7 +631,13 @@ if ( !class_exists( 'Corporate_Book' ) ) {
           'autoPlayDuration' => $this->get_config( 'autoplay_duration' ),
           'autoPlayStart'    => $this->get_config( 'autoplay_start' ),
           'linkTarget'       => $this->get_config( 'link_target' ),
-          'sharePrefix'      => $this->get_config( 'share_prefix' )
+          'sharePrefix'      => $this->get_config( 'share_prefix' ),
+          'hasSpiral'              => $this->get_config( 'spiral' ),
+          'calendarMode'           => $this->get_config( 'calendar_mode' ) == 'true',
+          'flipbook3DTiltAngleUp'  => 0 + $this->get_config( 'tilt_up' ),
+          'flipbook3DTiltAngleLeft' => 0 + $this->get_config( 'tilt_left' ),
+          'pageRotation'           => (int) $this->get_config( 'page_rotation' ),
+          'shelfImage'             => $this->get_config( 'shelf_image' )
       );
 
       //registers a variable that stores the location of plugin
@@ -627,6 +645,8 @@ if ( !class_exists( 'Corporate_Book' ) ) {
         <script data-cfasync="false">
             window.corporateBookLocation = '<?php echo esc_url(plugins_url( 'assets/', __FILE__ ));?>';
             window.corporateBookWPGlobal = <?php echo json_encode( $data );?>;
+            // Hybrid: 3D on computers, 2D on phones.
+            (function (m) { var s = [window.corporateBookWPGlobal]; for (var k in window) { if (k.indexOf('option_') === 0 && window[k]) { s.push(window[k]); } } s.forEach(function (o) { if (o.webgl === 'hybrid') { o.webgl = m ? 'false' : 'true'; } }); })(/Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent));
         </script>
       <?php
 

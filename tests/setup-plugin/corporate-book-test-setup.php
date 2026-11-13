@@ -29,6 +29,15 @@ add_action(
 			array(
 				'post_type'    => 'page',
 				'post_status'  => 'publish',
+				'post_name'    => 'extras-test',
+				'post_title'   => 'Extras Test',
+				'post_content' => "[corporate_book id=\"$book\" type=\"link\"]Read book[/corporate_book]\n[corporate_book id=\"$book\" type=\"custom\"]<strong class=\"cb-custom-inner\">Open</strong>[/corporate_book]\n[corporate_book books=\"all\" shelf=\"true\"][/corporate_book]",
+			)
+		);
+		wp_insert_post(
+			array(
+				'post_type'    => 'page',
+				'post_status'  => 'publish',
 				'post_name'    => 'book-test',
 				'post_title'   => 'Book Test',
 				'post_content' => "[corporate_book id=\"$book\"][/corporate_book]\n[corporate_book id=\"$book\" type=\"thumb\"][/corporate_book]\n[corporate_book id=\"999999\"][/corporate_book]",

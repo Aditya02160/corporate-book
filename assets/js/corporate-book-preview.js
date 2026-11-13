@@ -67,4 +67,58 @@
         button.prop('disabled', false);
       });
   });
+
+  // "Create thumbnail": renders page 1 of the PDF with PDF.js and uploads it as the book thumbnail.
+  $(document).on('click', '#corporate_book_create_thumb', function () {
+    var button = $(this);
+    var preview = $('#corporate_book_create_preview');
+    var status = $('#corporate_book_thumb_status');
+    var source = $('#corporate_book_pdf_source').val();
+    if (!source) {
+      status.text('Select a PDF file first.');
+      return;
+    }
+    if (preview.data('protected') && source.indexOf(preview.data('protected')) === 0) {
+      source = preview.data('endpoint');
+    }
+    button.prop('disabled', true);
+    status.text('Creating thumbnail...');
+    pdfjsLib.GlobalWorkerOptions.workerSrc = button.data('worker');
+    pdfjsLib.getDocument({ url: source, withCredentials: true }).promise
+      .then(function (pdf) {
+        return pdf.getPage(1);
+      })
+      .then(function (page) {
+        var viewport = page.getViewport({ scale: 400 / page.getViewport({ scale: 1 }).width });
+        var canvas = document.createElement('canvas');
+        canvas.width = viewport.width;
+        canvas.height = viewport.height;
+        return page.render({ canvasContext: canvas.getContext('2d'), viewport: viewport }).promise.then(function () {
+          return new Promise(function (resolve) {
+            canvas.toBlob(resolve, 'image/png');
+          });
+        });
+      })
+      .then(function (blob) {
+        var form = new FormData();
+        form.append('file', blob, (source.split('/').pop().split('?')[0].replace(/\.pdf$/i, '') || 'book') + '-thumb.png');
+        return wp.apiFetch({ path: '/wp/v2/media', method: 'POST', body: form });
+      })
+      .then(function (media) {
+        $('#corporate_book_pdf_thumb').val(media.source_url).trigger('change');
+        status.text('Thumbnail created. Update the book to save it.');
+      })
+      .catch(function (error) {
+        status.text('Thumbnail failed: ' + error.message);
+      })
+      .then(function () {
+        button.prop('disabled', false);
+      });
+  });
+
+  $(document).on('change', '#corporate_book_pdf_source', function () {
+    if (!$('#corporate_book_pdf_thumb').val()) {
+      $('#corporate_book_create_thumb').trigger('click');
+    }
+  });
 })(jQuery);

@@ -87,9 +87,10 @@ class Corporate_Book_Meta_boxes {
       array( 'jquery-ui-sortable', 'jquery-ui-draggable', 'jquery-ui-resizable', 'wp-color-picker' ), $this->base->version, true );
     wp_enqueue_script( $this->base->plugin_slug . '-metabox-script' );
     // "Create preview" builds the subscription preview PDF in the browser with pdf-lib.
+    wp_register_script( $this->base->plugin_slug . '-pdfjs', plugins_url( '../assets/js/libs/pdf.min.js', __FILE__ ), array(), '3.11.174', true );
     wp_register_script( $this->base->plugin_slug . '-pdf-lib', plugins_url( '../assets/js/libs/pdf-lib.min.js', __FILE__ ), array(), '1.17.1', true );
     wp_enqueue_script( $this->base->plugin_slug . '-preview', plugins_url( '../assets/js/corporate-book-preview.js', __FILE__ ),
-      array( 'jquery', 'wp-api-fetch', $this->base->plugin_slug . '-pdf-lib' ), $this->base->version, true );
+      array( 'jquery', 'wp-api-fetch', $this->base->plugin_slug . '-pdf-lib', $this->base->plugin_slug . '-pdfjs' ), $this->base->version, true );
 
     if(isset( $post->ID ) || isset($id)){
 //       Set the post_id for localization.
@@ -228,6 +229,14 @@ class Corporate_Book_Meta_boxes {
     $url     = $preview && current_user_can( 'edit_post', $preview ) ? wp_get_attachment_url( $preview ) : '';
     $percent = (int) $this->base->get_config( 'subscription_preview_percent' );
     ?>
+    <div id="corporate_book_thumb_box" class="df-box" data-condition="corporate_book_source_type:is(pdf)">
+      <div class="df-label"><label for="corporate_book_create_thumb"><?php esc_html_e( 'Auto Thumbnail', '3d-corporate-book' ); ?></label></div>
+      <div class="df-option">
+        <button type="button" class="button" id="corporate_book_create_thumb" data-worker="<?php echo esc_url( plugins_url( '../assets/js/libs/pdf.worker.min.js', __FILE__ ) ); ?>"><?php esc_html_e( 'Create thumbnail', '3d-corporate-book' ); ?></button>
+        <span id="corporate_book_thumb_status"></span>
+      </div>
+      <div class="df-desc"><?php esc_html_e( 'Makes the thumbnail image from the first page of the PDF. Runs by itself when you pick a PDF and the thumbnail is empty.', '3d-corporate-book' ); ?></div>
+    </div>
     <div id="corporate_book_preview_pdf_box" class="df-box" data-condition="corporate_book_source_type:is(pdf)">
       <div class="df-label"><label for="corporate_book_create_preview"><?php esc_html_e( 'Free Preview PDF', '3d-corporate-book' ); ?></label></div>
       <div class="df-option">

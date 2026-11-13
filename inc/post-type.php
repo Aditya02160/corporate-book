@@ -57,16 +57,17 @@ class Corporate_Book_Post_Type {
         'not_found_in_trash' => __( 'No Corporate Books found in Trash.', '3d-corporate-book' )
     );
     
+    $post_urls = 'true' === $this->base->get_config( 'post_urls' );
     $args = array(
         'labels'             => $labels,
         'description'        => __( 'Description.', '3d-corporate-book' ),
-        'public'             => false,  //this removes the permalink option
-        'publicly_queryable' => false,
+        'public'             => $post_urls,
+        'publicly_queryable' => $post_urls,
         'exclude_from_search' => true, // if not excluded, posts will be displayed in normal search. This will hide it from other archive and taxonomy listing, and needs to be fetched manually.
         'show_ui'            => true,
         'show_in_menu'       => true,
         'query_var'          => true,
-        'rewrite'            => false, //array('slug' => $this->base->slug),
+        'rewrite'            => $post_urls ? array( 'slug' => 'corporate-book' ) : false,
         'capability_type'    => 'post',
         'has_archive'        => true,
         'hierarchical'       => false,
@@ -76,6 +77,10 @@ class Corporate_Book_Post_Type {
     );
     
     register_post_type( 'corporate_book', $args );
+    if ( get_option( 'corporate_book_flush_rules' ) ) {
+      delete_option( 'corporate_book_flush_rules' );
+      flush_rewrite_rules();
+    }
     
     register_taxonomy( 'corporate_book_category', 'corporate_book', array(
         'hierarchical'       => true,
@@ -121,6 +126,7 @@ class Corporate_Book_Post_Type {
   public function init_front() {
     
     add_filter( 'the_content', array( $this, 'filter_the_pdf_attachment_content' ) );
+    add_filter( 'the_content', array( $this, 'book_page_content' ) );
     
   }
   
@@ -213,6 +219,20 @@ class Corporate_Book_Post_Type {
   
   
   
+  /**
+   * Shows the book on its own page (Book Post URLs).
+   *
+   * @param string $content Post content.
+   *
+   * @return string
+   */
+  public function book_page_content( $content ) {
+    if ( is_singular( 'corporate_book' ) && in_the_loop() && is_main_query() ) {
+      return do_shortcode( '[corporate_book id="' . get_the_ID() . '"][/corporate_book]' );
+    }
+    return $content;
+  }
+
   public function filter_the_pdf_attachment_content( $content ) {
     global $post;
     

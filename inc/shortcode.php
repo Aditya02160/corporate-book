@@ -56,6 +56,7 @@ class Corporate_Book_ShortCode {
     if ( $this->base->selective_script_loading == true ) {
       //enqueue script
       wp_enqueue_script( 'corporate-book-script' );
+      wp_enqueue_script( 'corporate-book-extras' );
 
       //enqueue styles
       wp_enqueue_style( 'corporate-book-style' );
@@ -116,7 +117,8 @@ class Corporate_Book_ShortCode {
           }
         }
       }
-      $html = '<div class="corporate-book-books">';
+      $shelf = isset( $attr['shelf'] ) && 'true' === trim( $attr['shelf'] );
+      $html  = '<div class="corporate-book-books' . ( $shelf ? ' df-has-shelf' : '' ) . '">';
       $limitMax = $limit == '-1' ? 999 : (int) $limit;
       $limit = 0;
       foreach ( $ids as $id ) {
@@ -435,8 +437,11 @@ class Corporate_Book_ShortCode {
     }
 
     $html = "";
-    if ( $type == 'thumb' || $type == 'button' ) {
-      $html = '<div class="_df_' . $type . ' ' . esc_attr( $class ) . '" id="' . esc_attr( $id ) . '" ' . $attrHTML . '>' . esc_attr( $title ) . '</div>';
+    if ( in_array( $type, array( 'thumb', 'button', 'link', 'custom' ), true ) ) {
+      // Link and custom triggers open the same lightbox as a button, without the button look.
+      $trigger = in_array( $type, array( 'link', 'custom' ), true ) ? '_df_button cb-trigger-' . $type : '_df_' . $type;
+      $label   = 'custom' === $type ? wp_kses_post( $title ) : esc_html( $title );
+      $html    = '<div class="' . $trigger . ' ' . esc_attr( $class ) . '" id="' . esc_attr( $id ) . '" ' . $attrHTML . '>' . $label . '</div>';
     }
     else {
       $html = '<div class="_df_book df-lite' . esc_attr( $class ) . '" id="' . esc_attr( $id ) . '" ' . $attrHTML . '></div>';
