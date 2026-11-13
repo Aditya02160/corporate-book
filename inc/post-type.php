@@ -127,6 +127,10 @@ class Corporate_Book_Post_Type {
     
     add_filter( 'the_content', array( $this, 'filter_the_pdf_attachment_content' ) );
     add_filter( 'the_content', array( $this, 'book_page_content' ) );
+    // In post lists (latest posts, archives, search) a book shows its cover card.
+    add_filter( 'get_the_excerpt', array( $this, 'book_list_card' ), 20, 2 );
+    add_filter( 'has_post_thumbnail', array( $this, 'book_has_thumbnail' ), 10, 2 );
+    add_filter( 'post_thumbnail_html', array( $this, 'book_thumbnail_html' ), 10, 2 );
     
   }
   
@@ -227,10 +231,76 @@ class Corporate_Book_Post_Type {
    * @return string
    */
   public function book_page_content( $content ) {
-    if ( is_singular( 'corporate_book' ) && in_the_loop() && is_main_query() ) {
+    if ( 'corporate_book' !== get_post_type() || ! in_the_loop() ) {
+      return $content;
+    }
+    if ( is_singular( 'corporate_book' ) && is_main_query() ) {
       return do_shortcode( '[corporate_book id="' . get_the_ID() . '"][/corporate_book]' );
     }
-    return $content;
+    return $this->book_card( get_the_ID() );
+  }
+
+  /**
+   * Cover card of a book: thumbnail, title and Preview button.
+   *
+   * @param int $book_id Book post ID.
+   *
+   * @return string HTML.
+   */
+  public function book_card( $book_id ) {
+    return do_shortcode( '[corporate_book id="' . (int) $book_id . '" type="thumb"][/corporate_book]' );
+  }
+
+  /**
+   * Excerpt of a book in post lists: its cover card.
+   *
+   * @param string  $excerpt Excerpt.
+   * @param WP_Post $post    Post.
+   *
+   * @return string
+   */
+  public function book_list_card( $excerpt, $post = null ) {
+    return $post && 'corporate_book' === $post->post_type && ! is_admin() ? $this->book_card( $post->ID ) : $excerpt;
+  }
+
+  /**
+   * URL of a book's thumbnail image, or ''.
+   *
+   * @param int $book_id Book post ID.
+   *
+   * @return string
+   */
+  private function book_thumb_url( $book_id ) {
+    $data = get_post_meta( $book_id, '_corporate_book_data', true );
+    return is_array( $data ) && ! empty( $data['pdf_thumb'] ) ? $data['pdf_thumb'] : '';
+  }
+
+  /**
+   * A book with a thumbnail counts as having a featured image.
+   *
+   * @param bool             $has  Whether the post has a featured image.
+   * @param int|WP_Post|null $post Post.
+   *
+   * @return bool
+   */
+  public function book_has_thumbnail( $has, $post = null ) {
+    $post = get_post( $post );
+    return $post && 'corporate_book' === $post->post_type && ! $has ? '' !== $this->book_thumb_url( $post->ID ) : $has;
+  }
+
+  /**
+   * Featured image of a book without one: its thumbnail.
+   *
+   * @param string $html    Image HTML.
+   * @param int    $post_id Post ID.
+   *
+   * @return string
+   */
+  public function book_thumbnail_html( $html, $post_id = 0 ) {
+    if ( '' === $html && 'corporate_book' === get_post_type( $post_id ) && '' !== $this->book_thumb_url( $post_id ) ) {
+      return '<img class="cb-featured-thumb" src="' . esc_url( $this->book_thumb_url( $post_id ) ) . '" alt="' . esc_attr( get_the_title( $post_id ) ) . '" loading="lazy"/>';
+    }
+    return $html;
   }
 
   public function filter_the_pdf_attachment_content( $content ) {

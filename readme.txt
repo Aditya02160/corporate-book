@@ -82,7 +82,7 @@ Lock Corporate Books behind a subscription. Set it up in **Corporate Book > Glob
 1. Install a social login plugin (for example Nextend Social Login) so readers can sign in with Google or LinkedIn, and paste its shortcode in **Social Login Shortcode**.
 2. Set **Subscription Lock** to True and paste your **Subscribe Page Link**.
 3. In **Subscriber Roles**, list the roles your membership plugin gives paying members, for example `cb_member`. Do not use `subscriber`: WordPress gives it to every new account.
-4. In each book, click **Create preview** to make the free preview (the first 10% of pages by default), then click **Update**.
+4. Open each book and click **Update**. The free preview (the first 10% of pages by default) and the thumbnail are made automatically when you pick a PDF or open a book that has none.
 
 How it works:
 

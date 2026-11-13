@@ -473,7 +473,7 @@ if ( !class_exists( 'Corporate_Book' ) ) {
       $this->defaults['tilt_up']       = array( 'std' => 0, 'title' => __( '3D Tilt Up', '3d-corporate-book' ), 'desc' => __( 'Degrees the 3D book leans back, e.g. 20.', '3d-corporate-book' ), 'type' => 'number', 'attr' => array( 'step' => 'any' ) );
       $this->defaults['tilt_left']     = array( 'std' => 0, 'title' => __( '3D Tilt Left', '3d-corporate-book' ), 'desc' => __( 'Degrees the 3D book turns to the left.', '3d-corporate-book' ), 'type' => 'number', 'attr' => array( 'step' => 'any' ) );
       $this->defaults['page_rotation'] = array( 'std' => '0', 'title' => __( 'PDF Page Rotation', '3d-corporate-book' ), 'choices' => array( '0' => '0', '90' => '90', '180' => '180', '270' => '270' ) );
-      $this->defaults['shelf_image']   = array( 'std' => '', 'title' => __( 'Book Shelf Image', '3d-corporate-book' ), 'desc' => __( 'Optional shelf picture for [corporate_book books="all" shelf="true"].', '3d-corporate-book' ), 'type' => 'url' );
+      $this->defaults['shelf_image']   = array( 'std' => '', 'title' => __( 'Book Shelf Image', '3d-corporate-book' ), 'desc' => __( 'Optional shelf picture for [corporate_book books="all" shelf="true"].', '3d-corporate-book' ), 'type' => 'upload', 'placeholder' => __( 'Select an image', '3d-corporate-book' ), 'button-text' => __( 'Select Image', '3d-corporate-book' ) );
       $this->defaults['post_urls']     = array( 'std' => 'false', 'title' => __( 'Book Post URLs', '3d-corporate-book' ), 'desc' => __( 'Gives every book its own page at /corporate-book/book-name/.', '3d-corporate-book' ), 'choices' => $bool );
 
 

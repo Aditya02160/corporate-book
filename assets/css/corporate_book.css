@@ -2534,3 +2534,12 @@ input.df-search-text:not(:placeholder-shown) ~ a.df-search-clear {
 .cb-thumb-title{margin:8px 0;font-weight:600}
 .cb-preview-button{display:inline-block;padding:8px 18px;border-radius:4px;background:#222;color:#fff;cursor:pointer}
 
+
+/* Static lock box, cover card look, featured thumbnail */
+.cb-lock.cb-lock-static{position:static;width:auto;max-width:560px;margin:16px auto;border-radius:8px}
+.cb-thumb-card{max-width:300px}
+.cb-thumb-title{max-width:280px;margin:16px auto 14px;font-family:Georgia,'Times New Roman',serif;font-size:20px;line-height:1.35;font-weight:600;color:#0d2a6b}
+.cb-preview-button{padding:12px 28px;border-radius:999px;background:#0b1f5c;color:#fff;font-weight:700}
+.cb-preview-button:after{content:' \2197';color:#f5b400}
+.cb-featured-thumb{max-width:100%;height:auto}
+

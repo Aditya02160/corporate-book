@@ -96,6 +96,7 @@ class Corporate_Book_Settings {
         array( $this, 'settings_page' ) );
     
     //The resulting page's hook_suffix, or false if the user does not have the capability required.
+    add_action( 'admin_enqueue_scripts', array( $this, 'settings_scripts' ) );
     if ( $this->hook ) {
       add_action( 'load-' . $this->hook, array( $this, 'update_settings' ) );
     }
@@ -107,6 +108,19 @@ class Corporate_Book_Settings {
    *
    * @since 1.2
    */
+  /**
+   * Loads the Media Library and the image picker on the Global Settings page.
+   *
+   * @param string $hook Current admin page.
+   */
+  public function settings_scripts( $hook ) {
+    if ( $hook !== $this->hook ) {
+      return;
+    }
+    wp_enqueue_media();
+    wp_enqueue_script( 'corporate-book-admin', plugins_url( '../assets/js/corporate-book-admin.js', __FILE__ ), array( 'jquery' ), $this->base->version, true );
+  }
+
   public function settings_page() {
     
     $tabs = array(

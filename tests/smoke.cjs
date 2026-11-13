@@ -48,6 +48,7 @@ async function waitFor(ready, ms) {
   fs.writeFileSync(path.join(fixtures, 'ten.pdf'), makePdf(10));
   fs.writeFileSync(path.join(fixtures, 'bulk.pdf'), makePdf(2));
   fs.writeFileSync(path.join(fixtures, 'other.pdf'), makePdf(2));
+  fs.writeFileSync(path.join(fixtures, 'auto.pdf'), makePdf(10));
   const wp = spawn('npx', ['-y', CLI, 'server', `--port=${PORT}`,
     `--mount=${ROOT}:/wordpress/wp-content/plugins/3d-corporate-book`,
     `--mount=${fixtures}:/wordpress/wp-content/uploads/cb-test`,
@@ -341,6 +342,25 @@ async function waitFor(ready, ms) {
       return `${document.querySelector('#corporate_book_pdf_thumb').value} ${status.textContent}`;
     }).catch((e) => e.message);
     check(/\.png /.test(thumb), `thumbnail is generated from the PDF (${thumb.slice(0, 120)})`);
+
+    // Image pickers, cover cards in post lists, automatic preview.
+    await page.goto(settingsUrl);
+    await page.evaluate(() => document.querySelector('#corporate_book_upload_bg_image').click());
+    const pickerOpened = await page.waitForSelector('.media-modal', { state: 'visible', timeout: 15000 }).then(() => true).catch(() => false);
+    check(pickerOpened && await page.$('#corporate_book_upload_shelf_image') !== null, 'Select Image opens the media library for background and shelf images');
+    const archive = await (await page.goto(`${BASE}/?post_type=corporate_book`)).text();
+    check(archive.includes('cb-thumb-card') && archive.includes('cb-preview-button'), 'book lists show the cover card with title and button');
+    const newBook = `${BASE}/wp-admin/post-new.php?post_type=corporate_book`;
+    await page.goto(newBook).catch(() => page.goto(newBook));
+    const autoPreview = await page.evaluate(async (pdf) => {
+      const source = document.querySelector('#corporate_book_pdf_source');
+      source.value = pdf;
+      window.jQuery(source).trigger('change');
+      const preview = document.querySelector('#corporate_book_preview_pdf');
+      for (let i = 0; i < 120 && !Number(preview.value); i++) await new Promise((r) => setTimeout(r, 500));
+      return `${preview.value} ${document.querySelector('#corporate_book_preview_status').textContent}`;
+    }, `${BASE}/wp-content/uploads/cb-test/auto.pdf`).catch((e) => e.message);
+    check(parseInt(autoPreview, 10) > 0, `preview is created automatically when a PDF is chosen (${autoPreview})`);
   } catch (e) {
     check(false, e.message);
   } finally {

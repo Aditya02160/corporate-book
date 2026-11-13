@@ -116,9 +116,46 @@
       });
   });
 
-  $(document).on('change', '#corporate_book_pdf_source', function () {
+  // The preview and thumbnail make themselves: a new PDF gets a new preview, and anything missing is filled in.
+  function fillIn(pdfChanged) {
+    if (!$('#corporate_book_pdf_source').val()) {
+      return;
+    }
+    if (pdfChanged || !Number($('#corporate_book_preview_pdf').val())) {
+      $('#corporate_book_create_preview').trigger('click');
+    }
     if (!$('#corporate_book_pdf_thumb').val()) {
       $('#corporate_book_create_thumb').trigger('click');
     }
+  }
+  $(document).on('change', '#corporate_book_pdf_source', function () {
+    fillIn(true);
+  });
+  $(function () {
+    fillIn(false);
+  });
+
+  // Saving waits for a preview or thumbnail that is still being made, then saves with the same button.
+  $(document).on('submit', '#post', function (event) {
+    var busy = function () {
+      return $('#corporate_book_create_preview').prop('disabled') || $('#corporate_book_create_thumb').prop('disabled');
+    };
+    if (!busy()) {
+      return;
+    }
+    event.preventDefault();
+    var button = $(document.activeElement).is(':submit') ? $(document.activeElement) : $('#publish');
+    var waited = 0;
+    var timer = setInterval(function () {
+      waited += 300;
+      // Never block saving for long: after 20 seconds save without the unfinished file.
+      if (!busy() || waited > 20000) {
+        clearInterval(timer);
+        $('#corporate_book_create_preview, #corporate_book_create_thumb').prop('disabled', false);
+        // WordPress marks its save buttons "disabled" on the first try and then ignores clicks on them.
+        $('#submitpost').find(':button, :submit, a.submitdelete, #post-preview').removeClass('disabled');
+        button.trigger('click');
+      }
+    }, 300);
   });
 })(jQuery);
