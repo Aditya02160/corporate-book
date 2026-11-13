@@ -59,8 +59,9 @@ add_action(
 		update_post_meta( $book, '_corporate_book_data', array( 'source_type' => 'pdf', 'pdf_source' => home_url( '/wp-content/uploads/cb-test/sample.pdf' ), 'preview_pdf' => $preview ) );
 		$bulk_pdf = wp_insert_attachment( array( 'post_mime_type' => 'application/pdf', 'post_title' => 'Bulk', 'post_status' => 'inherit', 'post_author' => 1 ), 'cb-test/bulk.pdf' );
 		$bulk     = wp_insert_post( array( 'post_type' => 'corporate_book', 'post_status' => 'publish', 'post_title' => 'Bulk Book', 'post_author' => 1 ) );
-		update_post_meta( $bulk, '_corporate_book_data', array( 'source_type' => 'pdf', 'pdf_source' => wp_get_attachment_url( $bulk_pdf ) ) );
+		update_post_meta( $bulk, '_corporate_book_data', array( 'source_type' => 'pdf', 'pdf_source' => wp_get_attachment_url( $bulk_pdf ), 'pdf_thumb' => home_url( '/wp-content/uploads/cb-test/cover.png' ) ) );
 		wp_insert_attachment( array( 'post_mime_type' => 'application/pdf', 'post_title' => 'Other', 'post_status' => 'inherit', 'post_author' => 1 ), 'cb-test/other.pdf' );
+		wp_insert_post( array( 'post_type' => 'page', 'post_status' => 'publish', 'post_name' => 'library-test', 'post_title' => 'Library Test', 'post_content' => '[corporate_book_library]' ) );
 		wp_insert_post( array( 'post_type' => 'page', 'post_status' => 'publish', 'post_name' => 'account-test', 'post_title' => 'Account Test', 'post_content' => '[corporate_book_account]' ) );
 		wp_insert_post(
 			array(

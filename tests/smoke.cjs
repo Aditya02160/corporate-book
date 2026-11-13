@@ -176,6 +176,21 @@ async function waitFor(ready, ms) {
         await new Promise((r) => setTimeout(r, 500));
       }
     });
+    // Library and cover cards, as a guest: every book shows its card, even a locked one without a preview.
+    const lib = await browser.newContext();
+    const l = await lib.newPage();
+    l.setDefaultTimeout(90000);
+    const libraryHtml = await (await l.goto(`${BASE}/?pagename=library-test`)).text();
+    const year = String(new Date().getFullYear());
+    check(await l.$$eval('.cb-library .cb-library-item .cb-thumb-card', (e) => e.length) >= 2 && await l.$(`.cb-library-years .cb-filter[data-filter="${year}"]`) !== null
+      && !PHP_ERRORS.test(libraryHtml), 'library shows every book as a card with year buttons');
+    check(await l.$('.cb-thumb-card .cb-cover img[src*="cover.png"]') !== null && (await l.$eval('.cb-thumb-card .cb-preview-button', (e) => e.textContent)).trim() === 'Read Magazine',
+      'cards show the cover image and a Read Magazine button');
+    await l.click('.cb-library-years .cb-filter[data-filter="all"]');
+    await l.click(`.cb-library-filter .cb-filter[data-filter="${year}"]`);
+    check(await l.$$eval('.cb-library-item', (e) => e.filter((i) => !i.hidden).length) >= 2
+      && await l.$eval(`.cb-library-years .cb-filter[data-filter="${year}"]`, (e) => e.classList.contains('cb-active')), 'year filter keeps that year and marks both buttons');
+    await lib.close();
     let v = await visit(null);
     check(hasFile(v.body, 'cb-test/preview.pdf') && !hasFile(v.body, 'cb-test/sample.pdf') && !v.body.includes('cb-sign-in'), 'guest gets the free preview');
     check(!PHP_ERRORS.test(v.body), 'guest page has no PHP errors');

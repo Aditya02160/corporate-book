@@ -465,7 +465,7 @@ if ( !class_exists( 'Corporate_Book' ) ) {
       $this->defaults['text_subscribe']               = __( 'Subscribe to read the full book', '3d-corporate-book' );
       $this->defaults['text_locked']                  = __( 'Your free preview has ended', '3d-corporate-book' );
       $this->defaults['text_subscribe_button']        = __( 'Subscribe', '3d-corporate-book' );
-      $this->defaults['text_preview']                 = __( 'Preview', '3d-corporate-book' );
+      $this->defaults['text_preview']                 = __( 'Read Magazine', '3d-corporate-book' );
       // Accounts and Razorpay payments inside the book.
       $this->defaults['subscription_signup']   = array( 'std' => 'true', 'title' => __( 'Sign Up in the Book', '3d-corporate-book' ), 'desc' => __( 'Lets readers create an account inside the book.', '3d-corporate-book' ), 'choices' => $bool );
       $this->defaults['razorpay_key_id']       = array( 'std' => '', 'title' => __( 'Razorpay Key ID', '3d-corporate-book' ), 'desc' => __( 'From Razorpay Dashboard, Account and Settings, API Keys. Start with a Test Mode key.', '3d-corporate-book' ), 'type' => 'text' );

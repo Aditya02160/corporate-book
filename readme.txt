@@ -76,6 +76,9 @@ All of these are set for every book at once in **Corporate Book > Global Setting
 * **Corporate Book Post URLs** - Give every book its own page at `/corporate-book/book-name/`.
 * **Auto Generate Thumb** - The book editor makes the thumbnail from the first page of the PDF.
 
+### Library page
+Add `[corporate_book_library]` to a page to show every book as a cover card (cover, title, Read Magazine button), grouped by year, with year buttons and a filter list of years and categories. The same cover card shows in post lists.
+
 ### Subscription
 Lock Corporate Books behind a subscription. Set it up in **Corporate Book > Global Settings > Subscription**:
 

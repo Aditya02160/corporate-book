@@ -127,6 +127,7 @@ class Corporate_Book_Post_Type {
     
     add_filter( 'the_content', array( $this, 'filter_the_pdf_attachment_content' ) );
     add_filter( 'the_content', array( $this, 'book_page_content' ) );
+    add_filter( 'template_include', array( $this, 'library_template' ) );
     // In post lists (latest posts, archives, search) a book shows its cover card.
     add_filter( 'get_the_excerpt', array( $this, 'book_list_card' ), 20, 2 );
     add_filter( 'has_post_thumbnail', array( $this, 'book_has_thumbnail' ), 10, 2 );
@@ -230,6 +231,18 @@ class Corporate_Book_Post_Type {
    *
    * @return string
    */
+  /**
+   * The book list page shows the library (classic themes; block themes show the cover cards in their own list).
+   *
+   * @param string $template Template file.
+   *
+   * @return string
+   */
+  public function library_template( $template ) {
+    $ours = dirname( __FILE__ ) . '/../assets/templates/library.php';
+    return is_post_type_archive( 'corporate_book' ) && ! wp_is_block_theme() ? $ours : $template;
+  }
+
   public function book_page_content( $content ) {
     if ( 'corporate_book' !== get_post_type() || ! in_the_loop() ) {
       return $content;

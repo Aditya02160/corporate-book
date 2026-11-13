@@ -38,6 +38,7 @@ class Corporate_Book_ShortCode {
 
     // Load shortcode hooks and filters.
     add_shortcode( 'corporate_book', array( $this, 'shortcode' ) );
+    add_shortcode( 'corporate_book_library', array( $this, 'library' ) );
 
   }
 
@@ -156,6 +157,48 @@ class Corporate_Book_ShortCode {
    *
    * @return string HTML.
    */
+  /**
+   * [corporate_book_library]: every published book as a cover card, grouped by year,
+   * with year buttons and a filter list of years and categories.
+   *
+   * @return string HTML.
+   */
+  public function library() {
+    wp_enqueue_script( 'corporate-book-script' );
+    wp_enqueue_script( 'corporate-book-extras' );
+    wp_enqueue_style( 'corporate-book-style' );
+    wp_enqueue_script( 'corporate-book-library', plugins_url( 'assets/js/corporate-book-library.js', $this->base->file ), array(), $this->base->version, true );
+    $years = array();
+    $terms = array();
+    foreach ( get_posts( array( 'post_type' => 'corporate_book', 'post_status' => 'publish', 'numberposts' => -1 ) ) as $book ) {
+      $filters = array( get_the_date( 'Y', $book ) );
+      $cats    = get_the_terms( $book, 'corporate_book_category' );
+      foreach ( is_array( $cats ) ? $cats : array() as $cat ) {
+        $filters[]           = 'cat-' . $cat->slug;
+        $terms[ $cat->slug ] = $cat->name;
+      }
+      $years[ $filters[0] ][] = '<div class="cb-library-item" data-filters="' . esc_attr( implode( ' ', $filters ) ) . '">' . $this->book( array( 'id' => $book->ID, 'type' => 'thumb' ) ) . '</div>';
+    }
+    krsort( $years );
+    $button = function ( $filter, $label, $active = false ) {
+      return '<button type="button" class="cb-filter' . ( $active ? ' cb-active' : '' ) . '" data-filter="' . esc_attr( $filter ) . '">' . esc_html( $label ) . '</button>';
+    };
+    $all  = $button( 'all', __( 'All', '3d-corporate-book' ), true );
+    $side = $all;
+    $top  = $all;
+    $main = '';
+    foreach ( $years as $year => $cards ) {
+      $side .= $button( $year, $year );
+      $top  .= $button( $year, $year );
+      $main .= '<section class="cb-library-year"><h2>' . esc_html( $year ) . '</h2><div class="cb-library-grid">' . implode( '', $cards ) . '</div></section>';
+    }
+    foreach ( $terms as $slug => $name ) {
+      $side .= $button( 'cat-' . $slug, $name );
+    }
+    return '<div class="cb-library"><aside class="cb-library-filter"><div class="cb-library-filter-title">' . esc_html__( 'Filter', '3d-corporate-book' ) . '</div>' . $side . '</aside>'
+      . '<div class="cb-library-main"><div class="cb-library-years">' . $top . '</div>' . $main . '</div></div>';
+  }
+
   public function lock_box() {
     $lock = $this->base->lock_options();
     return '<div class="cb-lock cb-lock-static"><div class="cb-lock-title">' . esc_html( $lock['title'] ) . '</div><div class="cb-lock-box"><p class="cb-lock-text">' . esc_html( $lock['text'] ) . '</p>' . $lock['account'] . '</div></div>';
@@ -328,6 +371,10 @@ class Corporate_Book_ShortCode {
         if ( 'pdf' === $source_type ) {
           $preview_url = $base->preview_url( $post_id );
           if ( '' === $preview_url ) {
+            if ( 'thumb' === $atts['type'] && ! ( isset( $attr['shelf'] ) && 'true' === trim( $attr['shelf'] ) ) ) {
+              $cover = empty( $thumb_url ) ? '' : '<div class="cb-cover"><img src="' . esc_url( $thumb_url ) . '" alt="' . esc_attr( $title ) . '" loading="lazy"/></div>';
+              return '<div class="cb-thumb-card">' . $cover . '<div class="cb-thumb-title">' . esc_html( $title ) . '</div><details class="cb-card-lock"><summary class="cb-preview-button">' . esc_html( $base->get_translate( 'text_preview' ) ) . '</summary>' . $this->lock_box() . '</details></div>';
+            }
             return $this->lock_box();
           }
           $post_data['source'] = $preview_url;
@@ -417,6 +464,10 @@ class Corporate_Book_ShortCode {
       $html    = '<div class="' . $trigger . ' ' . esc_attr( $class ) . '" id="' . esc_attr( $id ) . '" ' . $attrHTML . '>' . $label . '</div>';
       // Thumbnails show the book title and a Preview button below the cover (not on a shelf, which lays books out itself).
       if ( 'thumb' === $type && ! ( isset( $attr['shelf'] ) && 'true' === trim( $attr['shelf'] ) ) ) {
+        // With a thumbnail the cover is the image itself; it opens the book like the button does.
+        if ( ! empty( $thumb_url ) ) {
+          $html = '<div class="_df_button cb-trigger-custom cb-cover" id="' . esc_attr( $id ) . '_cover" data-option="option_' . esc_attr( $id ) . '" ' . $attrHTML . '><img src="' . esc_url( $thumb_url ) . '" alt="' . esc_attr( $title ) . '" loading="lazy"/></div>';
+        }
         $html = '<div class="cb-thumb-card">' . $html . '<div class="cb-thumb-title">' . esc_html( $title ) . '</div>'
             . '<div class="_df_button cb-preview-button" id="' . esc_attr( $id ) . '_preview" data-option="option_' . esc_attr( $id ) . '" ' . $attrHTML . '>' . esc_html( $base->get_translate( 'text_preview' ) ) . '</div></div>';
       }
