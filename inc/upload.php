@@ -77,7 +77,7 @@ class Corporate_Book_Upload {
       wp_delete_file( $part );
       wp_send_json_error( $file['error'], 400 );
     }
-    $id = wp_insert_attachment( array( 'post_mime_type' => $type, 'post_title' => pathinfo( $name, PATHINFO_FILENAME ), 'post_status' => 'inherit' ), $file['file'], $post_id );
+    $id = wp_insert_attachment( array( 'post_mime_type' => $type, 'post_title' => pathinfo( $name, PATHINFO_FILENAME ), 'post_status' => 'inherit' ), $file['file'] );
     if ( ! $id || is_wp_error( $id ) ) {
       wp_send_json_error( __( 'The server could not store the file.', '3d-corporate-book' ), 500 );
     }
