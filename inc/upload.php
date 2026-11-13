@@ -70,10 +70,9 @@ class Corporate_Book_Upload {
     $name = ( '' === $base ? 'book' : $base ) . ( 'thumb' === $kind ? '.png' : '.pdf' );
     $type = 'thumb' === $kind ? 'image/png' : 'application/pdf';
     require_once ABSPATH . 'wp-admin/includes/file.php';
-    $file = wp_handle_sideload(
-      array( 'name' => $name, 'type' => $type, 'tmp_name' => $part, 'error' => 0, 'size' => filesize( $part ) ),
-      array( 'test_form' => false, 'mimes' => array( 'pdf' => 'application/pdf', 'png' => 'image/png' ) )
-    );
+    // wp_handle_sideload() takes the file by reference, so it must be a variable.
+    $sideload = array( 'name' => $name, 'type' => $type, 'tmp_name' => $part, 'error' => 0, 'size' => filesize( $part ) );
+    $file     = wp_handle_sideload( $sideload, array( 'test_form' => false, 'mimes' => array( 'pdf' => 'application/pdf', 'png' => 'image/png' ) ) );
     if ( isset( $file['error'] ) ) {
       wp_delete_file( $part );
       wp_send_json_error( $file['error'], 400 );

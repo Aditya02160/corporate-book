@@ -216,7 +216,7 @@ async function waitFor(ready, ms) {
       const doc = await window.PDFLib.PDFDocument.load(await (await fetch(media.source_url)).arrayBuffer());
       return { id, pages: doc.getPageCount(), status: status.textContent };
     }, `${BASE}/wp-content/uploads/cb-test/ten.pdf`).catch((e) => ({ pages: e.message }));
-    check(preview.pages === 1, `preview has 10 percent of pages (${preview.pages} ${preview.status || ''})`);
+    check(preview.pages === 1 && /created/i.test(preview.status || ''), `preview has 10 percent of pages (${preview.pages} ${preview.status || ''})`);
     await page.evaluate(() => { document.querySelector('#corporate_book_subscription').value = 'required'; });
     await Promise.all([page.waitForNavigation(), page.evaluate(() => document.querySelector('#publish').click())]);
     await reloadUntil(editUrl, async () => await field('subscription') === 'required');
