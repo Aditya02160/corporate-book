@@ -2586,3 +2586,12 @@ input.df-search-text:not(:placeholder-shown) ~ a.df-search-clear {
 .cb-library-filter{display:none}
 }
 
+
+/* Subscription page: plan cards */
+.cb-plans{display:flex;flex-wrap:wrap;gap:24px;justify-content:center;margin:0 0 28px}
+.cb-plan-card{flex:0 1 260px;padding:28px 22px;border:1px solid #d5dbe8;border-radius:14px;background:#fff;text-align:center;box-shadow:0 8px 24px rgba(13,42,107,.08)}
+.cb-plan-card h3{margin:0 0 10px;font-family:Georgia,'Times New Roman',serif;font-size:22px;color:#0d2a6b}
+.cb-plan-price{font-size:34px;font-weight:700;color:#0b1f5c}
+.cb-plan-days{margin:6px 0 18px;color:#5a6785}
+.cb-plans-page .cb-plan-card .cb-plan,.cb-plan-signin{display:inline-block;width:auto;margin:0;padding:11px 26px;border:0;border-radius:999px;background:#0b1f5c;color:#fff;font-weight:700;font-size:15px;text-decoration:none;cursor:pointer}
+

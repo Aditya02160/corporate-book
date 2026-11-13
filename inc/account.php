@@ -26,6 +26,8 @@ class Corporate_Book_Account {
     add_action( 'wp_ajax_corporate_book_order', array( $this, 'order' ) );
     add_action( 'wp_ajax_corporate_book_verify', array( $this, 'verify' ) );
     add_shortcode( 'corporate_book_account', array( $this, 'shortcode' ) );
+    add_shortcode( 'corporate_book_subscription', array( $this, 'subscription_page' ) );
+    add_action( 'admin_init', array( $this, 'create_subscription_page' ) );
     add_filter( 'manage_users_columns', array( $this, 'users_column' ) );
     add_filter( 'manage_users_custom_column', array( $this, 'users_column_value' ), 10, 3 );
     add_action( 'show_user_profile', array( $this, 'profile_field' ) );
@@ -73,7 +75,7 @@ class Corporate_Book_Account {
     return '' !== self::config( 'razorpay_key_id' ) && '' !== self::config( 'razorpay_key_secret' ) && array() !== self::plans();
   }
 
-  private static function price( $amount ) {
+  public static function price( $amount ) {
     $number = rtrim( rtrim( number_format( $amount, 2, '.', ',' ), '0' ), '.' );
     return 'INR' === self::config( 'subscription_currency' ) ? "\u{20B9}" . $number : self::config( 'subscription_currency' ) . ' ' . $number;
   }
@@ -94,9 +96,11 @@ class Corporate_Book_Account {
   /**
    * Sign-in and sign-up forms for guests; plans, status and sign out for signed-in readers.
    *
+   * @param bool $with_plans Whether signed-in readers get the plan buttons here.
+   *
    * @return string HTML.
    */
-  public static function box() {
+  public static function box( $with_plans = true ) {
     $base = Corporate_Book::get_instance();
     if ( ! wp_script_is( 'corporate-book-account', 'enqueued' ) ) {
       wp_enqueue_script( 'corporate-book-account', plugins_url( 'assets/js/corporate-book-account.js', $base->file ), array(), $base->version, true );
@@ -143,13 +147,13 @@ class Corporate_Book_Account {
       if ( self::is_active( $user->ID ) ) {
         /* translators: %s: date */
         $html .= '<p class="cb-account-status">' . esc_html( sprintf( __( 'Subscription active until %s.', '3d-corporate-book' ), self::date( self::until( $user->ID ) ) ) ) . '</p>';
-      } elseif ( self::razorpay_ready() ) {
+      } elseif ( self::razorpay_ready() && $with_plans ) {
         foreach ( self::plans() as $index => $plan ) {
           /* translators: 1: plan name, 2: price, 3: days of access */
           $label = sprintf( __( '%1$s: %2$s for %3$d days', '3d-corporate-book' ), $plan['name'], self::price( $plan['price'] ), $plan['days'] );
           $html .= '<button type="button" class="cb-plan" data-plan="' . (int) $index . '">' . esc_html( $label ) . '</button>';
         }
-      } else {
+      } elseif ( ! self::razorpay_ready() ) {
         $html .= $link;
       }
       /* translators: %s: reader's name */
@@ -186,6 +190,50 @@ class Corporate_Book_Account {
     }
     wp_enqueue_style( 'corporate-book-style' );
     return '<div class="cb-lock cb-lock-static"><div class="cb-lock-box">' . self::box() . '</div></div>';
+  }
+
+  /**
+   * [corporate_book_subscription]: the subscription page. One card per plan with its price and a
+   * Subscribe button, and below it sign in / sign up for guests or the reader's status and sign out.
+   *
+   * @return string HTML.
+   */
+  public function subscription_page() {
+    if ( ! defined( 'DONOTCACHEPAGE' ) ) {
+      define( 'DONOTCACHEPAGE', true );
+    }
+    wp_enqueue_style( 'corporate-book-style' );
+    $base   = Corporate_Book::get_instance();
+    $box    = self::box( false );
+    $active = is_user_logged_in() && self::is_active( get_current_user_id() );
+    $cards  = '';
+    foreach ( self::plans() as $index => $plan ) {
+      /* translators: %d: days of access */
+      $days = sprintf( _n( '%d day of access', '%d days of access', $plan['days'], '3d-corporate-book' ), $plan['days'] );
+      if ( $active ) {
+        $action = '';
+      } elseif ( is_user_logged_in() && self::razorpay_ready() ) {
+        $action = '<button type="button" class="cb-plan" data-plan="' . (int) $index . '">' . esc_html( $base->get_translate( 'text_subscribe_button' ) ) . '</button>';
+      } elseif ( ! is_user_logged_in() ) {
+        $action = '<a class="cb-plan-signin" href="#cb-plans-account">' . esc_html__( 'Sign in to subscribe', '3d-corporate-book' ) . '</a>';
+      } else {
+        $action = '';
+      }
+      $cards .= '<div class="cb-plan-card"><h3>' . esc_html( $plan['name'] ) . '</h3><div class="cb-plan-price">' . esc_html( self::price( $plan['price'] ) ) . '</div><div class="cb-plan-days">' . esc_html( $days ) . '</div>' . $action . '</div>';
+    }
+    return '<div class="cb-account cb-plans-page"><div class="cb-plans">' . $cards . '</div><div id="cb-plans-account" class="cb-lock cb-lock-static"><div class="cb-lock-box">' . $box . '</div></div></div>';
+  }
+
+  /**
+   * Creates the "Subscription" page once, the first time an administrator opens the dashboard.
+   */
+  public function create_subscription_page() {
+    if ( get_option( 'corporate_book_subscription_page' ) || ! current_user_can( 'manage_options' ) ) {
+      return;
+    }
+    $page = wp_insert_post( array( 'post_type' => 'page', 'post_status' => 'publish', 'post_title' => __( 'Subscription', '3d-corporate-book' ), 'post_name' => 'subscription', 'post_content' => '[corporate_book_subscription]' ) );
+    // Remembered even when the page is deleted later, so it is not created again.
+    update_option( 'corporate_book_subscription_page', $page ? (int) $page : -1 );
   }
 
   // ---- Sign in and sign up -------------------------------------------------------------------

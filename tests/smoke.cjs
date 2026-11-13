@@ -442,6 +442,14 @@ async function waitFor(ready, ms) {
     check(subscriberPdf === 200, `a paid subscriber can load a locked book (${subscriberPdf})`);
     await Promise.all([a.waitForNavigation({ timeout: 30000 }), a.click('.cb-signout')]).catch(() => {});
     check(await openAccount(has('.cb-account form.cb-signin')), 'sign out returns the reader to the sign-in form');
+    let planCards = '';
+    for (let i = 0; i < 10 && !/399/.test(planCards); i++) {
+      await a.goto(`${BASE}/?pagename=subscription`);
+      planCards = await a.$$eval('.cb-plan-card', (els) => els.map((e) => e.textContent).join(' | ')).catch(() => '');
+      if (!/399/.test(planCards)) await a.waitForTimeout(500);
+    }
+    check(/Monthly.*399.*30 days/.test(planCards) && /Yearly/.test(planCards) && await a.$('.cb-plans-page form.cb-signin') !== null
+      && await a.$('.cb-plan-card .cb-plan-signin') !== null, `subscription page is created with a card per plan and sign-in for guests (${planCards.slice(0, 80)})`);
     await acct.close();
   } catch (e) {
     check(false, e.message);

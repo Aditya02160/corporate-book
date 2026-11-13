@@ -103,7 +103,7 @@ Readers sign in, create an account and sign out inside the book. To sell subscri
 2. Set **Subscription Plans**, one per line: `Name | Price | Days of access`, for example `Monthly | 399 | 30`.
 3. Readers pick a plan in the "Your free preview has ended" panel and pay with Razorpay Checkout. Access runs for the plan's days; they pay again to renew.
 
-Add `[corporate_book_account]` to any page for a box with sign in, plans and sign out. Administrators see each reader's subscription in the Users list and can change the "Subscription active until" date on the reader's profile.
+The plugin creates a **Subscription** page for you (`[corporate_book_subscription]`): one card per plan with its price and a Subscribe button, plus sign in, sign up and sign out. Add `[corporate_book_account]` to any page for a box with sign in, plans and sign out. Administrators see each reader's subscription in the Users list and can change the "Subscription active until" date on the reader's profile.
 
 Razorpay Checkout loads from checkout.razorpay.com when a reader picks a plan, and the plugin calls api.razorpay.com to create and confirm payments. See Razorpay's terms and privacy policy.
 
