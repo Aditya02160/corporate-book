@@ -1,7 +1,8 @@
 /**
- * Corporate Book subscription lock: on the last free preview page, shows the
- * "Subscribe" panel over the viewer. The preview file itself holds only the free
- * pages, so this panel is the reader's way forward, not the protection.
+ * Corporate Book subscription lock: when a reader tries to turn past the last free
+ * preview page, shows the "Your free preview has ended" panel over the viewer.
+ * The preview file itself holds only the free pages, so this panel is the reader's
+ * way forward, not the protection.
  */
 (function ($) {
   'use strict';
@@ -21,30 +22,62 @@
     return list;
   }
 
-  function showLock(app, lock) {
-    // shortcut: shows one page early in single-page mode; read the viewer's page mode if that matters.
-    var atEnd = app.currentPageNumber >= app.pageCount - 1;
-    var panel = app.container.find('.cb-lock');
-    if (atEnd && !panel.length) {
-      panel = $('<div class="cb-lock"><p></p></div>').css({
-        position: 'absolute', left: 0, right: 0, bottom: 0, zIndex: 100,
-        padding: '16px', background: 'rgba(255,255,255,.96)', color: '#222', textAlign: 'center'
-      });
-      panel.find('p').text(lock.text);
-      if (/^https?:\/\//i.test(lock.url || '')) {
-        $('<a class="cb-button"></a>').attr('href', lock.url).text(lock.button).appendTo(panel);
-      }
-      app.container.append(panel);
-    }
-    panel.toggle(atEnd);
+  function isWebLink(url) {
+    return /^https?:\/\//i.test(url || '');
   }
 
-  // shortcut: polls because this viewer build fires no page-change callback; use one if the viewer gains it.
+  function showLock(app, lock) {
+    var panel = app.container.find('.cb-lock');
+    if (!panel.length) {
+      panel = $('<div class="cb-lock"><div class="cb-lock-title"></div><div class="cb-lock-box"><p class="cb-lock-text"></p></div></div>');
+      var box = panel.find('.cb-lock-box');
+      panel.find('.cb-lock-title').text(lock.title);
+      panel.find('.cb-lock-text').text(lock.text);
+      if (isWebLink(lock.url)) {
+        $('<a class="cb-lock-subscribe"></a>').attr('href', lock.url).text(lock.button).appendTo(box);
+      }
+      if (isWebLink(lock.signInUrl)) {
+        if (isWebLink(lock.url)) {
+          $('<div class="cb-lock-or"></div>').text(lock.or).appendTo(box);
+        }
+        $('<a class="cb-lock-signin"></a>').attr('href', lock.signInUrl).text(lock.signIn).appendTo(box);
+      }
+      if (lock.login) {
+        // Output of the site's social login shortcode, set by an administrator.
+        $('<div class="cb-lock-login"></div>').html(lock.login).appendTo(box);
+      }
+      $('<button type="button" class="cb-lock-back"></button>').text(lock.back).on('click', function () {
+        panel.hide();
+      }).appendTo(box);
+      app.container.append(panel);
+    }
+    panel.toggleClass('cb-lock-full', app.container.width() < 700).show();
+  }
+
+  // The panel opens when "next" leaves the reader on the same page, i.e. the preview has no more pages.
+  function watch(app, lock) {
+    if (app.cbLockWatched) {
+      return;
+    }
+    app.cbLockWatched = true;
+    var next = app.next;
+    app.next = function () {
+      var before = app.currentPageNumber;
+      next.apply(app, arguments);
+      setTimeout(function () {
+        if (app.currentPageNumber === before) {
+          showLock(app, lock);
+        }
+      }, 50);
+    };
+  }
+
+  // shortcut: polls for new viewers because this build fires no "created" callback; use one if the viewer gains it.
   setInterval(function () {
     $.each(apps(), function (i, app) {
       var lock = app.options && app.options.cbLock;
       if (lock && app.pageCount && app.container) {
-        showLock(app, lock);
+        watch(app, lock);
       }
     });
   }, 500);

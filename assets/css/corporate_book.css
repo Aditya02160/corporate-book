@@ -2517,3 +2517,20 @@ input.df-search-text:not(:placeholder-shown) ~ a.df-search-clear {
 /* Link and custom lightbox triggers */
 .cb-trigger-link { display: inline; cursor: pointer; text-decoration: underline; }
 .cb-trigger-custom { display: inline-block; cursor: pointer; }
+
+/* Subscription preview-ended panel, thumbnail title and Preview button */
+.cb-lock{position:absolute;top:0;right:0;bottom:0;width:50%;z-index:100;display:flex;flex-direction:column;justify-content:center;gap:16px;padding:24px;box-sizing:border-box;background:rgba(0,0,0,.88);color:#fff;text-align:center}
+.cb-lock.cb-lock-full{width:100%}
+.cb-lock-title{border:1px solid #fff;border-radius:6px;padding:12px;font-size:22px;font-weight:700}
+.cb-lock-box{border:1px solid #fff;border-radius:6px;padding:28px 16px}
+.cb-lock-text{margin:0 0 20px;font-size:20px;line-height:1.5}
+.cb-lock a.cb-lock-subscribe,.cb-lock a.cb-lock-signin{display:inline-block;padding:10px 22px;border-radius:4px;font-weight:700;text-decoration:none}
+.cb-lock a.cb-lock-subscribe{background:#ffd60a;color:#111}
+.cb-lock a.cb-lock-signin{background:#4a9cf0;color:#fff}
+.cb-lock-or{margin:14px 0}
+.cb-lock-login{margin-top:14px}
+.cb-lock-back{display:block;margin:18px auto 0;padding:0;border:0;background:none;color:#ccc;text-decoration:underline;cursor:pointer}
+.cb-thumb-card{display:inline-block;margin:0 12px 16px;text-align:center;vertical-align:top}
+.cb-thumb-title{margin:8px 0;font-weight:600}
+.cb-preview-button{display:inline-block;padding:8px 18px;border-radius:4px;background:#222;color:#fff;cursor:pointer}
+

@@ -86,8 +86,8 @@ Lock Corporate Books behind a subscription. Set it up in **Corporate Book > Glob
 
 How it works:
 
-* Readers who are not signed in see Sign in and Sign up buttons instead of the book.
-* Subscribers read every page. Everyone else reads the free preview, then sees your Subscribe link.
+* Everyone, signed in or not, sees the thumbnail, cover, title and the free preview. A Preview button sits under each thumbnail.
+* Subscribers read every page. Everyone else reads the free preview, then sees a "Your free preview has ended" panel with Subscribe and Sign in buttons.
 * Saving a locked book moves its full PDF into a protected folder. Only readers with access can load it.
 * Each book can override the global setting with **Required** or **Free**. Authors and editors always see the full book.
 * Pages with locked books are not cached, so one reader's view is never shown to another.

@@ -461,9 +461,11 @@ if ( !class_exists( 'Corporate_Book' ) ) {
       $this->defaults['subscription_roles']           = array( 'std' => '', 'title' => __( 'Subscriber Roles', '3d-corporate-book' ), 'desc' => __( 'Comma separated roles that count as subscribed, set by your membership plugin, e.g. cb_member.', '3d-corporate-book' ), 'type' => 'text' );
       $this->defaults['subscription_login_shortcode'] = array( 'std' => '', 'title' => __( 'Social Login Shortcode', '3d-corporate-book' ), 'desc' => __( 'Shortcode of your social login plugin (Google, LinkedIn), e.g. [nextend_social_login]', '3d-corporate-book' ), 'type' => 'text' );
       $this->defaults['subscription']                 = array( 'std' => 'default', 'title' => __( 'Subscription', '3d-corporate-book' ), 'desc' => __( 'Required always locks this book, Free never does.', '3d-corporate-book' ), 'choices' => array( 'default' => __( 'Use Subscription tab setting', '3d-corporate-book' ), 'required' => __( 'Required', '3d-corporate-book' ), 'free' => __( 'Free', '3d-corporate-book' ) ) );
-      $this->defaults['text_sign_in']                 = __( 'Sign in to read', '3d-corporate-book' );
+      $this->defaults['text_sign_in']                 = __( 'Sign in', '3d-corporate-book' );
       $this->defaults['text_subscribe']               = __( 'Subscribe to read the full book', '3d-corporate-book' );
-      $this->defaults['text_locked']                  = __( 'You have reached the end of the free preview.', '3d-corporate-book' );
+      $this->defaults['text_locked']                  = __( 'Your free preview has ended', '3d-corporate-book' );
+      $this->defaults['text_subscribe_button']        = __( 'Subscribe', '3d-corporate-book' );
+      $this->defaults['text_preview']                 = __( 'Preview', '3d-corporate-book' );
       // Extra 3D and display features.
       $this->defaults['webgl']['choices']['hybrid'] = __( 'Hybrid: 3D on computers, 2D on phones', '3d-corporate-book' );
       $this->defaults['spiral']        = array( 'std' => 'false', 'title' => __( 'Spiral 3D Book', '3d-corporate-book' ), 'desc' => __( 'Shows a spiral binding on 3D books.', '3d-corporate-book' ), 'choices' => $bool );
@@ -748,10 +750,19 @@ if ( !class_exists( 'Corporate_Book' ) ) {
      * @return array
      */
     public function lock_options() {
+      $guest          = ! is_user_logged_in();
+      $login_shortcode = (string) $this->get_config( 'subscription_login_shortcode' );
       return array(
-          'url'    => esc_url_raw( $this->get_config( 'subscription_url' ) ),
-          'text'   => $this->get_translate( 'text_locked' ),
-          'button' => $this->get_translate( 'text_subscribe' ),
+          'url'       => esc_url_raw( $this->get_config( 'subscription_url' ) ),
+          'title'     => $this->get_translate( 'text_locked' ),
+          'text'      => $this->get_translate( 'text_subscribe' ),
+          'button'    => $this->get_translate( 'text_subscribe_button' ),
+          'or'        => __( 'OR', '3d-corporate-book' ),
+          'back'      => __( 'Back to preview', '3d-corporate-book' ),
+          // Guests can sign in from the panel; signed-in readers only need to subscribe.
+          'signInUrl' => $guest ? wp_login_url( get_permalink() ? get_permalink() : home_url( '/' ) ) : '',
+          'signIn'    => $this->get_translate( 'text_sign_in' ),
+          'login'     => $guest && '' !== $login_shortcode ? do_shortcode( $login_shortcode ) : '',
       );
     }
 

@@ -152,33 +152,13 @@ class Corporate_Book_ShortCode {
    * @internal param array $attr Attributes of the shortcode.
    */
   /**
-   * Sign-in box shown to guests instead of a locked book.
-   *
-   * @return string HTML.
-   */
-  public function sign_in_box() {
-    $base = $this->base;
-    $here = get_permalink() ? get_permalink() : home_url( '/' );
-    $html = '<div class="cb-sign-in"><p>' . esc_html( $base->get_translate( 'text_sign_in' ) ) . '</p>';
-    $html .= '<a class="cb-button" href="' . esc_url( wp_login_url( $here ) ) . '">' . esc_html__( 'Sign in', '3d-corporate-book' ) . '</a> ';
-    if ( get_option( 'users_can_register' ) ) {
-      $html .= '<a class="cb-button" href="' . esc_url( wp_registration_url() ) . '">' . esc_html__( 'Sign up', '3d-corporate-book' ) . '</a>';
-    }
-    $login_shortcode = (string) $base->get_config( 'subscription_login_shortcode' );
-    if ( '' !== $login_shortcode ) {
-      $html .= '<div class="cb-social-login">' . do_shortcode( $login_shortcode ) . '</div>';
-    }
-    return $html . '</div>';
-  }
-
-  /**
    * Lock box shown to non-subscribers when a locked PDF book has no preview file.
    *
    * @return string HTML.
    */
   public function lock_box() {
     $lock = $this->base->lock_options();
-    $html = '<div class="cb-lock-box"><p>' . esc_html( $lock['button'] ) . '</p>';
+    $html = '<div class="cb-lock-box"><p>' . esc_html( $lock['text'] ) . '</p>';
     if ( '' !== $lock['url'] ) {
       $html .= '<a class="cb-button" href="' . esc_url( $lock['url'] ) . '">' . esc_html( $lock['button'] ) . '</a>';
     }
@@ -239,14 +219,11 @@ class Corporate_Book_ShortCode {
 	    if ( ( $post->post_status === "draft" && !current_user_can( 'edit_post',$post_id) ) ) {
 		    return '';
 	    }
-	    // Subscription lock: guests sign in first; non-subscribers get the preview only.
+	    // Subscription lock: guests and non-subscribers get the free preview only.
 	    $locked = ! $base->user_has_access( $post_id );
 	    if ( $locked ) {
 		    if ( ! defined( 'DONOTCACHEPAGE' ) ) {
 			    define( 'DONOTCACHEPAGE', true );
-		    }
-		    if ( ! is_user_logged_in() ) {
-			    return $this->sign_in_box();
 		    }
 		    unset( $attr['source'] );
 	    }
@@ -442,6 +419,11 @@ class Corporate_Book_ShortCode {
       $trigger = in_array( $type, array( 'link', 'custom' ), true ) ? '_df_button cb-trigger-' . $type : '_df_' . $type;
       $label   = 'custom' === $type ? wp_kses_post( $title ) : esc_html( $title );
       $html    = '<div class="' . $trigger . ' ' . esc_attr( $class ) . '" id="' . esc_attr( $id ) . '" ' . $attrHTML . '>' . $label . '</div>';
+      // Thumbnails show the book title and a Preview button below the cover (not on a shelf, which lays books out itself).
+      if ( 'thumb' === $type && ! ( isset( $attr['shelf'] ) && 'true' === trim( $attr['shelf'] ) ) ) {
+        $html = '<div class="cb-thumb-card">' . $html . '<div class="cb-thumb-title">' . esc_html( $title ) . '</div>'
+            . '<div class="_df_button cb-preview-button" id="' . esc_attr( $id ) . '_preview" data-option="option_' . esc_attr( $id ) . '" ' . $attrHTML . '>' . esc_html( $base->get_translate( 'text_preview' ) ) . '</div></div>';
+      }
     }
     else {
       $html = '<div class="_df_book df-lite' . esc_attr( $class ) . '" id="' . esc_attr( $id ) . '" ' . $attrHTML . '></div>';
@@ -450,7 +432,7 @@ class Corporate_Book_ShortCode {
     if ( count( $post_data ) > 0 ) {
 	    
 	    //escape saved outline
-	    if(is_array($post_data['outline'])){
+	    if ( isset( $post_data['outline'] ) && is_array( $post_data['outline'] ) ) {
 		    $post_data['outline'] = $this->array_outline_escaped($post_data['outline']);
 	    }
 			

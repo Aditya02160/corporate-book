@@ -163,13 +163,33 @@ async function waitFor(ready, ms) {
       const res = await p.goto(`${BASE}/?pagename=book-test`);
       return { ctx, p, res, body: await res.text() };
     };
+    // Waits for the book, then tries to turn past the last preview page.
+    const pastEnd = (p) => p.evaluate(async () => {
+      for (let i = 0; i < 60; i++) {
+        const app = window.jQuery('._df_book').data('df-app');
+        if (app && app.pageCount) {
+          await new Promise((r) => setTimeout(r, 1500));
+          app.next();
+          return;
+        }
+        await new Promise((r) => setTimeout(r, 500));
+      }
+    });
     let v = await visit(null);
-    check(v.body.includes('cb-sign-in') && v.body.includes('wp-login.php') && v.body.includes('action=register')
-      && !hasFile(v.body, 'cb-test/sample.pdf'), 'guest sees sign-in box');
+    check(hasFile(v.body, 'cb-test/preview.pdf') && !hasFile(v.body, 'cb-test/sample.pdf') && !v.body.includes('cb-sign-in'), 'guest gets the free preview');
+    check(!PHP_ERRORS.test(v.body), 'guest page has no PHP errors');
+    check(await v.p.$eval('.cb-thumb-card .cb-thumb-title', (e) => e.textContent).catch(() => '') === 'Test Book'
+      && await v.p.$('.cb-thumb-card .cb-preview-button') !== null, 'thumbnail shows the title and a Preview button to everyone');
+    await pastEnd(v.p);
+    await v.p.waitForSelector('.cb-lock', { state: 'visible', timeout: 30000 }).catch(() => {});
+    check(await v.p.$eval('.cb-lock-title', (e) => e.textContent).catch(() => '') === 'Your free preview has ended'
+      && await v.p.isVisible(`.cb-lock a.cb-lock-subscribe[href="${SUBSCRIBE_URL}"]`)
+      && await v.p.isVisible('.cb-lock a.cb-lock-signin[href*="wp-login.php"]'), 'guest sees the preview-ended panel with Subscribe and Sign in');
     check(/no-cache|no-store/.test(v.res.headers()['cache-control'] || ''), 'locked page is not cacheable');
     await v.ctx.close();
     v = await visit('reader');
     check(hasFile(v.body, 'cb-test/preview.pdf') && !hasFile(v.body, 'cb-test/sample.pdf'), 'reader gets preview only');
+    await pastEnd(v.p);
     await v.p.waitForSelector(`.cb-lock a[href="${SUBSCRIBE_URL}"]`, { state: 'visible', timeout: 30000 }).catch(() => {});
     check(await v.p.isVisible(`.cb-lock a[href="${SUBSCRIBE_URL}"]`), 'reader sees lock after preview');
     await v.ctx.close();
@@ -303,13 +323,15 @@ async function waitFor(ready, ms) {
     check(jsErrors.length === 0, `extras page has no JavaScript errors ${jsErrors.join(' | ')}`);
     const bookPage = await reloadUntil(`${BASE}/?corporate_book=test-book`, async () => (await page.content()).includes('_df_book'));
     check(bookPage.includes('_df_book'), 'book has its own page');
-    const calendar = { calendar_mode: 'true', spiral: 'false' };
+    const calendar = { calendar_mode: 'true', spiral: 'false', bg_image: 'https://example.com/bg.jpg', bg_color: '#112233' };
     await saveSettings(calendar, calendar).catch(() => '');
     jsErrors.length = 0;
     await reloadUntil(`${BASE}/?pagename=book-test`, () => page.evaluate(() => (window.corporateBookWPGlobal || {}).calendarMode === true));
     await page.waitForFunction(() => { const a = window.jQuery('._df_book').data('df-app'); return a && a.viewer && a.pageCount; }, null, { timeout: 30000 }).catch(() => {});
     await page.waitForTimeout(3000);
     const vertical = await page.evaluate(() => { const a = window.jQuery('._df_book').data('df-app'); return !!(a && a.viewer && a.viewer.isVertical && a.viewer.isVertical()); });
+    const background = await page.evaluate(() => { const g = window.corporateBookWPGlobal || {}; return `${g.backgroundImage} ${g.backgroundColor}`; });
+    check(background === 'https://example.com/bg.jpg #112233', `default background image and color come from Global Settings (${background})`);
     check(vertical && jsErrors.length === 0, `calendar mode flips vertically without errors ${jsErrors.join(' | ')}`);
     await page.goto(editUrl);
     const thumb = await page.evaluate(async () => {
