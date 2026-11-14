@@ -15,6 +15,15 @@ add_filter(
 add_filter(
 	'pre_http_request',
 	function ( $pre, $args, $url ) {
+		// Fake Shiprocket: a token, then an order number for any order.
+		if ( 0 === strpos( $url, 'https://apiv2.shiprocket.in/v1/external/' ) ) {
+			$data = false !== strpos( $url, 'auth/login' ) ? array( 'token' => 'SRTOKEN' ) : array( 'order_id' => 987654, 'shipment_id' => 123, 'awb_code' => 'SR123AWB' );
+			return array( 'headers' => array(), 'body' => wp_json_encode( $data ), 'response' => array( 'code' => 200, 'message' => '' ), 'cookies' => array(), 'filename' => null );
+		}
+		// Fake Razorpay refunds.
+		if ( preg_match( '#^https://api\.razorpay\.com/v1/payments/pay_\w+/refund$#', $url ) ) {
+			return array( 'headers' => array(), 'body' => wp_json_encode( array( 'id' => 'rfnd_TEST1', 'status' => 'processed' ) ), 'response' => array( 'code' => 200, 'message' => '' ), 'cookies' => array(), 'filename' => null );
+		}
 		$api = 'https://api.razorpay.com/v1/';
 		if ( 0 !== strpos( $url, $api ) ) {
 			return $pre;

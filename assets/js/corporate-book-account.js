@@ -134,6 +134,12 @@
   }
   google();
 
+  document.addEventListener('change', function (event) {
+    if (event.target.classList.contains('cb-gift-check')) {
+      document.getElementById('cb-gift-email').hidden = !event.target.checked;
+    }
+  });
+
   document.addEventListener('submit', function (event) {
     var form = event.target;
     var box = form.closest('.cb-account');
@@ -161,7 +167,8 @@
     event.preventDefault();
     if (target.classList.contains('cb-plan')) {
       run(box, target, function () {
-        return post({ action: 'corporate_book_order', plan: target.getAttribute('data-plan') }).then(pay);
+        var gift = document.getElementById('cb-gift-email');
+        return post({ action: 'corporate_book_order', plan: target.getAttribute('data-plan'), gift_email: gift && !gift.hidden ? gift.value : '' }).then(pay);
       });
       return;
     }

@@ -275,6 +275,7 @@ class Corporate_Book_Post_Type {
     }
     $locked  = 'true' === Corporate_Book::get_instance()->get_config( 'subscription_enable' );
     $missing = array();
+    $urls    = array();
     foreach ( get_posts( array( 'post_type' => 'corporate_book', 'post_status' => array( 'publish', 'draft', 'private' ), 'numberposts' => 200, 'fields' => 'ids' ) ) as $id ) {
       $data = get_post_meta( $id, '_corporate_book_data', true );
       if ( ! is_array( $data ) || empty( $data['pdf_source'] ) || ( isset( $data['source_type'] ) && 'pdf' !== $data['source_type'] ) ) {
@@ -282,10 +283,14 @@ class Corporate_Book_Post_Type {
       }
       if ( empty( $data['pdf_thumb'] ) || ( $locked && empty( $data['preview_pdf'] ) ) ) {
         $missing[] = '<a href="' . esc_url( get_edit_post_link( $id ) ) . '">' . esc_html( get_the_title( $id ) ? get_the_title( $id ) : '#' . $id ) . '</a>';
+        $urls[]    = get_edit_post_link( $id, 'raw' );
       }
     }
     if ( $missing ) {
-      echo '<div class="notice notice-warning cb-missing-previews"><p>' . esc_html__( 'These books have no thumbnail or free preview yet. Open each one and click Update; both are made automatically:', '3d-corporate-book' ) . ' ' . implode( ', ', array_slice( $missing, 0, 20 ) ) . ( count( $missing ) > 20 ? ' …' : '' ) . '</p></div>'; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- links escaped above.
+      echo '<div class="notice notice-warning cb-missing-previews"><p>' . esc_html__( 'These books have no thumbnail or free preview yet:', '3d-corporate-book' ) . ' ' . implode( ', ', array_slice( $missing, 0, 20 ) ) . ( count( $missing ) > 20 ? ' …' : '' ) . '</p>' // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- links escaped above.
+        . '<p><button type="button" class="button button-primary" id="cb-make-previews" data-urls="' . esc_attr( wp_json_encode( $urls ) ) . '">' . esc_html__( 'Make them all now', '3d-corporate-book' ) . '</button> <span id="cb-make-status" role="status"></span> <iframe id="cb-make-frame" title="" style="width:1px;height:1px;border:0;position:absolute;left:-9999px"></iframe></p></div>';
+      // Opens each book's editor in a hidden frame: the editor makes the preview and thumbnail by itself; then the book is saved.
+      echo "<script>(function(){var b=document.getElementById('cb-make-previews');if(!b)return;b.onclick=function(){var urls=JSON.parse(b.dataset.urls),i=0,f=document.getElementById('cb-make-frame'),s=document.getElementById('cb-make-status');b.disabled=true;function next(){if(i>=urls.length){s.textContent='" . esc_js( __( 'Done. Reloading…', '3d-corporate-book' ) ) . "';setTimeout(function(){location.reload();},1500);return;}s.textContent=(i+1)+' / '+urls.length;var saved=false,waited=0;f.onload=function(){if(saved){i++;next();return;}var t=setInterval(function(){waited+=1000;var d=f.contentDocument;if(!d){return;}var p=d.getElementById('corporate_book_preview_status'),h=d.getElementById('corporate_book_thumb_status');var busy=[p,h].some(function(e){return e&&e.textContent&&!/created|failed|saved/i.test(e.textContent)&&e.textContent.trim()!=='';});var started=[p,h].some(function(e){return e&&/created|failed/i.test(e.textContent||'');});if((started&&!busy)||waited>60000){clearInterval(t);saved=true;var u=d.getElementById('publish');if(u){u.click();}else{i++;next();}}},1000);};f.src=urls[i];}next();};})();</script>";
     }
   }
 

@@ -7,7 +7,8 @@ class ShopTest extends CB_Unit_Test {
     parent::setUp();
     Corporate_Book::get_instance()->defaults += array(
       'print_enable'     => array( 'std' => 'true', 'choices' => array( 'true' => 'On', 'false' => 'Off' ) ),
-      'print_bands'      => array( 'std' => "50 | 0\n300 | 30\n800 | 60\n1500 | 90\n99999 | 120", 'type' => 'textarea' ),
+      'print_bands'      => array( 'std' => "50 | 0 | 1-2\n300 | 30 | 2-3\n800 | 60 | 3-5\n1500 | 90 | 4-6\n99999 | 120 | 5-8", 'type' => 'textarea' ),
+      'print_coupons'    => array( 'std' => '', 'type' => 'textarea' ),
       'print_free_above' => array( 'std' => '', 'type' => 'text' ),
     );
   }
@@ -107,6 +108,39 @@ class ShopTest extends CB_Unit_Test {
     $this->assertSame( 10, Corporate_Book_Shop::quote( array( array( 'id' => 5, 'qty' => 50 ) ), '' )['lines'][0]['qty'], 'at most 10 copies' );
     $this->book( 6, '100', '10', '0' );
     $this->assertSame( array(), Corporate_Book_Shop::quote( array( array( 'id' => 6, 'qty' => 1 ) ), '' )['lines'], 'sold out' );
+  }
+
+  public function test_delivery_estimate_comes_from_the_distance_band() {
+    $this->book( 1, '499', '40' );
+    $this->assertSame( '1-2', Corporate_Book_Shop::quote( array( array( 'id' => 1, 'qty' => 1 ) ), '201301' )['days'] );
+    $this->assertSame( '4-6', Corporate_Book_Shop::quote( array( array( 'id' => 1, 'qty' => 1 ) ), '400001' )['days'], 'Mumbai, about 1,150 km' );
+    $this->settings( array( 'print_bands' => "100 | 10\n500 | 20" ) );
+    $this->assertSame( '', Corporate_Book_Shop::quote( array( array( 'id' => 1, 'qty' => 1 ) ), '201301' )['days'], 'bands without days give no estimate' );
+  }
+
+  public function test_coupons_take_percent_or_amount_off_the_books() {
+    $this->settings( array( 'print_coupons' => "WELCOME10 | 10%\nFLAT100 | 100\nOLD | 50% | 2020-01-01\nBIG | 5000" ) );
+    $this->book( 1, '499', '40' );
+    $items = array( array( 'id' => 1, 'qty' => 2 ) );
+    $q     = Corporate_Book_Shop::quote( $items, '201301', 'welcome10' );
+    $this->assertSame( 9980, $q['discount'] );
+    $this->assertSame( 'WELCOME10', $q['coupon'] );
+    $this->assertSame( 99800 - 9980 + 8000, $q['total'] );
+    $this->assertSame( 10000, Corporate_Book_Shop::quote( $items, '201301', 'FLAT100' )['discount'] );
+    $this->assertSame( 99800, Corporate_Book_Shop::quote( $items, '201301', 'BIG' )['discount'], 'never more than the books cost' );
+    $old = Corporate_Book_Shop::quote( $items, '201301', 'OLD' );
+    $this->assertSame( 0, $old['discount'] );
+    $this->assertNotEmpty( $old['errors'], 'expired coupon is refused' );
+    $this->assertNotEmpty( Corporate_Book_Shop::quote( $items, '201301', 'NOPE' )['errors'] );
+    $this->assertSame( array(), Corporate_Book_Shop::quote( $items, '201301', '' )['errors'] );
+  }
+
+  public function test_free_shipping_counts_the_price_after_the_coupon() {
+    $this->settings( array( 'print_free_above' => '900', 'print_coupons' => 'HALF | 50%' ) );
+    $this->book( 1, '499', '40' );
+    $items = array( array( 'id' => 1, 'qty' => 2 ) );
+    $this->assertSame( 0, Corporate_Book_Shop::quote( $items, '201301' )['shipping'] );
+    $this->assertSame( 8000, Corporate_Book_Shop::quote( $items, '201301', 'HALF' )['shipping'] );
   }
 
   public function test_print_sales_can_be_switched_off() {

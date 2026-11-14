@@ -475,7 +475,17 @@ if ( !class_exists( 'Corporate_Book' ) ) {
       $this->defaults['desk_scene'] = array( 'std' => 'true', 'title' => __( 'Reading Desk', '3d-corporate-book' ), 'desc' => __( 'Shows embedded books on a wooden desk with a lamp, a cup of coffee, a pen and glasses. Readers can switch the lamp on and off.', '3d-corporate-book' ), 'choices' => $bool );
       // Print copies: Global Settings > Print.
       $this->defaults['print_enable']     = array( 'std' => 'true', 'title' => __( 'Sell Print Copies', '3d-corporate-book' ), 'desc' => __( 'Readers can buy printed books with a cart and have them delivered in India.', '3d-corporate-book' ), 'choices' => $bool );
-      $this->defaults['print_bands']      = array( 'std' => "50 | 0\n300 | 30\n800 | 60\n1500 | 90\n99999 | 120", 'title' => __( 'Shipping by Distance', '3d-corporate-book' ), 'desc' => __( 'One band per line: Up to km from Noida | Extra charge per book. The extra is added to each book\'s own shipping charge.', '3d-corporate-book' ), 'type' => 'textarea' );
+      $this->defaults['print_bands']      = array( 'std' => "50 | 0 | 1-2\n300 | 30 | 2-3\n800 | 60 | 3-5\n1500 | 90 | 4-6\n99999 | 120 | 5-8", 'title' => __( 'Shipping by Distance', '3d-corporate-book' ), 'desc' => __( 'One band per line: Up to km from Noida | Extra charge per book | Delivery days. The extra is added to each book\'s own shipping charge.', '3d-corporate-book' ), 'type' => 'textarea' );
+      $this->defaults['print_coupons']     = array( 'std' => '', 'title' => __( 'Coupon Codes', '3d-corporate-book' ), 'desc' => __( 'One coupon per line: CODE | 10% or CODE | 100, and optionally | last day as YYYY-MM-DD. Takes money off the books in the cart.', '3d-corporate-book' ), 'type' => 'textarea' );
+      $this->defaults['print_bundle_days'] = array( 'std' => '0', 'title' => __( 'Online Reading With Print', '3d-corporate-book' ), 'desc' => __( 'Days of online reading included with every print order (0 = none). Starts when the order is paid, or delivered for cash on delivery.', '3d-corporate-book' ), 'type' => 'number' );
+      $this->defaults['print_low_stock']   = array( 'std' => '3', 'title' => __( 'Low Stock Alert', '3d-corporate-book' ), 'desc' => __( 'Email the order address when a book has this many copies left or fewer.', '3d-corporate-book' ), 'type' => 'number' );
+      $this->defaults['invoice_business']  = array( 'std' => '', 'title' => __( 'Business Name', '3d-corporate-book' ), 'desc' => __( 'Shown on invoices. Empty = site name.', '3d-corporate-book' ), 'type' => 'text' );
+      $this->defaults['invoice_gstin']     = array( 'std' => '', 'title' => __( 'GSTIN', '3d-corporate-book' ), 'desc' => __( 'Your GST number for invoices, if you have one.', '3d-corporate-book' ), 'type' => 'text' );
+      $this->defaults['invoice_address']   = array( 'std' => 'Noida, Uttar Pradesh, India', 'title' => __( 'Business Address', '3d-corporate-book' ), 'desc' => __( 'Shown on invoices and packing slips.', '3d-corporate-book' ), 'type' => 'textarea' );
+      $this->defaults['invoice_prefix']    = array( 'std' => 'CB-', 'title' => __( 'Invoice Number Prefix', '3d-corporate-book' ), 'desc' => __( 'Invoice numbers are this prefix plus a running number, given when an order is paid or placed with cash on delivery.', '3d-corporate-book' ), 'type' => 'text' );
+      $this->defaults['shiprocket_email']    = array( 'std' => '', 'title' => __( 'Shiprocket API Email', '3d-corporate-book' ), 'desc' => __( 'Optional. From Shiprocket > Settings > API > Configure (an API user, not your login). Adds a "Send to Shiprocket" button to orders.', '3d-corporate-book' ), 'type' => 'text' );
+      $this->defaults['shiprocket_password'] = array( 'std' => '', 'title' => __( 'Shiprocket API Password', '3d-corporate-book' ), 'desc' => __( 'Kept on the server.', '3d-corporate-book' ), 'type' => 'password' );
+      $this->defaults['shiprocket_pickup']   = array( 'std' => 'Primary', 'title' => __( 'Shiprocket Pickup Location', '3d-corporate-book' ), 'desc' => __( 'The pickup location name exactly as in Shiprocket (your Noida address).', '3d-corporate-book' ), 'type' => 'text' );
       $this->defaults['print_free_above'] = array( 'std' => '', 'title' => __( 'Free Shipping Above', '3d-corporate-book' ), 'desc' => __( 'Orders whose books cost at least this much ship free. Leave empty for no free shipping.', '3d-corporate-book' ), 'type' => 'text' );
       $this->defaults['print_cod']        = array( 'std' => 'false', 'title' => __( 'Cash on Delivery', '3d-corporate-book' ), 'desc' => __( 'Lets readers pay the courier in cash. Online payment through Razorpay is always offered.', '3d-corporate-book' ), 'choices' => $bool );
       $this->defaults['print_email']      = array( 'std' => '', 'title' => __( 'Order Email', '3d-corporate-book' ), 'desc' => __( 'Where new order emails go. Leave empty to use the site admin email.', '3d-corporate-book' ), 'type' => 'text' );
@@ -568,6 +578,8 @@ if ( !class_exists( 'Corporate_Book' ) ) {
       include_once dirname( __FILE__ ) . '/inc/account.php';
       include_once dirname( __FILE__ ) . '/inc/upload.php';
       include_once dirname( __FILE__ ) . '/inc/shop.php';
+      include_once dirname( __FILE__ ) . '/inc/tools.php';
+      include_once dirname( __FILE__ ) . '/inc/reader.php';
 
     }
 

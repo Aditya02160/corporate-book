@@ -71,6 +71,9 @@ function update_option( $key, $value ) {
 function get_post_meta( $id, $key, $single = false ) {
   return isset( $GLOBALS['wp']['post_meta'][ $id ][ $key ] ) ? $GLOBALS['wp']['post_meta'][ $id ][ $key ] : '';
 }
+function get_the_date( $format = '', $post = null ) {
+  return '2026-11-14 10:30';
+}
 function get_posts() {
   return array();
 }
@@ -222,3 +225,4 @@ Corporate_Book::get_instance()->defaults = array(); // filled per test; WordPres
 require dirname( __DIR__, 2 ) . '/inc/account.php';
 require dirname( __DIR__, 2 ) . '/inc/settings.php';
 require dirname( __DIR__, 2 ) . '/inc/shop.php';
+require dirname( __DIR__, 2 ) . '/inc/tools.php';

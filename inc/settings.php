@@ -51,7 +51,7 @@ class Corporate_Book_Settings {
       'controls' => array( 'more_controls', 'hide_controls', 'enable_search', 'share_prefix' ),
       'pdf' => array( 'enable_annotation', 'link_target', 'range_size', 'attachment_lightbox' ),
       'translate' => array( 'external_translate', 'text_toggle_sound', 'text_toggle_thumbnails', 'text_toggle_outline', 'text_previous_page', 'text_next_page', 'text_toggle_fullscreen', 'text_zoom_in', 'text_zoom_out', 'text_toggle_help', 'text_single_page_mode', 'text_double_page_mode', 'text_goto_first_page', 'text_goto_last_page', 'text_share', 'text_mail_subject', 'text_mail_body', 'text_loading', 'text_sign_in', 'text_subscribe', 'text_locked', 'text_subscribe_button', 'text_preview' ),
-      'print' => array( 'print_enable', 'print_bands', 'print_free_above', 'print_cod', 'print_email' ),
+      'print' => array( 'print_enable', 'print_bands', 'print_free_above', 'print_coupons', 'print_bundle_days', 'print_cod', 'print_email', 'print_low_stock', 'invoice_business', 'invoice_gstin', 'invoice_address', 'invoice_prefix', 'shiprocket_email', 'shiprocket_password', 'shiprocket_pickup' ),
       'subscription' => array( 'subscription_enable', 'subscription_url', 'subscription_preview_percent', 'subscription_roles', 'subscription_login_shortcode', 'google_client_id', 'subscription_signup', 'razorpay_key_id', 'razorpay_key_secret', 'razorpay_webhook_secret', 'subscription_currency', 'subscription_plans' ),
       'advanced' => array( 'selectiveScriptLoading', 'enable_analytics' ),
   );
@@ -142,6 +142,10 @@ class Corporate_Book_Settings {
       'print_free_above'             => __( 'Optional. Orders with books worth at least this amount ship free.', '3d-corporate-book' ),
       'print_cod'                    => __( 'On: readers may pay the courier in cash instead of paying online.', '3d-corporate-book' ),
       'print_email'                  => __( 'Where new order emails go. Empty = site admin email.', '3d-corporate-book' ),
+      'print_coupons'                => __( 'Optional discount codes, one per line: CODE | 10% or CODE | 100, optionally | last day (YYYY-MM-DD).', '3d-corporate-book' ),
+      'print_bundle_days'            => __( 'Free online reading days given with each print order. 0 = none.', '3d-corporate-book' ),
+      'invoice_business'             => __( 'Name on invoices. Empty = site name.', '3d-corporate-book' ),
+      'invoice_gstin'                => __( 'Your GST number, shown on invoices if filled in.', '3d-corporate-book' ),
       'subscription_plans'           => __( 'One plan per line: Name | Price | Days. Example: Monthly | 399 | 30', '3d-corporate-book' ),
     );
   }
@@ -168,6 +172,10 @@ class Corporate_Book_Settings {
       'subscription_login_shortcode' => __( 'Sign in', '3d-corporate-book' ),
       'razorpay_key_id'              => __( 'Razorpay', '3d-corporate-book' ),
       'subscription_currency'        => __( 'Plans', '3d-corporate-book' ),
+      'print_enable'                 => __( 'Selling', '3d-corporate-book' ),
+      'print_cod'                    => __( 'Orders', '3d-corporate-book' ),
+      'invoice_business'             => __( 'Invoices', '3d-corporate-book' ),
+      'shiprocket_email'             => __( 'Shiprocket (optional)', '3d-corporate-book' ),
     );
   }
 

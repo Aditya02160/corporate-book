@@ -172,13 +172,20 @@
         totals.appendChild(row);
       };
       add(cfg.books || 'Books', q.subtotal);
+      if (q.discount) {
+        add((cfg.couponLabel || 'Coupon') + ' ' + q.coupon, q.discount, 'cb-discount');
+      }
       add((cfg.shippingLabel || 'Shipping') + (q.distance ? ' (' + q.distance + ')' : ''), q.shipping === null ? (cfg.enterPin || 'Enter your PIN code') : q.shipping);
       add(cfg.totalLabel || 'Total', q.total, 'cb-grand-total');
+      if (q.days) {
+        totals.appendChild(el('p', 'cb-delivery-days', q.days));
+      }
     }
   }
 
   function refresh() {
-    return post({ action: 'corporate_book_cart_quote', items: JSON.stringify(read()), pin: pin() }).then(render, function (e) {
+    var coupon = form && form.querySelector('[name="coupon"]');
+    return post({ action: 'corporate_book_cart_quote', items: JSON.stringify(read()), pin: pin(), coupon: coupon ? coupon.value : '' }).then(render, function (e) {
       cart.querySelector('.cb-cart-items').textContent = e.message;
     });
   }
@@ -269,12 +276,18 @@
           refresh();
         }
       });
+      form.addEventListener('change', function (event) {
+        if (event.target.name === 'gift') {
+          form.querySelector('.cb-gift-message').hidden = !event.target.checked;
+        }
+      });
+      form.querySelector('.cb-apply-coupon').addEventListener('click', refresh);
       form.addEventListener('submit', function (event) {
         event.preventDefault();
         var button = form.querySelector('.cb-place-order');
         var data = { action: 'corporate_book_checkout', items: JSON.stringify(read()) };
         Array.prototype.forEach.call(form.elements, function (f) {
-          if (f.name && (f.type !== 'radio' || f.checked)) {
+          if (f.name && ((f.type !== 'radio' && f.type !== 'checkbox') || f.checked)) {
             data[f.name] = f.value;
           }
         });
@@ -298,6 +311,23 @@
       });
     }
   }
+
+  // ---- My account: cancel an order ---------------------------------------------------------
+
+  document.addEventListener('click', function (event) {
+    var b = event.target.closest('.cb-cancel-order');
+    if (!b || !window.confirm(b.getAttribute('data-confirm'))) {
+      return;
+    }
+    b.disabled = true;
+    post({ action: 'corporate_book_cancel_order', order: b.getAttribute('data-order') }).then(function (r) {
+      b.parentNode.textContent = r.message;
+      setTimeout(function () { window.location.reload(); }, 2500);
+    }, function (e) {
+      b.disabled = false;
+      window.alert(e.message || cfg.failed);
+    });
+  });
 
   // ---- My account: delivery address --------------------------------------------------------
 

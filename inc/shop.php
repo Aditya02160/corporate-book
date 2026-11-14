@@ -79,6 +79,7 @@ class Corporate_Book_Shop {
     add_action( 'wp_ajax_corporate_book_checkout', array( $this, 'ajax_checkout' ) );
     add_action( 'wp_ajax_corporate_book_print_verify', array( $this, 'ajax_verify' ) );
     add_action( 'wp_ajax_corporate_book_save_address', array( $this, 'ajax_save_address' ) );
+    add_action( 'wp_ajax_corporate_book_cancel_order', array( $this, 'ajax_cancel' ) );
     add_action( 'wp_enqueue_scripts', array( $this, 'register_script' ), 20 );
     add_action( 'transition_post_status', array( $this, 'status_changed' ), 10, 3 );
     add_filter( 'wp_insert_post_data', array( $this, 'save_order_form' ), 10, 2 );
@@ -192,31 +193,61 @@ class Corporate_Book_Shop {
     $bands = array();
     foreach ( preg_split( '/\r\n|\r|\n/', self::config( 'print_bands' ) ) as $line ) {
       $parts = array_map( 'trim', explode( '|', $line ) );
-      if ( 2 === count( $parts ) && is_numeric( $parts[0] ) && is_numeric( $parts[1] ) && $parts[0] >= 0 && $parts[1] >= 0 ) {
-        $bands[] = array( 0 + $parts[0], 0 + $parts[1] );
+      if ( in_array( count( $parts ), array( 2, 3 ), true ) && is_numeric( $parts[0] ) && is_numeric( $parts[1] ) && $parts[0] >= 0 && $parts[1] >= 0 ) {
+        $bands[] = array( 0 + $parts[0], 0 + $parts[1], isset( $parts[2] ) ? sanitize_text_field( $parts[2] ) : '' );
       }
     }
     usort( $bands, function ( $a, $b ) {
       return $a[0] <=> $b[0];
     } );
-    return $bands ? $bands : array( array( 99999, 0 ) );
+    return $bands ? $bands : array( array( 99999, 0, '' ) );
   }
 
   /**
-   * Extra shipping per book for a distance (the last band covers anything farther).
+   * The distance band for a distance: array( km, extra per book, delivery days ). The last band covers anything farther.
    *
    * @param int $km Distance.
    *
-   * @return int|float
+   * @return array
    */
-  public static function band_extra( $km ) {
+  public static function band( $km ) {
     $bands = self::bands();
     foreach ( $bands as $band ) {
       if ( $km <= $band[0] ) {
-        return $band[1];
+        return $band;
       }
     }
-    return $bands[ count( $bands ) - 1 ][1];
+    return $bands[ count( $bands ) - 1 ];
+  }
+
+  public static function band_extra( $km ) {
+    return self::band( $km )[1];
+  }
+
+  /**
+   * A coupon from Global Settings > Print ("CODE | 10%" or "CODE | 100", optional "| YYYY-MM-DD" last day).
+   *
+   * @param string $code Code as typed.
+   *
+   * @return array|null array( code, percent or null, amount in paise ), or null when unknown or expired.
+   */
+  public static function coupon( $code ) {
+    $code = strtoupper( trim( (string) $code ) );
+    foreach ( preg_split( '/\r\n|\r|\n/', self::config( 'print_coupons' ) ) as $line ) {
+      $parts = array_map( 'trim', explode( '|', $line ) );
+      if ( count( $parts ) < 2 || strtoupper( $parts[0] ) !== $code || '' === $code ) {
+        continue;
+      }
+      if ( isset( $parts[2] ) && '' !== $parts[2] && gmdate( 'Y-m-d' ) > $parts[2] ) {
+        return null;
+      }
+      $value = rtrim( $parts[1], '%' );
+      if ( ! is_numeric( $value ) || $value <= 0 ) {
+        return null;
+      }
+      return '%' === substr( $parts[1], -1 ) ? array( $code, min( 100, (float) $value ), 0 ) : array( $code, null, self::paise( $value ) );
+    }
+    return null;
   }
 
   private static function paise( $rupees ) {
@@ -259,7 +290,7 @@ class Corporate_Book_Shop {
    *
    * @return array lines, subtotal, shipping (null without PIN), total, distance, errors. Money in paise.
    */
-  public static function quote( $items, $pin ) {
+  public static function quote( $items, $pin, $coupon = '' ) {
     $wanted = array();
     foreach ( (array) $items as $item ) {
       $id = isset( $item['id'] ) ? (int) $item['id'] : 0;
@@ -292,25 +323,41 @@ class Corporate_Book_Shop {
     foreach ( $lines as $line ) {
       $subtotal += $line['price'] * $line['qty'];
     }
+    $discount = 0;
+    $code     = '';
+    if ( '' !== trim( (string) $coupon ) ) {
+      $found = self::coupon( $coupon );
+      if ( $found ) {
+        $code     = $found[0];
+        $discount = min( $subtotal, null === $found[1] ? $found[2] : (int) round( $subtotal * $found[1] / 100 ) );
+      } else {
+        $errors[] = __( 'This coupon code is not valid or has expired.', '3d-corporate-book' );
+      }
+    }
     $distance = '' === self::clean_pin( $pin ) ? null : self::distance_km( $pin );
     $shipping = null;
+    $days     = '';
     if ( null !== $distance ) {
-      $extra    = self::paise( self::band_extra( $distance ) );
+      $band     = self::band( $distance );
+      $days     = $band[2];
       $shipping = 0;
       foreach ( $lines as $line ) {
-        $shipping += ( $line['shipping'] + $extra ) * $line['qty'];
+        $shipping += ( $line['shipping'] + self::paise( $band[1] ) ) * $line['qty'];
       }
       $free = self::config( 'print_free_above' );
-      if ( is_numeric( $free ) && $free > 0 && $subtotal >= self::paise( $free ) ) {
+      if ( is_numeric( $free ) && $free > 0 && $subtotal - $discount >= self::paise( $free ) ) {
         $shipping = 0;
       }
     }
     return array(
       'lines'    => $lines,
       'subtotal' => $subtotal,
+      'discount' => $discount,
+      'coupon'   => $code,
       'shipping' => $shipping,
-      'total'    => $subtotal + (int) $shipping,
+      'total'    => $subtotal - $discount + (int) $shipping,
       'distance' => $distance,
+      'days'     => $days,
       'errors'   => $errors,
     );
   }
@@ -421,6 +468,18 @@ class Corporate_Book_Shop {
     update_option( 'corporate_book_cart_page', $page ? (int) $page : -1 );
   }
 
+  /**
+   * Printable invoice or packing slip of an order.
+   *
+   * @param int    $order Order ID.
+   * @param string $type  invoice or slip.
+   *
+   * @return string
+   */
+  public static function document_url( $order, $type ) {
+    return add_query_arg( array( 'cb_doc' => $type, 'cb_order' => (int) $order ), home_url( '/' ) );
+  }
+
   public static function cart_url() {
     $page = (int) get_option( 'corporate_book_cart_page' );
     $url  = $page > 0 ? get_permalink( $page ) : '';
@@ -502,7 +561,11 @@ class Corporate_Book_Shop {
       }
       $sold   = null !== $book['stock'] && $book['stock'] < 1;
       $cover  = $book['thumb'] ? '<img src="' . esc_url( $book['thumb'] ) . '" alt="" loading="lazy"/>' : '<span class="cb-print-nocover"></span>';
-      $action = $sold ? '<span class="cb-sold-out">' . esc_html__( 'Sold out', '3d-corporate-book' ) . '</span>' : '<button type="button" class="cb-add-cart" data-book="' . (int) $id . '">' . esc_html__( 'Add to cart', '3d-corporate-book' ) . '</button>';
+      $action = $sold ? '<span class="cb-sold-out">' . esc_html__( 'Sold out', '3d-corporate-book' ) . '</span>' . Corporate_Book_Reader::notify_button( $id ) : '<button type="button" class="cb-add-cart" data-book="' . (int) $id . '">' . esc_html__( 'Add to cart', '3d-corporate-book' ) . '</button>';
+      $action .= Corporate_Book_Reader::save_button( $id );
+      $days    = (int) self::config( 'print_bundle_days' );
+      /* translators: %d: days */
+      $action .= $days > 0 ? '<div class="cb-bundle-note">' . esc_html( sprintf( _n( 'Includes %d day of online reading', 'Includes %d days of online reading', $days, '3d-corporate-book' ), $days ) ) . '</div>' : '';
       $cards .= '<div class="cb-print-card">' . $cover . '<h3>' . esc_html( $book['title'] ) . '</h3><div class="cb-plan-price">' . esc_html( self::money( $book['price'] ) ) . '</div><div class="cb-plan-days">' . esc_html__( 'Printed copy, delivered in India', '3d-corporate-book' ) . '</div>' . $action . '</div>';
     }
     if ( '' === $cards ) {
@@ -568,6 +631,9 @@ class Corporate_Book_Shop {
       . ( $cod ? '<label><input type="radio" name="payment" value="cod"/> ' . esc_html__( 'Cash on delivery', '3d-corporate-book' ) . '</label>' : '' ) . '</fieldset>';
     return '<div class="cb-cart">' . $cart
       . '<form class="cb-checkout" novalidate><h3>' . esc_html__( 'Delivery address', '3d-corporate-book' ) . '</h3><div class="cb-address">' . self::address_fields( self::saved_address( wp_get_current_user() ) ) . '</div>'
+      . '<div class="cb-coupon"><label class="cb-field"><span>' . esc_html__( 'Coupon code (optional)', '3d-corporate-book' ) . '</span><input type="text" name="coupon" autocomplete="off"/></label><button type="button" class="cb-apply-coupon">' . esc_html__( 'Apply', '3d-corporate-book' ) . '</button></div>'
+      . '<label class="cb-gift-toggle"><input type="checkbox" name="gift" value="1"/> ' . esc_html__( 'This is a gift: deliver to the address above, without prices on the packing slip', '3d-corporate-book' ) . '</label>'
+      . '<label class="cb-field cb-gift-message" hidden><span>' . esc_html__( 'Gift message (optional, printed on the packing slip)', '3d-corporate-book' ) . '</span><textarea name="gift_message" maxlength="300" rows="2"></textarea></label>'
       . '<div class="cb-cart-totals"></div>' . $pay
       . '<button type="submit" class="cb-place-order">' . esc_html__( 'Place order', '3d-corporate-book' ) . '</button><p class="cb-cart-message" role="alert"></p>'
       . '<p class="cb-cart-note">' . esc_html__( 'Books ship from Noida, Uttar Pradesh. Delivery within India only.', '3d-corporate-book' ) . '</p></form></div>';
@@ -610,6 +676,10 @@ class Corporate_Book_Shop {
     $distance = null === $quote['distance'] ? '' : ( 9999 === $quote['distance'] ? __( 'Army post delivery', '3d-corporate-book' ) : sprintf( /* translators: %s: kilometres */ __( 'About %s km from Noida', '3d-corporate-book' ), number_format( $quote['distance'] ) ) );
     return array(
       'lines'    => $lines,
+      'discount' => $quote['discount'] ? '− ' . self::money( $quote['discount'] ) : null,
+      'coupon'   => $quote['coupon'],
+      /* translators: %s: days, for example 3-5 */
+      'days'     => '' !== $quote['days'] ? sprintf( __( 'Delivery in about %s days', '3d-corporate-book' ), $quote['days'] ) : '',
       'subtotal' => self::money( $quote['subtotal'] ),
       'shipping' => null === $quote['shipping'] ? null : ( 0 === $quote['shipping'] ? __( 'Free', '3d-corporate-book' ) : self::money( $quote['shipping'] ) ),
       'total'    => self::money( $quote['total'] ),
@@ -625,7 +695,12 @@ class Corporate_Book_Shop {
     if ( '' !== self::clean_pin( $pin ) && ! self::valid_pin( $pin ) ) {
       $pin = '';
     }
-    wp_send_json_success( self::present( self::quote( self::posted_items(), $pin ) ) );
+    wp_send_json_success( self::present( self::quote( self::posted_items(), $pin, self::posted_coupon() ) ) );
+  }
+
+  private static function posted_coupon() {
+    // phpcs:ignore WordPress.Security.NonceVerification.Missing -- callers check the nonce.
+    return isset( $_POST['coupon'] ) ? sanitize_text_field( wp_unslash( $_POST['coupon'] ) ) : '';
   }
 
   public function ajax_save_address() {
@@ -651,7 +726,7 @@ class Corporate_Book_Shop {
     if ( $errors ) {
       wp_send_json_error( array( 'message' => __( 'Check the delivery address.', '3d-corporate-book' ), 'fields' => $errors ), 400 );
     }
-    $quote = self::quote( self::posted_items(), $address['pin'] );
+    $quote = self::quote( self::posted_items(), $address['pin'], self::posted_coupon() );
     if ( ! $quote['lines'] || $quote['errors'] ) {
       wp_send_json_error( array( 'message' => $quote['lines'] ? implode( ' ', $quote['errors'] ) : __( 'Your cart is empty.', '3d-corporate-book' ), 'quote' => self::present( $quote ) ), 400 );
     }
@@ -678,9 +753,14 @@ class Corporate_Book_Shop {
       $items[] = array( 'id' => $line['id'], 'title' => $line['title'], 'qty' => $line['qty'], 'price' => $line['price'] );
     }
     update_post_meta( $order, '_cb_items', $items );
-    update_post_meta( $order, '_cb_totals', array( 'subtotal' => $quote['subtotal'], 'shipping' => (int) $quote['shipping'], 'total' => $quote['total'], 'distance' => $quote['distance'] ) );
+    update_post_meta( $order, '_cb_totals', array( 'subtotal' => $quote['subtotal'], 'discount' => $quote['discount'], 'coupon' => $quote['coupon'], 'shipping' => (int) $quote['shipping'], 'total' => $quote['total'], 'distance' => $quote['distance'], 'days' => $quote['days'] ) );
     update_post_meta( $order, '_cb_address', $address );
     update_post_meta( $order, '_cb_payment', $method );
+    // phpcs:disable WordPress.Security.NonceVerification.Missing -- checked above.
+    if ( ! empty( $_POST['gift'] ) && 'false' !== $_POST['gift'] ) {
+      update_post_meta( $order, '_cb_gift', mb_substr( sanitize_textarea_field( wp_unslash( isset( $_POST['gift_message'] ) ? (string) $_POST['gift_message'] : '' ) ), 0, 300 ) ?: ' ' );
+    }
+    // phpcs:enable
     wp_update_post( array( 'ID' => $order, 'post_title' => sprintf( /* translators: %d: order number */ __( 'Order #%d', '3d-corporate-book' ), $order ) ) );
     if ( 'cod' === $method ) {
       wp_update_post( array( 'ID' => $order, 'post_status' => 'cb-cod' ) );
@@ -743,6 +823,36 @@ class Corporate_Book_Shop {
     wp_send_json_success( array( 'done' => true, 'order' => $order, 'message' => self::thanks( $order ) ) );
   }
 
+  /**
+   * Reader cancels an order that has not shipped. Online payments are refunded through Razorpay;
+   * if the refund fails the order is cancelled and the shop is asked to refund by hand.
+   */
+  public function ajax_cancel() {
+    check_ajax_referer( self::NONCE );
+    // phpcs:ignore WordPress.Security.NonceVerification.Missing -- checked above.
+    $order = isset( $_POST['order'] ) ? absint( $_POST['order'] ) : 0;
+    $post  = get_post( $order );
+    if ( ! $post || self::ORDER !== $post->post_type || (int) $post->post_author !== get_current_user_id() || ! in_array( $post->post_status, array( 'cb-paid', 'cb-cod' ), true ) ) {
+      wp_send_json_error( __( 'This order can no longer be cancelled. Please contact us.', '3d-corporate-book' ), 400 );
+    }
+    if ( 'cb-cod' === $post->post_status ) {
+      wp_update_post( array( 'ID' => $order, 'post_status' => 'cb-cancelled' ) );
+      wp_send_json_success( array( 'message' => __( 'Your order is cancelled.', '3d-corporate-book' ) ) );
+    }
+    $totals = (array) get_post_meta( $order, '_cb_totals', true ) + array( 'total' => 0 );
+    $refund = Corporate_Book_Account::api( 'POST', 'payments/' . get_post_meta( $order, '_cb_rzp_payment', true ) . '/refund', array( 'amount' => (int) $totals['total'] ) );
+    if ( ! is_wp_error( $refund ) && ! empty( $refund['id'] ) ) {
+      update_post_meta( $order, '_cb_refund', sanitize_text_field( $refund['id'] ) );
+      wp_update_post( array( 'ID' => $order, 'post_status' => 'cb-refunded' ) );
+      wp_send_json_success( array( 'message' => __( 'Your order is cancelled and the payment is being refunded (usually 5-7 working days).', '3d-corporate-book' ) ) );
+    }
+    wp_update_post( array( 'ID' => $order, 'post_status' => 'cb-cancelled' ) );
+    $to = is_email( self::config( 'print_email' ) ) ? self::config( 'print_email' ) : get_option( 'admin_email' );
+    /* translators: %d: order number */
+    wp_mail( $to, sprintf( __( 'Refund needed: order #%d was cancelled', '3d-corporate-book' ), $order ), __( 'The automatic Razorpay refund failed. Please refund this payment in the Razorpay Dashboard.', '3d-corporate-book' ) . "\n\n" . self::summary( $order ) );
+    wp_send_json_success( array( 'message' => __( 'Your order is cancelled. We will refund your payment shortly.', '3d-corporate-book' ) ) );
+  }
+
   private static function thanks( $order ) {
     /* translators: %d: order number */
     return sprintf( __( 'Thank you! Your order #%d is placed. We have emailed you the details; you can follow it on My account.', '3d-corporate-book' ), $order );
@@ -787,8 +897,15 @@ class Corporate_Book_Shop {
     foreach ( (array) get_post_meta( $order, '_cb_items', true ) as $item ) {
       $data = get_post_meta( $item['id'], '_corporate_book_data', true );
       if ( is_array( $data ) && isset( $data['print_stock'] ) && '' !== $data['print_stock'] && is_numeric( $data['print_stock'] ) ) {
-        $data['print_stock'] = (string) max( 0, (int) $data['print_stock'] + $direction * (int) $item['qty'] );
+        $before              = (int) $data['print_stock'];
+        $data['print_stock'] = (string) max( 0, $before + $direction * (int) $item['qty'] );
         update_post_meta( $item['id'], '_corporate_book_data', $data );
+        $limit = (int) self::config( 'print_low_stock' );
+        if ( $direction < 0 && $limit > 0 && (int) $data['print_stock'] <= $limit && $before > $limit ) {
+          $to = is_email( self::config( 'print_email' ) ) ? self::config( 'print_email' ) : get_option( 'admin_email' );
+          /* translators: 1: book title, 2: copies left */
+          wp_mail( $to, sprintf( __( 'Low stock: "%1$s" has %2$d copies left', '3d-corporate-book' ), get_the_title( $item['id'] ), $data['print_stock'] ), get_edit_post_link( $item['id'], 'raw' ) );
+        }
       }
     }
   }
@@ -808,6 +925,19 @@ class Corporate_Book_Shop {
     }
     // "Order placed" emails only when the order is new, not when a cash order is later marked Paid.
     $placed = in_array( $new, array( 'cb-paid', 'cb-cod' ), true ) && in_array( $old, array( 'cb-pending', 'new', 'auto-draft' ), true );
+    if ( in_array( $new, array( 'cb-paid', 'cb-cod' ), true ) && ! get_post_meta( $order, '_cb_invoice', true ) ) {
+      // Running invoice numbers, given once.
+      $next = max( 1, (int) get_option( 'corporate_book_invoice_next', 1 ) );
+      update_option( 'corporate_book_invoice_next', $next + 1 );
+      update_post_meta( $order, '_cb_invoice', self::config( 'invoice_prefix' ) . str_pad( (string) $next, 5, '0', STR_PAD_LEFT ) );
+    }
+    // Online reading included with print: from payment, or from delivery for cash on delivery.
+    $days = (int) self::config( 'print_bundle_days' );
+    if ( $days > 0 && ( 'cb-paid' === $new || ( 'cb-delivered' === $new && 'cod' === get_post_meta( $order, '_cb_payment', true ) ) ) && ! get_post_meta( $order, '_cb_bundle', true ) ) {
+      update_post_meta( $order, '_cb_bundle', 1 );
+      $reader = (int) $post->post_author;
+      update_user_meta( $reader, Corporate_Book_Account::UNTIL, max( time(), Corporate_Book_Account::until( $reader ) ) + $days * DAY_IN_SECONDS );
+    }
     if ( $placed || in_array( $new, array( 'cb-shipped', 'cb-delivered', 'cb-cancelled', 'cb-refunded' ), true ) ) {
       self::email_customer( $order, $new );
     }
@@ -831,9 +961,12 @@ class Corporate_Book_Shop {
     $totals  = (array) get_post_meta( $order, '_cb_totals', true ) + array( 'subtotal' => 0, 'shipping' => 0, 'total' => 0 );
     $address = (array) get_post_meta( $order, '_cb_address', true ) + array( 'name' => '', 'phone' => '', 'line1' => '', 'line2' => '', 'landmark' => '', 'city' => '', 'state' => '', 'pin' => '' );
     $place   = implode( ', ', array_filter( array( $address['line1'], $address['line2'], $address['landmark'], $address['city'], $address['state'] . ' ' . $address['pin'] ) ) );
+    $gift = trim( (string) get_post_meta( $order, '_cb_gift', true ) );
     return implode( "\n", $lines ) . "\n\n"
       . __( 'Books', '3d-corporate-book' ) . ': ' . self::money( $totals['subtotal'] ) . "\n"
+      . ( ! empty( $totals['discount'] ) ? __( 'Coupon', '3d-corporate-book' ) . ' ' . $totals['coupon'] . ': -' . self::money( $totals['discount'] ) . "\n" : '' )
       . __( 'Shipping', '3d-corporate-book' ) . ': ' . self::money( $totals['shipping'] ) . "\n"
+      . ( get_post_meta( $order, '_cb_gift', true ) ? __( 'Gift', '3d-corporate-book' ) . ( '' !== $gift ? ': "' . $gift . '"' : '' ) . "\n" : '' )
       . __( 'Total', '3d-corporate-book' ) . ': ' . self::money( $totals['total'] ) . "\n\n"
       . __( 'Deliver to', '3d-corporate-book' ) . ': ' . $address['name'] . ', ' . $place . ' (' . $address['phone'] . ')';
   }
@@ -951,6 +1084,7 @@ class Corporate_Book_Shop {
       . '<p><label for="cb_order_note"><strong>' . esc_html__( 'Private note', '3d-corporate-book' ) . '</strong></label><br><textarea class="widefat" rows="3" id="cb_order_note" name="cb_order[note]">' . esc_textarea( get_post_meta( $post->ID, '_cb_note', true ) ) . '</textarea></p>'
       . '<p class="description">' . esc_html__( 'The customer gets an email when the status changes to Shipped (with the tracking details), Delivered, Cancelled or Refunded. Cancelling or refunding puts the copies back in stock.', '3d-corporate-book' ) . '</p>'
       . '<p><button type="submit" name="save" class="button button-primary button-large" value="update">' . esc_html__( 'Save order', '3d-corporate-book' ) . '</button></p>';
+    do_action( 'cb_order_manage_box', $post );
   }
 
   /**
@@ -1004,11 +1138,13 @@ class Corporate_Book_Shop {
       $url      = get_post_meta( $post->ID, '_cb_tracking_url', true );
       $track    = $tracking ? esc_html( get_post_meta( $post->ID, '_cb_courier', true ) . ' ' . $tracking ) : '';
       $track    = $url ? '<a href="' . esc_url( $url ) . '" target="_blank" rel="noopener">' . ( $track ? $track : esc_html__( 'Track', '3d-corporate-book' ) ) . '</a>' : $track;
-      $rows    .= '<tr><td>#' . (int) $post->ID . '<br><small>' . esc_html( get_the_date( '', $post ) ) . '</small></td><td>' . esc_html( implode( ', ', $books ) ) . '</td><td>' . esc_html( self::money( $totals['total'] ) ) . '</td><td><span class="cb-order-status cb-status-' . esc_attr( $post->post_status ) . '">' . esc_html( self::statuses()[ $post->post_status ] ) . '</span>' . ( $track ? '<br><small>' . $track . '</small>' : '' ) . '</td></tr>'; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- $track escaped above.
+      $actions  = get_post_meta( $post->ID, '_cb_invoice', true ) ? '<a href="' . esc_url( self::document_url( $post->ID, 'invoice' ) ) . '" target="_blank" rel="noopener">' . esc_html__( 'Invoice', '3d-corporate-book' ) . '</a>' : '';
+      $actions .= in_array( $post->post_status, array( 'cb-paid', 'cb-cod' ), true ) ? ' <button type="button" class="cb-cancel-order" data-order="' . (int) $post->ID . '" data-confirm="' . esc_attr__( 'Cancel this order? Online payments are refunded.', '3d-corporate-book' ) . '">' . esc_html__( 'Cancel order', '3d-corporate-book' ) . '</button>' : '';
+      $rows    .= '<tr><td>#' . (int) $post->ID . '<br><small>' . esc_html( get_the_date( '', $post ) ) . '</small></td><td>' . esc_html( implode( ', ', $books ) ) . '</td><td>' . esc_html( self::money( $totals['total'] ) ) . '</td><td><span class="cb-order-status cb-status-' . esc_attr( $post->post_status ) . '">' . esc_html( self::statuses()[ $post->post_status ] ) . '</span>' . ( $track ? '<br><small>' . $track . '</small>' : '' ) . ( $actions ? '<div class="cb-order-actions">' . $actions . '</div>' : '' ) . '</td></tr>'; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- $track and $actions escaped above.
     }
     $orders = '<table class="cb-profile-orders cb-print-orders"><thead><tr><th>' . esc_html__( 'Order', '3d-corporate-book' ) . '</th><th>' . esc_html__( 'Books', '3d-corporate-book' ) . '</th><th>' . esc_html__( 'Total', '3d-corporate-book' ) . '</th><th>' . esc_html__( 'Status', '3d-corporate-book' ) . '</th></tr></thead><tbody>'
       . ( '' !== $rows ? $rows : '<tr><td colspan="4">' . esc_html__( 'No print orders yet.', '3d-corporate-book' ) . ' <a href="' . esc_url( self::cart_url() ) . '">' . esc_html__( 'Go to cart', '3d-corporate-book' ) . '</a></td></tr>' ) . '</tbody></table>';
-    return '<div class="cb-account cb-profile-card cb-profile-wide"><h3>' . esc_html__( 'My print orders', '3d-corporate-book' ) . '</h3>' . $orders . '</div>'
+    return Corporate_Book_Reader::wishlist_card( $user ) . '<div class="cb-account cb-profile-card cb-profile-wide"><h3>' . esc_html__( 'My print orders', '3d-corporate-book' ) . '</h3>' . $orders . '</div>'
       . '<div class="cb-account cb-profile-card cb-profile-wide"><h3>' . esc_html__( 'Delivery address', '3d-corporate-book' ) . '</h3><form class="cb-address-form cb-address" novalidate>' . self::address_fields( self::saved_address( $user ) ) . '<button type="submit">' . esc_html__( 'Save address', '3d-corporate-book' ) . '</button></form><p class="cb-account-message" role="alert"></p></div>';
   }
 }

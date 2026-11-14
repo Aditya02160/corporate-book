@@ -258,7 +258,8 @@ class Corporate_Book_Account {
       }
       $cards .= '<div class="cb-plan-card"><h3>' . esc_html( $plan['name'] ) . '</h3><div class="cb-plan-price">' . esc_html( self::price( $plan['price'] ) ) . '</div><div class="cb-plan-days">' . esc_html( $days ) . '</div>' . $action . '</div>';
     }
-    return '<div class="cb-account cb-plans-page"><h2 class="cb-plans-heading">' . esc_html__( 'Digital access', '3d-corporate-book' ) . '</h2><div class="cb-plans">' . $cards . '</div>' . Corporate_Book_Shop::print_section() . '<div id="cb-plans-account" class="cb-lock cb-lock-static"><div class="cb-lock-box">' . $box . '</div></div></div>';
+    $gift = is_user_logged_in() && self::razorpay_ready() && ! $active ? '<p class="cb-gift-sub"><label><input type="checkbox" class="cb-gift-check"/> ' . esc_html__( 'Buy it as a gift for someone else', '3d-corporate-book' ) . '</label> <input type="email" id="cb-gift-email" placeholder="' . esc_attr__( "Their email address", '3d-corporate-book' ) . '" hidden/></p>' : '';
+    return '<div class="cb-account cb-plans-page"><h2 class="cb-plans-heading">' . esc_html__( 'Digital access', '3d-corporate-book' ) . '</h2>' . $gift . '<div class="cb-plans">' . $cards . '</div>' . Corporate_Book_Shop::print_section() . '<div id="cb-plans-account" class="cb-lock cb-lock-static"><div class="cb-lock-box">' . $box . '</div></div></div>';
   }
 
   /**
@@ -707,7 +708,21 @@ class Corporate_Book_Account {
     $orders                      = self::orders( $user_id );
     $orders[ $order_id ]['paid'] = $payment_id;
     update_user_meta( $user_id, self::ORDERS, $orders );
-    update_user_meta( $user_id, self::UNTIL, max( time(), self::until( $user_id ) ) + $orders[ $order_id ]['days'] * DAY_IN_SECONDS );
+    $reader = $user_id;
+    $gift   = isset( $orders[ $order_id ]['gift'] ) ? (string) $orders[ $order_id ]['gift'] : '';
+    if ( '' !== $gift ) {
+      $friend = get_user_by( 'email', $gift );
+      $reader = $friend ? $friend->ID : wp_insert_user( array( 'user_login' => $gift, 'user_email' => $gift, 'user_pass' => wp_generate_password( 24 ), 'role' => self::ROLE ) );
+      $reader = is_wp_error( $reader ) ? $user_id : (int) $reader;
+    }
+    update_user_meta( $reader, self::UNTIL, max( time(), self::until( $reader ) ) + $orders[ $order_id ]['days'] * DAY_IN_SECONDS );
+    if ( $reader !== $user_id ) {
+      $giver = get_userdata( $user_id );
+      /* translators: %s: site name */
+      $subject = sprintf( __( '[%s] You have been given a subscription', '3d-corporate-book' ), wp_specialchars_decode( get_bloginfo( 'name' ), ENT_QUOTES ) );
+      /* translators: 1: giver's name, 2: days, 3: date, 4: link */
+      wp_mail( $gift, $subject, sprintf( __( "%1\$s gave you %2\$d days of online reading, until %3\$s.\n\nSign in (or choose your password first) here: %4\$s", '3d-corporate-book' ), $giver ? $giver->display_name : '', $orders[ $order_id ]['days'], self::date( self::until( $reader ) ), add_query_arg( 'cb_lost', '1', self::profile_url() ) ) );
+    }
     $user = get_userdata( $user_id );
     if ( $user ) {
       $order = $orders[ $order_id ];
@@ -757,6 +772,11 @@ class Corporate_Book_Account {
     }
     $user   = wp_get_current_user();
     $plan   = $plans[ $index ];
+    // Optional gift: the days go to another reader, found or created by email.
+    $gift = isset( $_POST['gift_email'] ) ? sanitize_email( wp_unslash( $_POST['gift_email'] ) ) : '';
+    if ( '' !== $gift && ( ! is_email( $gift ) || strtolower( $gift ) === strtolower( $user->user_email ) ) ) {
+      wp_send_json_error( __( 'Enter the email address of the person you are giving it to.', '3d-corporate-book' ), 400 );
+    }
     $amount = (int) round( $plan['price'] * 100 );
     $order  = self::api(
       'POST',
@@ -765,7 +785,7 @@ class Corporate_Book_Account {
         'amount'   => $amount,
         'currency' => self::config( 'subscription_currency' ),
         'receipt'  => 'cb-' . $user->ID . '-' . time(),
-        'notes'    => array( 'user_id' => (string) $user->ID, 'email' => $user->user_email, 'plan' => $plan['name'] ),
+        'notes'    => array( 'user_id' => (string) $user->ID, 'email' => $user->user_email, 'plan' => $plan['name'], 'gift' => $gift ),
       )
     );
     if ( is_wp_error( $order ) || empty( $order['id'] ) || ! preg_match( '/^order_[A-Za-z0-9]+$/', $order['id'] ) ) {
@@ -774,7 +794,7 @@ class Corporate_Book_Account {
       wp_send_json_error( __( 'The payment could not be started. Try again.', '3d-corporate-book' ) . $reason, 502 );
     }
     $orders                 = self::orders( $user->ID );
-    $orders[ $order['id'] ] = array( 'amount' => $amount, 'days' => $plan['days'], 'plan' => $plan['name'], 'time' => time(), 'paid' => '' );
+    $orders[ $order['id'] ] = array( 'amount' => $amount, 'days' => $plan['days'], 'plan' => $plan['name'], 'time' => time(), 'paid' => '', 'gift' => $gift );
     update_user_meta( $user->ID, self::ORDERS, array_slice( $orders, -20, null, true ) );
     wp_send_json_success(
       array(
