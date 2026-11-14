@@ -46,7 +46,7 @@ class Corporate_Book_Settings {
    * @var array
    */
   public $tab_keys = array(
-      'general' => array( 'viewerType', 'webgl', 'hard', 'bg_color', 'bg_image', 'height', 'duration', 'texture_size', 'page_mode', 'single_page_mode', 'controls_position', 'auto_sound', 'autoplay', 'autoplay_duration', 'autoplay_start', 'shelf_image', 'post_urls' ),
+      'general' => array( 'viewerType', 'webgl', 'realistic', 'hard', 'desk_scene', 'bg_color', 'bg_image', 'height', 'duration', 'texture_size', 'page_mode', 'single_page_mode', 'controls_position', 'auto_sound', 'autoplay', 'autoplay_duration', 'autoplay_start', 'shelf_image', 'post_urls' ),
       'layout' => array( 'padding_left', 'padding_right', 'zoom_ratio', 'scroll_wheel', 'stiffness', 'tilt_up', 'tilt_left', 'page_rotation', 'spiral', 'calendar_mode' ),
       'controls' => array( 'more_controls', 'hide_controls', 'enable_search', 'share_prefix' ),
       'pdf' => array( 'enable_annotation', 'link_target', 'range_size', 'attachment_lightbox' ),
@@ -122,7 +122,9 @@ class Corporate_Book_Settings {
     return array(
       'viewerType'                   => __( 'How the book looks: Flipbook (pages turn like a real book), Vertical Reader (scroll down like a PDF) or Slider.', '3d-corporate-book' ),
       'webgl'                        => __( '3D looks most realistic. 2D is lighter for old phones and computers.', '3d-corporate-book' ),
-      'bg_color'                     => __( 'Colour behind the book.', '3d-corporate-book' ),
+      'realistic'                    => __( 'On: hard cover, page thickness, curling paper, a slight tilt, the cover opens by itself and page corners lift under the mouse (3D only).', '3d-corporate-book' ),
+      'desk_scene'                   => __( 'On: the book lies on a wooden desk with a lamp, coffee, pen and glasses. Readers can switch the lamp on and off. Off: the colour or image below is used.', '3d-corporate-book' ),
+      'bg_color'                     => __( 'Colour behind the book (when Reading Desk is off).', '3d-corporate-book' ),
       'bg_image'                     => __( 'Optional picture behind the book. It replaces the colour.', '3d-corporate-book' ),
       'post_urls'                    => __( 'On: every book gets its own web page, and /corporate-book/ lists all books.', '3d-corporate-book' ),
       'enable_search'                => __( 'Adds a search button so readers can find words in the PDF.', '3d-corporate-book' ),
@@ -146,7 +148,7 @@ class Corporate_Book_Settings {
   private function sections() {
     return array(
       'viewerType'                   => __( 'Display', '3d-corporate-book' ),
-      'bg_color'                     => __( 'Background', '3d-corporate-book' ),
+      'desk_scene'                   => __( 'Background', '3d-corporate-book' ),
       'height'                       => __( 'Size and pages', '3d-corporate-book' ),
       'controls_position'            => __( 'Controls and sound', '3d-corporate-book' ),
       'autoplay'                     => __( 'Autoplay', '3d-corporate-book' ),

@@ -505,6 +505,14 @@ async function waitFor(ready, ms) {
     check(/\[corporate_book id="\d+"\]/.test(await page.$eval('input.cb-shortcode', (e) => e.value).catch(() => '')), 'new book shows its shortcode before the first save');
     const editorSimple = await page.evaluate(() => !document.querySelector('a[href="#corporate-book-tab-content-layout"]').offsetParent && !!document.querySelector('#corporate_book_pdf_source').closest('.corporate-book-tab-content').offsetParent).catch(() => false);
     check(editorSimple, 'book editor shows only the Book tab until "Show more options"');
+    const d = await (await browser.newContext()).newPage();
+    d.setDefaultTimeout(90000);
+    const deskErrors = []; d.on('pageerror', (e) => deskErrors.push(e.message));
+    await d.goto(`${BASE}/?pagename=book-test`);
+    const deskOk = await d.waitForSelector('.cb-desk ._df_book', { timeout: 30000 }).then(() => true).catch(() => false);
+    await d.click('.cb-desk-switch').catch(() => {});
+    check(deskOk && await d.$('.cb-desk.cb-light-off') !== null && deskErrors.length === 0, `embedded book lies on the reading desk and the lamp switches off ${deskErrors.join(' | ')}`);
+    await d.close();
     await page.goto(settingsUrl);
     const simple = await page.evaluate(() => ({ main: !!document.querySelector('#corporate_book_bg_color_box').offsetParent, extra: !!document.querySelector('#corporate_book_duration_box').offsetParent, layoutTab: !!document.querySelector('a[href="#corporate-book-tab-content-layout"]').offsetParent }));
     await page.check('#cb-show-all');

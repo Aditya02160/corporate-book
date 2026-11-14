@@ -471,6 +471,8 @@ if ( !class_exists( 'Corporate_Book' ) ) {
       $this->defaults['razorpay_key_id']       = array( 'std' => '', 'title' => __( 'Razorpay Key ID', '3d-corporate-book' ), 'desc' => __( 'From Razorpay Dashboard, Account and Settings, API Keys. Start with a Test Mode key.', '3d-corporate-book' ), 'type' => 'text' );
       $this->defaults['razorpay_key_secret']   = array( 'std' => '', 'title' => __( 'Razorpay Key Secret', '3d-corporate-book' ), 'desc' => __( 'Kept on the server; never sent to readers.', '3d-corporate-book' ), 'type' => 'password' );
       $this->defaults['subscription_currency'] = array( 'std' => 'INR', 'title' => __( 'Currency', '3d-corporate-book' ), 'choices' => array( 'INR' => 'INR (₹)', 'USD' => 'USD ($)', 'EUR' => 'EUR (€)', 'GBP' => 'GBP (£)', 'AED' => 'AED', 'SGD' => 'SGD', 'AUD' => 'AUD', 'CAD' => 'CAD' ) );
+      $this->defaults['realistic']  = array( 'std' => 'true', 'title' => __( 'Realistic Book', '3d-corporate-book' ), 'desc' => __( '3D only: hard cover, visible page thickness, soft curling paper, a slight tilt, a slower page turn, the cover opening by itself and page corners that lift when the mouse comes near.', '3d-corporate-book' ), 'choices' => $bool );
+      $this->defaults['desk_scene'] = array( 'std' => 'true', 'title' => __( 'Reading Desk', '3d-corporate-book' ), 'desc' => __( 'Shows embedded books on a wooden desk with a lamp, a cup of coffee, a pen and glasses. Readers can switch the lamp on and off.', '3d-corporate-book' ), 'choices' => $bool );
       $this->defaults['google_client_id'] = array( 'std' => '', 'title' => __( 'Google Client ID', '3d-corporate-book' ), 'desc' => __( 'Adds a "Continue with Google" button to every sign-in box. Make an OAuth Client ID (type: Web application) in Google Cloud Console, Credentials, and add your site address under Authorized JavaScript origins.', '3d-corporate-book' ), 'type' => 'text' );
       $this->defaults['razorpay_webhook_secret'] = array( 'std' => '', 'title' => __( 'Razorpay Webhook Secret', '3d-corporate-book' ), 'desc' => sprintf( /* translators: %s: webhook URL */ __( 'In Razorpay Dashboard, Webhooks, add %s with the events payment.captured and refund.processed, and paste the same secret here. Payments then count even when the reader closes the tab, and refunds end access.', '3d-corporate-book' ), admin_url( 'admin-ajax.php?action=corporate_book_webhook' ) ), 'type' => 'password' );
       $this->defaults['subscription_plans']    = array( 'std' => "Monthly | 399 | 30\nYearly | 3999 | 365", 'title' => __( 'Subscription Plans', '3d-corporate-book' ), 'desc' => __( 'One plan per line: Name | Price | Days of access.', '3d-corporate-book' ), 'type' => 'textarea' );
@@ -654,6 +656,19 @@ if ( !class_exists( 'Corporate_Book' ) ) {
           'pageRotation'           => (int) $this->get_config( 'page_rotation' ),
           'shelfImage'             => $this->get_config( 'shelf_image' )
       );
+      // Realistic book: settings left at their old defaults move to the realistic values.
+      $data['realistic'] = 'true' === $this->get_config( 'realistic' );
+      if ( $data['realistic'] ) {
+        $data['cover3DType'] = 'ridge';
+        $data['sheetDepth']  = 2.5;
+        $data['flexibility'] = 25;
+        $data['stiffness']   = 0.5;
+        $data['flipbook3DTiltAngleUp']   = $data['flipbook3DTiltAngleUp'] ? $data['flipbook3DTiltAngleUp'] : 10;
+        $data['flipbook3DTiltAngleLeft'] = $data['flipbook3DTiltAngleLeft'] ? $data['flipbook3DTiltAngleLeft'] : -6;
+        $data['duration']    = 800 === (int) $data['duration'] ? 1200 : $data['duration'];
+      }
+      $data['deskScene'] = 'true' === $this->get_config( 'desk_scene' );
+      $data['deskText']  = array( 'lightOff' => __( 'Turn the lamp off', '3d-corporate-book' ), 'lightOn' => __( 'Turn the lamp on', '3d-corporate-book' ) );
 
       //registers a variable that stores the location of plugin
       ?>

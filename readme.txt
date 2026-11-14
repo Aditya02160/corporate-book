@@ -76,6 +76,10 @@ All of these are set for every book at once in **Corporate Book > Global Setting
 * **Corporate Book Post URLs** - Give every book its own page at `/corporate-book/book-name/`.
 * **Auto Generate Thumb** - The book editor makes the thumbnail from the first page of the PDF.
 
+### Realistic book and reading desk
+* **Realistic Book** (Global Settings > General, on by default): hard 3D cover, visible page thickness, soft curling paper, a slight tilt and a slower page turn. The cover opens by itself when the book comes into view, and the top page lifts when the mouse nears its outer bottom corner. 3D mode only; readers who ask for reduced motion skip the opening animation.
+* **Reading Desk** (on by default): embedded books lie on a wooden desk with a desk lamp, a steaming cup of coffee, a pen and reading glasses. A lamp button in the corner switches the light on and off; the choice is remembered in the reader's browser. On phones only the lamp is shown.
+
 ### Library page
 Add `[corporate_book_library]` to a page to show every book as a cover card (cover, title, Read Magazine button), grouped by year, with year buttons and a filter list of years and categories. The same cover card shows in post lists.
 
