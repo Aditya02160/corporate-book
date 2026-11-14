@@ -76,6 +76,30 @@ All of these are set for every book at once in **Corporate Book > Global Setting
 * **Corporate Book Post URLs** - Give every book its own page at `/corporate-book/book-name/`.
 * **Auto Generate Thumb** - The book editor makes the thumbnail from the first page of the PDF.
 
+### Print copies (offline)
+Readers can buy printed books as well as the digital subscription.
+
+**Set up**
+
+1. **Global Settings > Print:** keep **Sell Print Copies** on, check **Shipping by Distance** (one band per line, `Up to km from Noida | Extra per book`), and optionally set **Free Shipping Above**, **Cash on Delivery** and **Order Email**.
+2. **Each book > Book tab > Print copy:** turn on **Sell Print Copy**, enter the **Print Price**, the **Shipping Charge** for one copy near Noida, and **Copies in Stock** (empty = print on demand).
+3. Razorpay keys from the Subscription tab are used for print orders too.
+
+**How readers buy**
+
+* The "preview has ended" panel shows **Buy print copy**; the Subscription page lists every book for sale under **Print copies**; a floating **Cart (n)** link follows them around the site.
+* The **Cart** page (created automatically, `[corporate_book_cart]`) has quantities (1-10, within stock), the delivery address (name, 10-digit mobile, email, house and building, street, landmark, city, state, 6-digit PIN), a live shipping quote and payment by Razorpay or cash on delivery. Guests sign in or sign up first; their cart is kept.
+* Shipping per copy = the book's shipping charge + the extra for the distance band. The distance is the straight-line distance from Noida to the region of the PIN code (accurate to the region, not to the kilometre). Army post PIN codes use the farthest band.
+* **My account** shows **My print orders** (status, courier and tracking) and the saved **Delivery address**.
+
+**How you fulfil orders**
+
+* **Corporate Books > Print Orders** lists orders with customer, books, total, payment and status. Open an order to see the address and phone, and set the status (Paid / Cash on delivery, Shipped, Delivered, Cancelled, Refunded), courier, tracking number and link.
+* Customers are emailed when an order is placed, shipped (with tracking), delivered, cancelled or refunded; you get an email for each new order.
+* Stock goes down when an order is paid or placed with cash on delivery, and back up when it is cancelled or refunded. Unpaid online orders are removed after two days.
+* With the Razorpay webhook set up, a payment counts even if the reader closes the page, and a refund in Razorpay marks the order Refunded.
+* Printed books are GST-exempt in India (HSN 4901), so no tax lines are added; prices are final.
+
 ### Realistic book and reading desk
 * **Realistic Book** (Global Settings > General, on by default): hard 3D cover, visible page thickness, soft curling paper, a slight tilt and a slower page turn. The cover opens by itself when the book comes into view, and the top page lifts when the mouse nears its outer bottom corner. 3D mode only; readers who ask for reduced motion skip the opening animation.
 * **Reading Desk** (on by default): embedded books lie on a wooden desk with a desk lamp, a steaming cup of coffee, a pen and reading glasses. A lamp button in the corner switches the light on and off; the choice is remembered in the reader's browser. On phones only the lamp is shown.
