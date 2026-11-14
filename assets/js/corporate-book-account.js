@@ -106,6 +106,34 @@
     });
   }
 
+  // "Continue with Google" buttons, once Google's script has loaded.
+  function google() {
+    var spots = document.querySelectorAll('.cb-google:not([data-ready])');
+    if (!spots.length) {
+      return;
+    }
+    if (!window.google || !window.google.accounts) {
+      setTimeout(google, 300);
+      return;
+    }
+    window.google.accounts.id.initialize({
+      client_id: spots[0].getAttribute('data-client'),
+      callback: function (answer) {
+        var box = spots[0].closest('.cb-account');
+        post({ action: 'corporate_book_google', credential: answer.credential }).then(function () {
+          window.location.reload();
+        }, function (error) {
+          say(box, error.message);
+        });
+      }
+    });
+    Array.prototype.forEach.call(spots, function (spot) {
+      spot.setAttribute('data-ready', '1');
+      window.google.accounts.id.renderButton(spot, { theme: 'outline', size: 'large', text: 'continue_with', shape: 'pill' });
+    });
+  }
+  google();
+
   document.addEventListener('submit', function (event) {
     var form = event.target;
     var box = form.closest('.cb-account');

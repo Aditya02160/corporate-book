@@ -24,7 +24,7 @@ class Corporate_Book_Account {
       add_action( 'wp_ajax_nopriv_corporate_book_' . $action, array( $this, $action ) );
       add_action( 'wp_ajax_corporate_book_' . $action, array( $this, $action ) );
     }
-    foreach ( array( 'lost', 'reset' ) as $action ) {
+    foreach ( array( 'lost', 'reset', 'google' ) as $action ) {
       add_action( 'wp_ajax_nopriv_corporate_book_' . $action, array( $this, $action ) );
       add_action( 'wp_ajax_corporate_book_' . $action, array( $this, $action ) );
     }
@@ -168,6 +168,10 @@ class Corporate_Book_Account {
           . '<input type="password" name="pwd" required minlength="8" autocomplete="new-password" placeholder="' . esc_attr__( 'Password (8 characters or more)', '3d-corporate-book' ) . '" aria-label="' . esc_attr__( 'Password', '3d-corporate-book' ) . '"/>'
           . '<button type="submit" class="cb-lock-signin">' . esc_html__( 'Create account', '3d-corporate-book' ) . '</button>'
           . '<p class="cb-account-links"><a href="#" class="cb-show-signin">' . esc_html__( 'I already have an account', '3d-corporate-book' ) . '</a></p></form>';
+      }
+      if ( '' !== self::config( 'google_client_id' ) ) {
+        wp_enqueue_script( 'google-gsi', 'https://accounts.google.com/gsi/client', array(), null, true ); // phpcs:ignore WordPress.WP.EnqueuedResourceParameters.MissingVersion -- Google serves one current version.
+        $html .= '<div class="cb-google" data-client="' . esc_attr( self::config( 'google_client_id' ) ) . '"></div>';
       }
       $login_shortcode = self::config( 'subscription_login_shortcode' );
       $html           .= '' !== $login_shortcode ? '<div class="cb-lock-login">' . do_shortcode( $login_shortcode ) . '</div>' : '';
@@ -481,6 +485,48 @@ class Corporate_Book_Account {
     }
     wp_set_password( $password, $user->ID );
     wp_set_auth_cookie( $user->ID, true, is_ssl() ); // wp_set_password signs the reader out everywhere
+    wp_send_json_success();
+  }
+
+  /**
+   * "Continue with Google": checks Google's signed ID token, then signs the reader in, creating a
+   * reader account the first time. Staff accounts sign in on the normal WordPress screen instead.
+   */
+  public function google() {
+    check_ajax_referer( self::NONCE );
+    $key = self::throttle_key( 'google' );
+    if ( '' === self::config( 'google_client_id' ) || self::too_many( $key, 20 ) ) {
+      wp_send_json_error( __( 'Google sign in is not available.', '3d-corporate-book' ), 403 );
+    }
+    self::count_try( $key );
+    // phpcs:ignore WordPress.Security.NonceVerification.Missing -- checked above.
+    $token    = isset( $_POST['credential'] ) ? sanitize_text_field( wp_unslash( $_POST['credential'] ) ) : '';
+    $response = wp_remote_get( 'https://oauth2.googleapis.com/tokeninfo?id_token=' . rawurlencode( $token ), array( 'timeout' => 15 ) );
+    $info     = is_wp_error( $response ) ? array() : json_decode( wp_remote_retrieve_body( $response ), true );
+    $valid    = is_array( $info ) && isset( $info['aud'], $info['email'], $info['exp'], $info['iss'] )
+      && hash_equals( self::config( 'google_client_id' ), (string) $info['aud'] )
+      && in_array( $info['iss'], array( 'accounts.google.com', 'https://accounts.google.com' ), true )
+      && (int) $info['exp'] > time() && isset( $info['email_verified'] ) && in_array( $info['email_verified'], array( true, 'true' ), true );
+    if ( ! $valid ) {
+      wp_send_json_error( __( 'Google could not confirm your account. Try again.', '3d-corporate-book' ), 401 );
+    }
+    $email = sanitize_email( $info['email'] );
+    $user  = get_user_by( 'email', $email );
+    if ( $user && ! self::is_reader( $user ) ) {
+      wp_send_json_error( __( 'This is a staff account. Sign in on the site\'s login page.', '3d-corporate-book' ), 403 );
+    }
+    if ( ! $user ) {
+      if ( 'true' !== self::config( 'subscription_signup' ) ) {
+        wp_send_json_error( __( 'Sign up is turned off.', '3d-corporate-book' ), 403 );
+      }
+      $user_id = wp_insert_user( array( 'user_login' => $email, 'user_email' => $email, 'user_pass' => wp_generate_password( 24 ), 'role' => self::ROLE, 'first_name' => isset( $info['given_name'] ) ? sanitize_text_field( $info['given_name'] ) : '', 'last_name' => isset( $info['family_name'] ) ? sanitize_text_field( $info['family_name'] ) : '', 'display_name' => isset( $info['name'] ) ? sanitize_text_field( $info['name'] ) : $email ) );
+      if ( is_wp_error( $user_id ) ) {
+        wp_send_json_error( $user_id->get_error_message(), 400 );
+      }
+      $user = get_userdata( $user_id );
+    }
+    wp_set_current_user( $user->ID );
+    wp_set_auth_cookie( $user->ID, true, is_ssl() );
     wp_send_json_success();
   }
 

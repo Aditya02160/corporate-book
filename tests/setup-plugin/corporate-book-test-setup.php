@@ -84,3 +84,14 @@ add_action(
 	},
 	20
 );
+
+// Emails are written to the mounted fixtures folder so the smoke test can read them.
+add_filter(
+	'pre_wp_mail',
+	function ( $result, $atts ) {
+		file_put_contents( WP_CONTENT_DIR . '/uploads/cb-test/mail.txt', $atts['subject'] . "\n" . $atts['message'] );
+		return true;
+	},
+	10,
+	2
+);

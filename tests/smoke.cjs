@@ -126,7 +126,7 @@ async function waitFor(ready, ms) {
     check(await field('subscription_url') === '', 'unsafe subscribe link rejected');
     html = await saveSettings({ subscription_roles: 'subscriber' }).catch(() => '');
     check(html.includes('cb-role-warning'), 'subscriber role warning shown');
-    await saveSettings({ subscription_enable: 'true', subscription_url: SUBSCRIBE_URL, subscription_preview_percent: '10', subscription_roles: 'cb_member, Bad Role!' },
+    await saveSettings({ subscription_enable: 'true', subscription_url: SUBSCRIBE_URL, subscription_preview_percent: '10', subscription_roles: 'cb_member, Bad Role!, cb_reader' },
       { subscription_enable: 'true', subscription_url: SUBSCRIBE_URL, subscription_preview_percent: '10', subscription_roles: 'cb_member,badrole' }).catch(() => '');
     const got = [await field('subscription_enable'), await field('subscription_url'), await field('subscription_preview_percent'), await field('subscription_roles')].join(' ');
     check(got === `true ${SUBSCRIBE_URL} 10 cb_member,badrole`, `subscription settings persist (${got})`);
@@ -478,6 +478,10 @@ async function waitFor(ready, ms) {
       saved = await r.p.evaluate(() => ['first_name', 'phone'].map((n) => document.querySelector(`.cb-profile-details [name="${n}"]`).value).join(' ')).catch(() => '');
     }
     check(saved === 'Ria +91 98765 43210', `readers can save their details (${saved})`);
+    await r.p.fill('.cb-profile-details [name="email"]', 'thief@example.com').catch(() => {});
+    await r.p.click('.cb-profile-details button[type="submit"]').catch(() => {});
+    await r.p.waitForFunction(() => /password/i.test(document.querySelector('.cb-profile-details').closest('.cb-account').querySelector('.cb-account-message').textContent), null, { timeout: 30000 }).catch(() => {});
+    check(/current password/i.test(await r.p.$eval('.cb-profile-details', (f) => f.closest('.cb-account').querySelector('.cb-account-message').textContent).catch(() => '')), 'changing the email needs the current password');
     await r.ctx.close();
     const lost = await (await browser.newContext()).newPage();
     await lost.goto(`${BASE}/wp-login.php?action=lostpassword`).catch(() => {});
@@ -486,6 +490,19 @@ async function waitFor(ready, ms) {
     await lost.click('form.cb-lost button[type="submit"]').catch(() => {});
     await lost.waitForFunction(() => /email/i.test(document.querySelector('form.cb-lost').closest('.cb-account').querySelector('.cb-account-message').textContent), null, { timeout: 30000 }).catch(() => {});
     check(/email/i.test(await lost.$eval('.cb-account-message', (e) => e.textContent).catch(() => '')), 'lost password form answers on the page');
+    const mail = (() => { try { return fs.readFileSync(path.join(fixtures, 'mail.txt'), 'utf8'); } catch (e) { return ''; } })();
+    const link = (mail.match(/https?:\/\/\S*cb_reset=\S+/) || [''])[0];
+    check(link.includes('my-account') && !link.includes('wp-login'), `reset email links to My account (${link.slice(0, 90)})`);
+    if (link) {
+      await lost.goto(link);
+      await lost.fill('form.cb-reset [name="pwd"]', 'password').catch(() => {});
+      await Promise.all([lost.waitForNavigation({ timeout: 30000 }), lost.click('form.cb-reset button[type="submit"]')]).catch(() => {});
+    }
+    check(await lost.$('.cb-profile form.cb-profile-details') !== null, 'resetting the password signs the reader in on My account');
+    const hook = await fetch(`${BASE}/wp-admin/admin-ajax.php?action=corporate_book_webhook`, { method: 'POST', body: '{"event":"payment.captured"}', headers: { 'X-Razorpay-Signature': 'bad' } });
+    check(hook.status === 401, `Razorpay webhook rejects a bad signature (${hook.status})`);
+    await page.goto(`${BASE}/wp-admin/post-new.php?post_type=corporate_book`);
+    check(/\[corporate_book id="\d+"\]/.test(await page.$eval('input.cb-shortcode', (e) => e.value).catch(() => '')), 'new book shows its shortcode before the first save');
   } catch (e) {
     check(false, e.message);
   } finally {

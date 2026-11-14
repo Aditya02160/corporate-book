@@ -107,6 +107,12 @@ The plugin creates a **Subscription** page for you (`[corporate_book_subscriptio
 
 Readers never see WordPress itself. The plugin creates a **My account** page (`[corporate_book_profile]`) where readers edit their name, email, phone and company, change or reset their password, see their subscription and payment history, and subscribe or renew. New readers get the Corporate Book Reader role. Readers get no WordPress toolbar, and opening the dashboard or the WordPress sign-up, lost-password or reset screens takes them to My account. Staff who can write posts keep the normal WordPress screens.
 
+**Razorpay webhook (recommended):** in Razorpay Dashboard > Webhooks, add the URL shown under Global Settings > Subscription > Razorpay Webhook Secret, with the events payment.captured and refund.processed, and paste the same secret in that field. Payments then count even if the reader closes the tab, and refunds take the paid days back. Use **Test Razorpay connection** to check your keys.
+
+Readers get an emailed receipt after each payment and a reminder 3 days before access ends.
+
+**Continue with Google:** paste a Google OAuth Client ID in Global Settings > Subscription > Google Client ID. Readers who use it are signed in, or get a reader account the first time. The sign-in box then loads Google's script from accounts.google.com and the site checks the sign-in with oauth2.googleapis.com. See Google's terms and privacy policy.
+
 Razorpay Checkout loads from checkout.razorpay.com when a reader picks a plan, and the plugin calls api.razorpay.com to create and confirm payments. See Razorpay's terms and privacy policy.
 
 On nginx, add this rule so the protected folder cannot be opened directly (Apache uses the included .htaccess):
