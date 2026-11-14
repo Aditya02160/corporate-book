@@ -603,6 +603,15 @@ async function waitFor(ready, ms) {
     check(stock === '3', `stock goes down when an order is paid (${stock})`);
     await page.goto(`${BASE}/wp-admin/edit.php?post_type=cb_order`);
     check((await page.content()).includes(`Order #${orderNo}`), 'Print Orders lists the order for the admin');
+    await page.goto(`${BASE}/wp-admin/edit.php?post_type=cb_order&s=201309`);
+    check((await page.content()).includes(`Order #${orderNo}`), 'admin finds orders by the customer\'s PIN code');
+    const w2 = await (await browser.newContext()).newPage();
+    await w2.goto(`${BASE}/wp-login.php`);
+    await w2.fill('#user_login', 'writer'); await w2.fill('#user_pass', 'password');
+    await Promise.all([w2.waitForNavigation(), w2.click('#wp-submit')]).catch(() => {});
+    const authorView = await (await w2.goto(`${BASE}/wp-admin/edit.php?post_type=cb_order`)).text();
+    check(!authorView.includes('Asha Rao') && !authorView.includes(`Order #${orderNo}`), 'authors cannot see print orders or customer details');
+    await w2.close();
     await page.goto(`${BASE}/wp-admin/post.php?post=${orderNo}&action=edit`);
     await page.selectOption('#cb_order_status', 'cb-shipped');
     await page.fill('#cb_order_courier', 'India Post');

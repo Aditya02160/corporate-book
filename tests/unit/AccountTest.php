@@ -82,10 +82,13 @@ class AccountTest extends CB_Unit_Test {
     $account = ( new ReflectionClass( 'Corporate_Book_Account' ) )->newInstanceWithoutConstructor();
     $export  = $account->export_data( $user->user_email );
     $this->assertCount( 2, $export['data'], 'account group and one payment' );
+    update_user_meta( 6, Corporate_Book_Shop::ADDRESS, array( 'name' => 'Asha', 'pin' => '201301' ) );
+    $this->assertCount( 3, $account->export_data( $user->user_email )['data'], 'delivery address is exported too' );
     $this->assertSame( '+91 1', $export['data'][0]['data'][0]['value'] );
     $erase = $account->erase_data( $user->user_email );
     $this->assertTrue( $erase['items_removed'] );
     $this->assertSame( '', get_user_meta( 6, 'cb_phone', true ) );
+    $this->assertSame( '', get_user_meta( 6, Corporate_Book_Shop::ADDRESS, true ), 'delivery address is erased' );
     $this->assertNotEmpty( get_user_meta( 6, Corporate_Book_Account::ORDERS, true ), 'payments kept for accounting' );
     $this->assertSame( array( 'data' => array(), 'done' => true ), $account->export_data( 'nobody@example.test' ) );
   }

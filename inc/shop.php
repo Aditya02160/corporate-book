@@ -86,6 +86,21 @@ class Corporate_Book_Shop {
     add_filter( 'manage_' . self::ORDER . '_posts_columns', array( $this, 'columns' ) );
     add_action( 'manage_' . self::ORDER . '_posts_custom_column', array( $this, 'column' ), 10, 2 );
     add_action( 'corporate_book_reminders', array( $this, 'clean_unpaid' ) );
+    // Quick Edit and bulk Edit only know WordPress's own statuses and would hide orders from every list.
+    add_filter( 'post_row_actions', array( $this, 'row_actions' ), 10, 2 );
+    add_filter( 'bulk_actions-edit-' . self::ORDER, array( $this, 'bulk_actions' ) );
+  }
+
+  public function row_actions( $actions, $post ) {
+    if ( self::ORDER === $post->post_type ) {
+      unset( $actions['inline hide-if-no-js'] );
+    }
+    return $actions;
+  }
+
+  public function bulk_actions( $actions ) {
+    unset( $actions['edit'] );
+    return $actions;
   }
 
   // ---- Settings and pure helpers -------------------------------------------------------------
@@ -376,7 +391,8 @@ class Corporate_Book_Shop {
         'show_in_menu'    => 'edit.php?post_type=corporate_book',
         'supports'        => false,
         'capability_type' => 'post',
-        'capabilities'    => array( 'create_posts' => 'do_not_allow' ),
+        // Orders hold customers' addresses and phones: editors and administrators only, never authors.
+        'capabilities'    => array( 'create_posts' => 'do_not_allow', 'edit_posts' => 'edit_others_posts', 'delete_posts' => 'delete_others_posts' ),
         'map_meta_cap'    => true,
       )
     );
@@ -644,8 +660,16 @@ class Corporate_Book_Shop {
     if ( 'razorpay' === $method && ! Corporate_Book_Account::razorpay_ready() ) {
       wp_send_json_error( array( 'message' => __( 'Online payment is not set up yet. Please try again later.', '3d-corporate-book' ) ), 503 );
     }
+    // At most 10 orders an hour per reader, so cash-on-delivery orders cannot be used to flood the shop.
+    $tries = (int) get_transient( 'cb_checkout_' . $user->ID );
+    if ( $tries >= 10 ) {
+      wp_send_json_error( array( 'message' => __( 'Too many orders in a short time. Please try again in an hour.', '3d-corporate-book' ) ), 429 );
+    }
+    set_transient( 'cb_checkout_' . $user->ID, $tries + 1, HOUR_IN_SECONDS );
     update_user_meta( $user->ID, self::ADDRESS, $address );
-    $order = wp_insert_post( array( 'post_type' => self::ORDER, 'post_status' => 'cb-pending', 'post_author' => $user->ID, 'post_title' => __( 'Print order', '3d-corporate-book' ) ) );
+    $titles = implode( ', ', wp_list_pluck( $quote['lines'], 'title' ) );
+    // The content is never shown; it makes the admin order search find customers by name, phone, email, city, PIN or book.
+    $order = wp_insert_post( array( 'post_type' => self::ORDER, 'post_status' => 'cb-pending', 'post_author' => $user->ID, 'post_title' => __( 'Print order', '3d-corporate-book' ), 'post_content' => implode( ' ', array( $address['name'], $address['phone'], $address['email'], $address['city'], $address['pin'], $titles ) ) ) );
     if ( ! $order || is_wp_error( $order ) ) {
       wp_send_json_error( array( 'message' => __( 'The order could not be saved. Try again.', '3d-corporate-book' ) ), 500 );
     }
@@ -778,14 +802,16 @@ class Corporate_Book_Shop {
     if ( in_array( $new, array( 'cb-paid', 'cb-cod' ), true ) && ! $taken ) {
       self::change_stock( $order, -1 );
       update_post_meta( $order, '_cb_stock_taken', 1 );
-    } elseif ( in_array( $new, array( 'cb-cancelled', 'cb-refunded' ), true ) && $taken ) {
+    } elseif ( in_array( $new, array( 'cb-cancelled', 'cb-refunded', 'trash' ), true ) && $taken ) {
       self::change_stock( $order, 1 );
       delete_post_meta( $order, '_cb_stock_taken' );
     }
-    if ( in_array( $new, array( 'cb-paid', 'cb-cod', 'cb-shipped', 'cb-delivered', 'cb-cancelled', 'cb-refunded' ), true ) ) {
+    // "Order placed" emails only when the order is new, not when a cash order is later marked Paid.
+    $placed = in_array( $new, array( 'cb-paid', 'cb-cod' ), true ) && in_array( $old, array( 'cb-pending', 'new', 'auto-draft' ), true );
+    if ( $placed || in_array( $new, array( 'cb-shipped', 'cb-delivered', 'cb-cancelled', 'cb-refunded' ), true ) ) {
       self::email_customer( $order, $new );
     }
-    if ( in_array( $new, array( 'cb-paid', 'cb-cod' ), true ) ) {
+    if ( $placed ) {
       self::email_shop( $order );
     }
   }

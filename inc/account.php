@@ -928,6 +928,16 @@ class Corporate_Book_Account {
         array( 'name' => __( 'Subscription active until', '3d-corporate-book' ), 'value' => self::until( $user->ID ) ? self::date( self::until( $user->ID ) ) : '' ),
       );
       $data[] = array( 'group_id' => 'corporate-book', 'group_label' => __( 'Corporate Book account', '3d-corporate-book' ), 'item_id' => 'account-' . $user->ID, 'data' => $fields );
+      $address = get_user_meta( $user->ID, Corporate_Book_Shop::ADDRESS, true );
+      if ( is_array( $address ) ) {
+        $data[] = array( 'group_id' => 'corporate-book-address', 'group_label' => __( 'Delivery address', '3d-corporate-book' ), 'item_id' => 'address-' . $user->ID, 'data' => array( array( 'name' => __( 'Address', '3d-corporate-book' ), 'value' => implode( ', ', array_filter( $address ) ) ) ) );
+      }
+      foreach ( get_posts( array( 'post_type' => Corporate_Book_Shop::ORDER, 'author' => $user->ID, 'post_status' => array_keys( Corporate_Book_Shop::statuses() ), 'numberposts' => 200 ) ) as $order ) {
+        $data[] = array( 'group_id' => 'corporate-book-print-orders', 'group_label' => __( 'Print orders', '3d-corporate-book' ), 'item_id' => 'print-order-' . $order->ID, 'data' => array(
+          array( 'name' => __( 'Order', '3d-corporate-book' ), 'value' => '#' . $order->ID . ' (' . $order->post_date . ')' ),
+          array( 'name' => __( 'Details', '3d-corporate-book' ), 'value' => Corporate_Book_Shop::summary( $order->ID ) ),
+        ) );
+      }
       foreach ( self::orders( $user->ID ) as $id => $order ) {
         $data[] = array( 'group_id' => 'corporate-book-payments', 'group_label' => __( 'Corporate Book payments', '3d-corporate-book' ), 'item_id' => $id, 'data' => array(
           array( 'name' => __( 'Date', '3d-corporate-book' ), 'value' => self::date( (int) $order['time'] ) ),
@@ -946,6 +956,7 @@ class Corporate_Book_Account {
       // Payment records are kept for tax and accounting; contact details are removed.
       delete_user_meta( $user->ID, 'cb_phone' );
       delete_user_meta( $user->ID, 'cb_company' );
+      delete_user_meta( $user->ID, Corporate_Book_Shop::ADDRESS );
     }
     return array( 'items_removed' => (bool) $user, 'items_retained' => (bool) $user && self::orders( $user->ID ), 'messages' => $user ? array( __( 'Corporate Book payment records were kept for accounting.', '3d-corporate-book' ) ) : array(), 'done' => true );
   }

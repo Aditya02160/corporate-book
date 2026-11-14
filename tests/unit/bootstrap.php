@@ -71,6 +71,9 @@ function update_option( $key, $value ) {
 function get_post_meta( $id, $key, $single = false ) {
   return isset( $GLOBALS['wp']['post_meta'][ $id ][ $key ] ) ? $GLOBALS['wp']['post_meta'][ $id ][ $key ] : '';
 }
+function get_posts() {
+  return array();
+}
 function get_the_title( $id ) {
   return isset( $GLOBALS['wp']['posts'][ $id ] ) ? $GLOBALS['wp']['posts'][ $id ]['title'] : '';
 }
