@@ -122,6 +122,7 @@ class Corporate_Book_Post_Type {
     
     // Remove quick editing from the Corporate Book post type row actions.
     add_filter( 'post_row_actions', array( $this, 'remove_quick_edit' ), 10, 1 );
+    add_action( 'admin_notices', array( $this, 'missing_previews_notice' ) );
     
     // Manage post type columns.
     add_filter( 'manage_corporate_book_posts_columns', array( $this, 'corporate_book_columns' ) );
@@ -262,6 +263,31 @@ class Corporate_Book_Post_Type {
    *
    * @return string
    */
+  /**
+   * Book list: names the PDF books that still have no free preview or thumbnail (for example books
+   * saved before an update). Opening a book in the editor makes both automatically.
+   */
+  public function missing_previews_notice() {
+    $screen = get_current_screen();
+    if ( ! $screen || 'edit-corporate_book' !== $screen->id || ! current_user_can( 'edit_posts' ) ) {
+      return;
+    }
+    $locked  = 'true' === Corporate_Book::get_instance()->get_config( 'subscription_enable' );
+    $missing = array();
+    foreach ( get_posts( array( 'post_type' => 'corporate_book', 'post_status' => array( 'publish', 'draft', 'private' ), 'numberposts' => 200, 'fields' => 'ids' ) ) as $id ) {
+      $data = get_post_meta( $id, '_corporate_book_data', true );
+      if ( ! is_array( $data ) || empty( $data['pdf_source'] ) || ( isset( $data['source_type'] ) && 'pdf' !== $data['source_type'] ) ) {
+        continue;
+      }
+      if ( empty( $data['pdf_thumb'] ) || ( $locked && empty( $data['preview_pdf'] ) ) ) {
+        $missing[] = '<a href="' . esc_url( get_edit_post_link( $id ) ) . '">' . esc_html( get_the_title( $id ) ? get_the_title( $id ) : '#' . $id ) . '</a>';
+      }
+    }
+    if ( $missing ) {
+      echo '<div class="notice notice-warning cb-missing-previews"><p>' . esc_html__( 'These books have no thumbnail or free preview yet. Open each one and click Update; both are made automatically:', '3d-corporate-book' ) . ' ' . implode( ', ', array_slice( $missing, 0, 20 ) ) . ( count( $missing ) > 20 ? ' …' : '' ) . '</p></div>'; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- links escaped above.
+    }
+  }
+
   public function library_template( $template ) {
     $ours = dirname( __FILE__ ) . '/../assets/templates/library.php';
     return is_post_type_archive( 'corporate_book' ) && ! wp_is_block_theme() ? $ours : $template;

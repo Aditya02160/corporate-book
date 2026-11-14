@@ -188,8 +188,8 @@ if ( !class_exists( 'Corporate_Book' ) ) {
               'std'     => 'false',
               'choices' => array(
                   'global' => __( 'Global Setting', '3d-corporate-book' ),
-                  'true'   => __( 'True', '3d-corporate-book' ),
-                  'false'  => __( 'False', '3d-corporate-book' )
+                  'true'   => __( 'On', '3d-corporate-book' ),
+                  'false'  => __( 'Off', '3d-corporate-book' )
               ),
               'class'   => '',
               'title'   => __( 'Auto Enable Sound', '3d-corporate-book' ),
@@ -262,15 +262,15 @@ if ( !class_exists( 'Corporate_Book' ) ) {
               'placeholder'    => __( 'Select an image', '3d-corporate-book' ),
               'type'           => 'upload',
               'button-tooltip' => __( 'Select PDF Thumb Image', '3d-corporate-book' ),
-              'button-text'    => __( 'Select Thumb', '3d-corporate-book' ),
+              'button-text'    => __( 'Select image', '3d-corporate-book' ),
               'condition'      => 'corporate_book_source_type:is(pdf)',
               'class'          => 'hide-on-fail'
           ),
           'overwrite_outline'  => array(
               'std'       => 'false', //isset mis-interprets 0 and false differently than expected
               'choices'   => array(
-                  'true'  => __( 'True', '3d-corporate-book' ),
-                  'false' => __( 'False', '3d-corporate-book' )
+                  'true'  => __( 'On', '3d-corporate-book' ),
+                  'false' => __( 'Off', '3d-corporate-book' )
               ),
               'class'     => '',
               'title'     => __( 'Overwrite PDF Outline', '3d-corporate-book' ),
@@ -280,8 +280,8 @@ if ( !class_exists( 'Corporate_Book' ) ) {
           'auto_outline'       => array(
               'std'     => 'false', //isset mis-interprets 0 and false differently than expected
               'choices' => array(
-                  'true'  => __( 'True', '3d-corporate-book' ),
-                  'false' => __( 'False', '3d-corporate-book' )
+                  'true'  => __( 'On', '3d-corporate-book' ),
+                  'false' => __( 'Off', '3d-corporate-book' )
               ),
               'class'   => '',
               'title'   => __( 'Auto Enable Outline', '3d-corporate-book' ),
@@ -290,8 +290,8 @@ if ( !class_exists( 'Corporate_Book' ) ) {
           'auto_thumbnail'     => array(
               'std'     => 'false', //isset mis-interprets 0 and false differently than expected
               'choices' => array(
-                  'true'  => __( 'True', '3d-corporate-book' ),
-                  'false' => __( 'False', '3d-corporate-book' )
+                  'true'  => __( 'On', '3d-corporate-book' ),
+                  'false' => __( 'Off', '3d-corporate-book' )
               ),
               'class'   => '',
               'title'   => __( 'Auto Enable Thumbnail', '3d-corporate-book' ),
@@ -381,8 +381,8 @@ if ( !class_exists( 'Corporate_Book' ) ) {
               'std'     => 'false',
               'choices' => array(
                   'global' => __( 'Global Setting', '3d-corporate-book' ),
-                  'true'   => __( 'True', '3d-corporate-book' ),
-                  'false'  => __( 'False', '3d-corporate-book' )
+                  'true'   => __( 'On', '3d-corporate-book' ),
+                  'false'  => __( 'Off', '3d-corporate-book' )
               ),
               'class'   => '',
               'title'   => __( 'Enable AutoPlay', '3d-corporate-book' ),
@@ -393,8 +393,8 @@ if ( !class_exists( 'Corporate_Book' ) ) {
               'std'     => 'false',
               'choices' => array(
                   'global' => __( 'Global Setting', '3d-corporate-book' ),
-                  'true'   => __( 'True', '3d-corporate-book' ),
-                  'false'  => __( 'False', '3d-corporate-book' )
+                  'true'   => __( 'On', '3d-corporate-book' ),
+                  'false'  => __( 'Off', '3d-corporate-book' )
               ),
               'class'   => '',
               'title'   => __( 'Enable AutoPlay Automatically', '3d-corporate-book' ),
@@ -415,7 +415,7 @@ if ( !class_exists( 'Corporate_Book' ) ) {
         'choices' => array(
           'global'   => __( 'Global Setting', '3d-corporate-book' ),
           'reader'   => __( 'Vertical Reader', '3d-corporate-book' ),
-          'flipbook' => __( 'Corporate Book', '3d-corporate-book' ),
+          'flipbook' => __( 'Flipbook', '3d-corporate-book' ),
           'slider'   => __( 'Slider', '3d-corporate-book' )
         ),
         'title'   => __( 'Viewer Type', '3d-corporate-book' ),
@@ -433,7 +433,7 @@ if ( !class_exists( 'Corporate_Book' ) ) {
       );
 
       // TOP FEATURES: labels so these settings appear on the Global Settings page.
-      $bool = array( 'true' => __( 'True', '3d-corporate-book' ), 'false' => __( 'False', '3d-corporate-book' ) );
+      $bool = array( 'true' => __( 'On', '3d-corporate-book' ), 'false' => __( 'Off', '3d-corporate-book' ) );
       $top_features = array(
           'scroll_wheel' => array( 'title' => __( 'Zoom on Mouse Scroll', '3d-corporate-book' ), 'choices' => $bool ),
           'zoom_ratio' => array( 'title' => __( 'Zoom Ratio', '3d-corporate-book' ), 'type' => 'number', 'attr' => array( 'step' => 'any' ) ),

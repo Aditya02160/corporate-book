@@ -81,6 +81,8 @@ class Corporate_Book_Meta_boxes {
     wp_register_style( $this->base->plugin_slug . '-metabox-style', plugins_url( '../assets/css/metaboxes.css', __FILE__ ), array(), $this->base->version );
     wp_enqueue_style( $this->base->plugin_slug . '-metabox-style' );
     wp_enqueue_style( 'wp-color-picker' );
+    wp_enqueue_script( 'wp-color-picker' );
+    wp_add_inline_script( 'wp-color-picker', 'jQuery(function($){$("#corporate_book_bg_color").wpColorPicker();});' );
 
     // Load necessary metabox scripts.
     wp_register_script( $this->base->plugin_slug . '-metabox-script', plugins_url( '../assets/js/metaboxes.js', __FILE__ ),
@@ -131,28 +133,16 @@ class Corporate_Book_Meta_boxes {
    *
    */
   public function create_meta_boxes_shortcode( $post ) {
-    global $current_screen;
-
-    if ( $current_screen->post_type == 'corporate_book' ) {
-      if ( $current_screen->action == 'add' ) {
-        echo "Save Post to generate shortcode.";
-      }
-      else {
-        ?>
-          <strong>Embedded:</strong>
-          <br>
-          [corporate_book id="<?php echo esc_html($post->ID); ?>"][/corporate_book]
-          <hr>
-          <strong>Thumb - Lightbox(Popup):</strong>
-          <br>
-          [corporate_book id="<?php echo esc_html($post->ID); ?>" type="thumb"][/corporate_book]
-          <hr>
-	    <?php
-      }
+    // A new book already has its ID (WordPress makes a draft), so the shortcodes work right away.
+    $codes = array(
+      __( 'Embedded', '3d-corporate-book' )          => '[corporate_book id="' . (int) $post->ID . '"][/corporate_book]',
+      __( 'Cover card with popup', '3d-corporate-book' ) => '[corporate_book id="' . (int) $post->ID . '" type="thumb"][/corporate_book]',
+    );
+    foreach ( $codes as $label => $code ) {
+      echo '<p><strong>' . esc_html( $label ) . '</strong><br><input type="text" readonly class="widefat cb-shortcode" value="' . esc_attr( $code ) . '" onfocus="this.select()"/> '
+        . '<button type="button" class="button button-small" onclick="var i=this.previousElementSibling;navigator.clipboard.writeText(i.value);this.textContent=\'' . esc_js( __( 'Copied', '3d-corporate-book' ) ) . '\';">' . esc_html__( 'Copy', '3d-corporate-book' ) . '</button></p>';
     }
   }
-
-
 
   /**
    * Creates metaboxes for handling settings
@@ -267,8 +257,8 @@ class Corporate_Book_Meta_boxes {
     $this->create_normal_setting( 'source_type', $post );
     $this->create_normal_setting( 'pdf_source', $post );
     $this->create_normal_setting( 'pdf_thumb', $post );
-    $this->create_normal_setting( 'subscription', $post );
     $this->preview_field( $post );
+    $this->create_normal_setting( 'subscription', $post );
 
     ?>
 

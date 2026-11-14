@@ -113,12 +113,39 @@ class Corporate_Book_Settings {
    *
    * @param string $hook Current admin page.
    */
+  /**
+   * Section headings in the long tabs, keyed by the first setting of each section.
+   *
+   * @return string[]
+   */
+  private function sections() {
+    return array(
+      'viewerType'                   => __( 'Display', '3d-corporate-book' ),
+      'bg_color'                     => __( 'Background', '3d-corporate-book' ),
+      'height'                       => __( 'Size and pages', '3d-corporate-book' ),
+      'controls_position'            => __( 'Controls and sound', '3d-corporate-book' ),
+      'autoplay'                     => __( 'Autoplay', '3d-corporate-book' ),
+      'shelf_image'                  => __( 'Book shelf and book pages', '3d-corporate-book' ),
+      'external_translate'           => __( 'Translation plugin', '3d-corporate-book' ),
+      'text_toggle_sound'            => __( 'Toolbar buttons', '3d-corporate-book' ),
+      'text_share'                   => __( 'Sharing', '3d-corporate-book' ),
+      'text_loading'                 => __( 'Messages', '3d-corporate-book' ),
+      'text_sign_in'                 => __( 'Lock panel and cover card', '3d-corporate-book' ),
+      'subscription_enable'          => __( 'Lock', '3d-corporate-book' ),
+      'subscription_login_shortcode' => __( 'Sign in', '3d-corporate-book' ),
+      'razorpay_key_id'              => __( 'Razorpay', '3d-corporate-book' ),
+      'subscription_currency'        => __( 'Plans', '3d-corporate-book' ),
+    );
+  }
+
   public function settings_scripts( $hook ) {
     if ( $hook !== $this->hook ) {
       return;
     }
     wp_enqueue_media();
-    wp_enqueue_script( 'corporate-book-admin', plugins_url( '../assets/js/corporate-book-admin.js', __FILE__ ), array( 'jquery' ), $this->base->version, true );
+    wp_enqueue_style( 'wp-color-picker' );
+    wp_enqueue_script( 'corporate-book-admin', plugins_url( '../assets/js/corporate-book-admin.js', __FILE__ ), array( 'jquery', 'wp-color-picker' ), $this->base->version, true );
+    wp_add_inline_style( 'wp-color-picker', '.cb-settings-section{margin:28px 0 4px;padding:0 0 8px;border-bottom:2px solid #0093d0;color:#0b1f5c;font-size:15px;text-transform:uppercase;letter-spacing:.04em}.cb-settings-section:first-child{margin-top:8px}' );
   }
 
   public function settings_page() {
@@ -169,6 +196,9 @@ class Corporate_Book_Settings {
                   $active_set = true;
                   
                   foreach ( $this->tab_keys[ $id ] as $key ) {
+                    if ( isset( $this->sections()[ $key ] ) ) {
+                      echo '<h3 class="cb-settings-section">' . esc_html( $this->sections()[ $key ] ) . '</h3>';
+                    }
                     // Text defaults are plain strings, so they get a text field labelled with the default text.
                     $setting = is_array( $this->base->defaults[ $key ] ) ? null : array( 'title' => 'std', 'type' => 'text' );
                     $this->base->create_setting( $key, $setting );

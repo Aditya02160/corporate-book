@@ -109,7 +109,8 @@
         var name = (source.split('/').pop().replace(/\.pdf$/i, '') || 'book') + '-preview.pdf';
         return upload(new Blob([result.data], { type: 'application/pdf' }), name, 'preview').then(function (media) {
           $('#corporate_book_preview_pdf').val(media.id);
-          status.text('Preview created: ' + result.count + ' of ' + result.total + ' pages. Update the book to save it.');
+          status.text('Preview created: ' + result.count + ' of ' + result.total + ' pages. Click Publish or Update to keep it.');
+          unsaved = true;
         });
       })
       .catch(function (error) {
@@ -163,7 +164,8 @@
       })
       .then(function (media) {
         $('#corporate_book_pdf_thumb').val(media.url).trigger('change');
-        status.text('Thumbnail created. Update the book to save it.');
+        status.text('Thumbnail created. Click Publish or Update to keep it.');
+        unsaved = true;
       })
       .catch(function (error) {
         status.text('Thumbnail failed: ' + error.message);
@@ -190,6 +192,17 @@
   });
   $(function () {
     fillIn(false);
+  });
+
+  // A preview or thumbnail made but not saved is lost when the editor is left, so warn first.
+  var unsaved = false;
+  $(window).on('beforeunload', function () {
+    if (unsaved) {
+      return 'The new preview is not saved yet.';
+    }
+  });
+  $(document).on('submit', '#post', function () {
+    unsaved = false;
   });
 
   // Saving waits for a preview or thumbnail that is still being made, then saves with the same button.

@@ -13,4 +13,8 @@ jQuery(function ($) {
     });
     frame.open();
   });
+  // Background color: the WordPress color picker instead of a plain text box.
+  if ($.fn.wpColorPicker) {
+    $('#corporate_book_bg_color').wpColorPicker();
+  }
 });
