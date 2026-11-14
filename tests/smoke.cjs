@@ -192,7 +192,7 @@ async function waitFor(ready, ms) {
       && await l.$eval(`.cb-library-years .cb-filter[data-filter="${year}"]`, (e) => e.classList.contains('cb-active')), 'year filter keeps that year and marks both buttons');
     await lib.close();
     let v = await visit(null);
-    check(hasFile(v.body, 'cb-test/preview.pdf') && !hasFile(v.body, 'cb-test/sample.pdf') && !v.body.includes('cb-sign-in'), 'guest gets the free preview');
+    check(hasFile(v.body, 'corporate_book_pdf=') && hasFile(v.body, 'start=1') && !hasFile(v.body, 'cb-test/sample.pdf') && !v.body.includes('cb-sign-in'), 'guest gets the free preview (from the protected link, never the file)');
     check(!PHP_ERRORS.test(v.body), 'guest page has no PHP errors');
     check(await v.p.$eval('.cb-thumb-card .cb-thumb-title', (e) => e.textContent).catch(() => '') === 'Test Book'
       && await v.p.$('.cb-thumb-card .cb-preview-button') !== null, 'thumbnail shows the title and a Preview button to everyone');
@@ -209,7 +209,7 @@ async function waitFor(ready, ms) {
     check(/no-cache|no-store/.test(v.res.headers()['cache-control'] || ''), 'locked page is not cacheable');
     await v.ctx.close();
     v = await visit('reader');
-    check(hasFile(v.body, 'cb-test/preview.pdf') && !hasFile(v.body, 'cb-test/sample.pdf'), 'reader gets preview only');
+    check(hasFile(v.body, 'start=1') && !hasFile(v.body, 'cb-test/sample.pdf'), 'reader gets preview only');
     await pastEnd(v.p);
     await v.p.waitForSelector(`.cb-lock a[href="${SUBSCRIBE_URL}"]`, { state: 'visible', timeout: 30000 }).catch(() => {});
     check(await v.p.isVisible(`.cb-lock a[href="${SUBSCRIBE_URL}"]`), 'reader sees lock after preview');
@@ -221,6 +221,24 @@ async function waitFor(ready, ms) {
     // Per-book Subscription setting and "Create preview" (plan Task 5), as the admin.
     await page.goto(`${BASE}/wp-admin/edit.php?post_type=corporate_book`);
     const editUrl = await page.locator('a.row-title', { hasText: /^Test Book$/ }).first().getAttribute('href');
+    // Free preview from any page: only the reader's window is real (10% of the 3-page sample is 1 page).
+    const testBookId = new URL(editUrl).searchParams.get('post');
+    const win = Buffer.from(await (await fetch(`${BASE}/?corporate_book_pdf=${testBookId}&start=3`)).arrayBuffer()).toString('latin1');
+    check(/\(Page 3\)/.test(win) && !/\(Page 1\)/.test(win) && !/\(Page 2\)/.test(win) && /Subscribe to read this page/.test(win), 'readers without access get only the pages of their window');
+    const full = await fetch(`${BASE}/?corporate_book_pdf=${testBookId}`);
+    check(full.status === 403, `the full PDF still needs access (${full.status})`);
+    const startCtx = await browser.newContext();
+    const sp = await startCtx.newPage();
+    sp.setDefaultTimeout(90000);
+    await sp.goto(`${BASE}/?pagename=book-test#cbstart-3`);
+    await sp.waitForFunction(() => { const a = window.jQuery && window.jQuery('._df_book').data('df-app'); return a && a.pageCount; }, null, { timeout: 60000 }).catch(() => {});
+    await sp.waitForTimeout(2500);
+    const opened = await sp.evaluate(() => { const a = window.jQuery('._df_book').data('df-app'); const l = document.querySelector('._df_book .cb-lock'); return { page: a.currentPageNumber, total: a.pageCount, lock: !!(l && l.offsetParent) }; }).catch(() => ({}));
+    check(opened.total === 3 && opened.page >= 2 && !opened.lock, `a start link opens the book at that page, inside the free window (${JSON.stringify(opened)})`);
+    await sp.evaluate(() => window.jQuery('._df_book').data('df-app').gotoPage(1)).catch(() => {});
+    await sp.waitForSelector('._df_book .cb-lock .cb-lock-from', { state: 'visible', timeout: 20000 }).catch(() => {});
+    check(/Read the free preview from page 1/.test(await sp.$eval('._df_book .cb-lock .cb-lock-from', (e) => e.textContent).catch(() => '')), 'outside the window the panel offers a preview from that page');
+    await startCtx.close();
     await page.goto(editUrl);
     check(await page.$('#corporate_book_enable_download') === null, 'book editor has no download option');
     const preview = await page.evaluate(async (pdf) => {

@@ -22,7 +22,7 @@
     return list;
   }
 
-  function showLock(app, lock) {
+  function showLock(app, lock, page) {
     var panel = app.container.find('.cb-lock');
     if (!panel.length) {
       panel = $('<div class="cb-lock"><div class="cb-lock-title"></div><div class="cb-lock-box"><p class="cb-lock-text"></p><div class="cb-lock-account"></div></div></div>');
@@ -34,14 +34,27 @@
         // "Buy print copy": the server-rendered button; the shop script adds it to the cart.
         panel.find('.cb-lock-text').after($('<div class="cb-lock-print"></div>').html(lock.print));
       }
+      if (lock.window) {
+        // Free preview from any page: start a new window here (the page reloads with the new start).
+        $('<button type="button" class="cb-lock-from"></button>').on('click', function () {
+          window.location.hash = 'cbstart-' + $(this).data('page');
+          window.location.reload();
+        }).insertAfter(panel.find('.cb-lock-text'));
+      }
       $('<button type="button" class="cb-lock-back"></button>').text(lock.back).on('click', function () {
         panel.hide();
+        if (lock.window) {
+          app.gotoPage(lock.window.start || 1);
+        }
       }).appendTo(panel.find('.cb-lock-box'));
       // Typing and pressing in the panel must not flip, drag or zoom the book underneath.
       panel.on('mousedown touchstart pointerdown keydown keyup wheel', function (event) {
         event.stopPropagation();
       });
       app.container.append(panel);
+    }
+    if (lock.window && page) {
+      panel.find('.cb-lock-from').data('page', page).text(lock.from.replace('%d', page));
     }
     panel.toggleClass('cb-lock-full', app.container.width() < 700).show();
   }
@@ -52,6 +65,22 @@
       return;
     }
     app.cbLockWatched = true;
+    if (lock.window) {
+      // The book has every page; only the window is real. Outside it, show the panel.
+      setInterval(function () {
+        var start = lock.window.start || 1;
+        var end = start + lock.window.count - 1;
+        var page = app.currentPageNumber;
+        var panel = app.container.find('.cb-lock');
+        // In two-page view the page on the right of the window's first page still counts.
+        if (page > end || page < start - 1) {
+          showLock(app, lock, Math.max(1, Math.min(page, lock.window.total)));
+        } else if (panel.is(':visible')) {
+          panel.hide();
+        }
+      }, 400);
+      return;
+    }
     var next = app.next;
     app.next = function () {
       var before = app.currentPageNumber;

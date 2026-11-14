@@ -117,6 +117,20 @@ class Corporate_Book_Protected_PDF {
     if ( ! $book || 'corporate_book' !== $book->post_type
          || ( 'publish' !== $book->post_status && ! current_user_can( 'read_post', $book_id ) )
          || ! $base->user_has_access( $book_id ) ) {
+      // Readers without access may get the preview copy: every page, but only N pages from ?start= are real.
+      $path  = self::local_path( $book_id );
+      $total = $book && 'corporate_book' === $book->post_type && 'publish' === $book->post_status && isset( $_GET['start'] ) && '' !== $path ? Corporate_Book_Window::count_pages( $path ) : 0; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+      if ( $total > 0 ) {
+        $start = min( $total, max( 1, absint( $_GET['start'] ) ) ); // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+        $note  = __( 'Subscribe to read this page', '3d-corporate-book' );
+        // The placeholder text is drawn with a built-in PDF font, which only has Latin letters.
+        $note  = preg_match( '/^[\x20-\x7E]+$/', $note ) ? $note : 'Subscribe to read this page';
+        $file  = Corporate_Book_Window::file( $path, $start, $base->preview_pages( $total ), $note );
+        if ( '' !== $file ) {
+          $this->stream( $file );
+          exit;
+        }
+      }
       status_header( 403 );
       exit;
     }

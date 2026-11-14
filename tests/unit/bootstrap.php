@@ -226,3 +226,4 @@ require dirname( __DIR__, 2 ) . '/inc/account.php';
 require dirname( __DIR__, 2 ) . '/inc/settings.php';
 require dirname( __DIR__, 2 ) . '/inc/shop.php';
 require dirname( __DIR__, 2 ) . '/inc/tools.php';
+require dirname( __DIR__, 2 ) . '/inc/window-pdf.php';

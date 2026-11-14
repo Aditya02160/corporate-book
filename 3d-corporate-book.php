@@ -577,6 +577,7 @@ if ( !class_exists( 'Corporate_Book' ) ) {
       //reader accounts, Razorpay payments, and uploads made by the book editor
       include_once dirname( __FILE__ ) . '/inc/account.php';
       include_once dirname( __FILE__ ) . '/inc/upload.php';
+      include_once dirname( __FILE__ ) . '/inc/window-pdf.php';
       include_once dirname( __FILE__ ) . '/inc/shop.php';
       include_once dirname( __FILE__ ) . '/inc/tools.php';
       include_once dirname( __FILE__ ) . '/inc/reader.php';
@@ -806,6 +807,8 @@ if ( !class_exists( 'Corporate_Book' ) ) {
           'title'   => $this->get_translate( 'text_locked' ),
           'text'    => $this->get_translate( 'text_subscribe' ),
           'back'    => __( 'Back to preview', '3d-corporate-book' ),
+          /* translators: %d: page number */
+          'from'    => __( 'Read the free preview from page %d', '3d-corporate-book' ),
           // Sign-in and sign-up forms for guests; plans or the subscribe link for signed-in readers.
           'account' => Corporate_Book_Account::box(),
       );

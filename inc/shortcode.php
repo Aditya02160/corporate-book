@@ -370,6 +370,13 @@ class Corporate_Book_ShortCode {
       if ( $locked ) {
         if ( 'pdf' === $source_type ) {
           $preview_url = $base->preview_url( $post_id );
+          $full        = Corporate_Book_Protected_PDF::local_path( $post_id );
+          $total       = '' !== $full ? Corporate_Book_Window::count_pages( $full ) : 0;
+          if ( $total > 0 ) {
+            // Free preview from any page: the server sends every page, but only the window starting where the reader opens is real.
+            $preview_url = add_query_arg( 'start', 1, Corporate_Book_Protected_PDF::url( $post_id ) );
+            $cb_window   = array( 'count' => $base->preview_pages( $total ), 'total' => $total, 'start' => 1 );
+          }
           if ( '' === $preview_url ) {
             if ( 'thumb' === $atts['type'] && ! ( isset( $attr['shelf'] ) && 'true' === trim( $attr['shelf'] ) ) ) {
               $cover = empty( $thumb_url ) ? '' : '<div class="cb-cover"><img src="' . esc_url( $thumb_url ) . '" alt="' . esc_attr( $title ) . '" loading="lazy"/></div>';
@@ -382,6 +389,9 @@ class Corporate_Book_ShortCode {
           $post_data['source'] = array_slice( $post_data['source'], 0, $base->preview_pages( count( $post_data['source'] ) ) );
         }
         $post_data['cbLock']          = $base->lock_options();
+        if ( isset( $cb_window ) ) {
+          $post_data['cbLock']['window'] = $cb_window;
+        }
         // Second way to buy: a printed copy of this book, when it is for sale.
         $post_data['cbLock']['print'] = Corporate_Book_Shop::buy_button( $post_id );
         wp_enqueue_script( 'corporate-book-lock', plugins_url( 'assets/js/corporate-book-lock.js', $base->file ), array( 'jquery' ), $base->version, true );
@@ -486,7 +496,10 @@ class Corporate_Book_ShortCode {
 	    }
 			
       /*Normally this occurs only when a valid post id is added*/
-      $code = 'window.option_' . esc_js($id) . ' = ' . json_encode( $post_data ) . '; if(window.CORPORATE_BOOK && window.CORPORATE_BOOK.parseBooks){window.CORPORATE_BOOK.parseBooks();}';
+      $code = 'window.option_' . esc_js($id) . ' = ' . json_encode( $post_data ) . ';'
+        // Free preview from any page: the window starts at the page in the link (#cbstart-10 or a share link ending in /10/).
+        . '(function(o){var w=o.cbLock&&o.cbLock.window;if(!w){return;}var m=(location.hash||"").match(/(\\d+)\\/?$/),s=m?Math.min(Math.max(parseInt(m[1],10),1),w.total):1;w.start=s;o.openPage=s;o.source=o.source.replace(/([?&]start=)\\d+/,"$1"+s);})(window.option_' . esc_js( $id ) . ');'
+        . ' if(window.CORPORATE_BOOK && window.CORPORATE_BOOK.parseBooks){window.CORPORATE_BOOK.parseBooks();}';
 
       $html .= '<script class="df-shortcode-script" nowprocket type="application/javascript">' . $code . '</script>';
 

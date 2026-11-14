@@ -135,6 +135,7 @@ How it works:
 
 * Everyone, signed in or not, sees the thumbnail, cover, title and the free preview. A Preview button sits under each thumbnail.
 * Subscribers read every page. Everyone else reads the free preview, then sees a "Your free preview has ended" panel with Subscribe and Sign in buttons.
+* The free preview starts where the reader opens the book: a link to page 10 (a share link, or `#cbstart-10` at the end of the page address) gives pages 10 onward for the preview percentage. Every page number, thumbnail and contents entry stays in place, but pages outside the window read "Subscribe to read this page", and the panel offers "Read the free preview from page N". The full PDF is never sent; PDFs that cannot be read this way (for example encrypted ones) keep the first-pages preview.
 * Saving a locked book moves its full PDF into a protected folder. Only readers with access can load it.
 * Each book can override the global setting with **Required** or **Free**. Authors and editors always see the full book.
 * Pages with locked books are not cached, so one reader's view is never shown to another.
