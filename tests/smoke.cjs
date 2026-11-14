@@ -370,6 +370,7 @@ async function waitFor(ready, ms) {
     check(pickerOpened && await page.$('#corporate_book_upload_shelf_image') !== null, 'Select Image opens the media library for background and shelf images');
     const archive = await (await page.goto(`${BASE}/?post_type=corporate_book`)).text();
     check(archive.includes('cb-thumb-card') && archive.includes('cb-preview-button'), 'book lists show the cover card with title and button');
+    check(archive.includes('cb-library-grid') && !archive.includes('wp-block-post-featured-image'), 'book list page is the library grid, without full-width featured images');
     const newBook = `${BASE}/wp-admin/post-new.php?post_type=corporate_book`;
     await page.goto(newBook).catch(() => page.goto(newBook));
     const autoPreview = await page.evaluate(async (pdf) => {

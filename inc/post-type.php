@@ -132,6 +132,19 @@ class Corporate_Book_Post_Type {
     add_filter( 'get_the_excerpt', array( $this, 'book_list_card' ), 20, 2 );
     add_filter( 'has_post_thumbnail', array( $this, 'book_has_thumbnail' ), 10, 2 );
     add_filter( 'post_thumbnail_html', array( $this, 'book_thumbnail_html' ), 10, 2 );
+    // Block themes: the book list page is the library grid, not the theme's archive with full-width images.
+    if ( function_exists( 'register_block_template' ) && wp_is_block_theme() ) {
+      register_block_template(
+        '3d-corporate-book//archive-corporate_book',
+        array(
+          'title'   => __( 'Corporate Book library', '3d-corporate-book' ),
+          'content' => '<!-- wp:template-part {"slug":"header","tagName":"header"} /-->'
+            . '<!-- wp:group {"tagName":"main","align":"full","layout":{"type":"constrained","contentSize":"1200px"}} --><main class="wp-block-group alignfull">'
+            . '[corporate_book_library]</main><!-- /wp:group -->'
+            . '<!-- wp:template-part {"slug":"footer","tagName":"footer"} /-->',
+        )
+      );
+    }
     
   }
   
@@ -311,7 +324,7 @@ class Corporate_Book_Post_Type {
    */
   public function book_thumbnail_html( $html, $post_id = 0 ) {
     if ( '' === $html && 'corporate_book' === get_post_type( $post_id ) && '' !== $this->book_thumb_url( $post_id ) ) {
-      return '<img class="cb-featured-thumb" src="' . esc_url( $this->book_thumb_url( $post_id ) ) . '" alt="' . esc_attr( get_the_title( $post_id ) ) . '" loading="lazy"/>';
+      return '<img class="cb-featured-thumb" style="display:block;max-width:240px;width:100%;height:auto;margin:0 auto" src="' . esc_url( $this->book_thumb_url( $post_id ) ) . '" alt="' . esc_attr( get_the_title( $post_id ) ) . '" loading="lazy"/>';
     }
     return $html;
   }
