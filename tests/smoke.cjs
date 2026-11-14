@@ -204,6 +204,8 @@ async function waitFor(ready, ms) {
     await v.p.click('.cb-lock .cb-signin [name="log"]').catch(() => {});
     await v.p.keyboard.type('ab');
     check(await v.p.$eval('.cb-lock .cb-signin [name="log"]', (e) => e.value).catch(() => '') === 'ab', 'readers can type in the sign-in form over the book');
+    const fits = await v.p.$eval('.cb-lock', (e) => { const c = e.offsetParent.getBoundingClientRect(), r = e.getBoundingClientRect(); return getComputedStyle(e).overflowY === 'auto' && r.bottom <= c.bottom + 1; }).catch(() => false);
+    check(fits, 'preview-ended panel stays inside the book and scrolls');
     check(/no-cache|no-store/.test(v.res.headers()['cache-control'] || ''), 'locked page is not cacheable');
     await v.ctx.close();
     v = await visit('reader');

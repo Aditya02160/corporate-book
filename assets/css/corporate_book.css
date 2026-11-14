@@ -2519,11 +2519,11 @@ input.df-search-text:not(:placeholder-shown) ~ a.df-search-clear {
 .cb-trigger-custom { display: inline-block; cursor: pointer; }
 
 /* Subscription preview-ended panel, thumbnail title and Preview button */
-.cb-lock{position:absolute;top:0;right:0;bottom:0;width:50%;z-index:100;display:flex;flex-direction:column;justify-content:center;gap:16px;padding:24px;box-sizing:border-box;background:rgba(0,0,0,.88);color:#fff;text-align:center}
+.cb-lock{position:absolute;top:0;right:0;bottom:0;width:50%;z-index:100;display:flex;flex-direction:column;justify-content:safe center;gap:12px;padding:16px;overflow-y:auto;box-sizing:border-box;background:rgba(0,0,0,.88);color:#fff;text-align:center}
 .cb-lock.cb-lock-full{width:100%}
 .cb-lock-title{border:1px solid #fff;border-radius:6px;padding:12px;font-size:22px;font-weight:700}
-.cb-lock-box{border:1px solid #fff;border-radius:6px;padding:28px 16px}
-.cb-lock-text{margin:0 0 20px;font-size:20px;line-height:1.5}
+.cb-lock-box{border:1px solid #fff;border-radius:6px;padding:16px 12px}
+.cb-lock-text{margin:0 0 12px;font-size:17px;line-height:1.4}
 .cb-lock a.cb-lock-subscribe,.cb-lock a.cb-lock-signin{display:inline-block;padding:10px 22px;border-radius:4px;font-weight:700;text-decoration:none}
 .cb-lock a.cb-lock-subscribe{background:#ffd60a;color:#111}
 .cb-lock a.cb-lock-signin{background:#4a9cf0;color:#fff}

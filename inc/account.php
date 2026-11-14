@@ -116,7 +116,11 @@ class Corporate_Book_Account {
       );
     }
     $link = self::config( 'subscription_url' );
-    $link = '' !== $link && ! self::razorpay_ready()
+    if ( '' === $link && get_option( 'corporate_book_subscription_page' ) ) {
+      $link = (string) get_permalink( (int) get_option( 'corporate_book_subscription_page' ) );
+    }
+    // The subscription page lists the plans itself, so its box needs no Subscribe link.
+    $link = $with_plans && '' !== $link && ! self::razorpay_ready()
       ? '<a class="cb-lock-subscribe" href="' . esc_url( $link ) . '">' . esc_html( $base->get_translate( 'text_subscribe_button' ) ) . '</a>'
       : '';
     $html = '<div class="cb-account">';
