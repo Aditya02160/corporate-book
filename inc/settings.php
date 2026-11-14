@@ -114,6 +114,31 @@ class Corporate_Book_Settings {
    * @param string $hook Current admin page.
    */
   /**
+   * Settings shown in simple mode, with plain-language help. Everything else appears under "Show all settings".
+   *
+   * @return string[] Key => help text.
+   */
+  private function essentials() {
+    return array(
+      'viewerType'                   => __( 'How the book looks: Flipbook (pages turn like a real book), Vertical Reader (scroll down like a PDF) or Slider.', '3d-corporate-book' ),
+      'webgl'                        => __( '3D looks most realistic. 2D is lighter for old phones and computers.', '3d-corporate-book' ),
+      'bg_color'                     => __( 'Colour behind the book.', '3d-corporate-book' ),
+      'bg_image'                     => __( 'Optional picture behind the book. It replaces the colour.', '3d-corporate-book' ),
+      'post_urls'                    => __( 'On: every book gets its own web page, and /corporate-book/ lists all books.', '3d-corporate-book' ),
+      'enable_search'                => __( 'Adds a search button so readers can find words in the PDF.', '3d-corporate-book' ),
+      'subscription_enable'          => __( 'On: readers see only the free preview until they subscribe. Off: every book is free to read.', '3d-corporate-book' ),
+      'subscription_preview_percent' => __( 'How much of each book is free. 10 means the first 10% of pages.', '3d-corporate-book' ),
+      'subscription_signup'          => __( 'On: readers can create an account themselves.', '3d-corporate-book' ),
+      'google_client_id'             => __( 'Optional. Adds a "Continue with Google" button. Leave empty if you do not use it.', '3d-corporate-book' ),
+      'razorpay_key_id'              => __( 'From Razorpay Dashboard > Account & Settings > API Keys. Start with a Test Mode key (rzp_test_...).', '3d-corporate-book' ),
+      'razorpay_key_secret'          => __( 'Shown next to the Key ID in Razorpay. Kept on your server only.', '3d-corporate-book' ),
+      'razorpay_webhook_secret'      => __( 'Recommended. Makes payments count even if the reader closes the page. See the setup steps in the readme.', '3d-corporate-book' ),
+      'subscription_currency'        => __( 'Currency of your prices.', '3d-corporate-book' ),
+      'subscription_plans'           => __( 'One plan per line: Name | Price | Days. Example: Monthly | 399 | 30', '3d-corporate-book' ),
+    );
+  }
+
+  /**
    * Section headings in the long tabs, keyed by the first setting of each section.
    *
    * @return string[]
@@ -145,7 +170,7 @@ class Corporate_Book_Settings {
     wp_enqueue_media();
     wp_enqueue_style( 'wp-color-picker' );
     wp_enqueue_script( 'corporate-book-admin', plugins_url( '../assets/js/corporate-book-admin.js', __FILE__ ), array( 'jquery', 'wp-color-picker' ), $this->base->version, true );
-    wp_add_inline_style( 'wp-color-picker', '.cb-settings-section{margin:28px 0 4px;padding:0 0 8px;border-bottom:2px solid #0093d0;color:#0b1f5c;font-size:15px;text-transform:uppercase;letter-spacing:.04em}.cb-settings-section:first-child{margin-top:8px}' );
+    wp_add_inline_style( 'wp-color-picker', '.cb-settings-section{margin:28px 0 4px;padding:0 0 8px;border-bottom:2px solid #0093d0;color:#0b1f5c;font-size:15px;text-transform:uppercase;letter-spacing:.04em}.cb-settings-section:first-child{margin-top:8px}.cb-simple-root:not(.cb-show-all) .cb-advanced{display:none!important}.cb-simple-bar{display:flex;gap:12px;align-items:center;justify-content:space-between;margin:0;padding:12px 16px;background:#f0f6fc;border-bottom:1px solid #c5d9ed;font-size:13px}.cb-simple-bar label{font-weight:600;white-space:nowrap}.cb-simple-bar input{margin-right:6px}.corporate-book-settings .cb-simple-bar{padding-right:200px}' );
   }
 
   public function settings_page() {
@@ -164,7 +189,9 @@ class Corporate_Book_Settings {
     ?>
 
       <h2><?php echo esc_html( get_admin_page_title() ); ?></h2>
-      <form id="corporate-book-settings" method="post" class="corporate-book-settings postbox">
+      <form id="corporate-book-settings" method="post" class="corporate-book-settings postbox cb-simple-root">
+        <div class="cb-simple-bar"><span><?php esc_html_e( 'Showing the main settings. Everything else already has a good default.', '3d-corporate-book' ); ?></span>
+          <label><input type="checkbox" id="cb-show-all"/><?php esc_html_e( 'Show all settings', '3d-corporate-book' ); ?></label></div>
         
         <?php
         wp_nonce_field( 'corporate_book_settings_nonce', 'corporate_book_settings_nonce' );
@@ -178,7 +205,7 @@ class Corporate_Book_Settings {
                 $active_set = false;
                 foreach ( (array) $tabs as $id => $title ) {
                   ?>
-                    <li class="corporate-book-update-hash corporate-book-tab <?php echo( $active_set == false ? 'corporate-book-active' : '' ) ?>">
+                    <li class="corporate-book-update-hash corporate-book-tab <?php echo( $active_set == false ? 'corporate-book-active' : '' ) ?><?php echo array_intersect( $this->tab_keys[ $id ], array_keys( $this->essentials() ) ) ? '' : ' cb-advanced'; ?>">
                         <a href="#corporate-book-tab-content-<?php echo esc_html($id) ?>"><?php echo esc_html($title) ?></a></li>
                   <?php $active_set = true;
                 }
@@ -195,9 +222,22 @@ class Corporate_Book_Settings {
                   <?php
                   $active_set = true;
                   
-                  foreach ( $this->tab_keys[ $id ] as $key ) {
+                  $essentials = $this->essentials();
+                  $keys       = $this->tab_keys[ $id ];
+                  foreach ( $keys as $index => $key ) {
                     if ( isset( $this->sections()[ $key ] ) ) {
-                      echo '<h3 class="cb-settings-section">' . esc_html( $this->sections()[ $key ] ) . '</h3>';
+                      // A heading is advanced when no setting up to the next heading is shown in simple mode.
+                      $simple = false;
+                      for ( $next = $index; $next < count( $keys ) && ( $next === $index || ! isset( $this->sections()[ $keys[ $next ] ] ) ); $next++ ) {
+                        $simple = $simple || isset( $essentials[ $keys[ $next ] ] );
+                      }
+                      echo '<h3 class="cb-settings-section' . ( $simple ? '' : ' cb-advanced' ) . '">' . esc_html( $this->sections()[ $key ] ) . '</h3>';
+                    }
+                    if ( isset( $essentials[ $key ] ) && is_array( $this->base->defaults[ $key ] ) ) {
+                      $this->base->defaults[ $key ]['desc'] = $essentials[ $key ];
+                    }
+                    if ( ! isset( $essentials[ $key ] ) ) {
+                      echo '<style>.cb-simple-root:not(.cb-show-all) #corporate_book_' . esc_attr( $key ) . '_box{display:none}</style>';
                     }
                     // Text defaults are plain strings, so they get a text field labelled with the default text.
                     $setting = is_array( $this->base->defaults[ $key ] ) ? null : array( 'title' => 'std', 'type' => 'text' );
@@ -214,6 +254,7 @@ class Corporate_Book_Settings {
           </div>
       </form>
     <?php
+    self::simple_mode_script();
     
   }
   
@@ -281,6 +322,13 @@ class Corporate_Book_Settings {
     }
     echo '<p><button type="button" class="button" id="corporate_book_razorpay_test" data-nonce="' . esc_attr( wp_create_nonce( 'corporate_book_razorpay_test' ) ) . '">' . esc_html__( 'Test Razorpay connection', '3d-corporate-book' ) . '</button> <span id="corporate_book_razorpay_result" role="status"></span></p>';
     echo "<script>document.getElementById('corporate_book_razorpay_test').addEventListener('click',function(){var b=this,r=document.getElementById('corporate_book_razorpay_result');r.textContent='…';var f=new FormData();f.append('action','corporate_book_razorpay_test');f.append('_ajax_nonce',b.dataset.nonce);fetch(ajaxurl,{method:'POST',body:f,credentials:'same-origin'}).then(function(x){return x.json();}).then(function(a){r.textContent=a.data;r.style.color=a.success?'#1a7f37':'#b32d2e';}).catch(function(){r.textContent='Failed';});});</script>";
+  }
+
+  /**
+   * "Show all settings" / "Show more options" switch; the choice is remembered in this browser.
+   */
+  public static function simple_mode_script() {
+    echo '<script>(function(){var box=document.getElementById(\'cb-show-all\');if(!box)return;var root=box.closest(\'.cb-simple-root\');function apply(){root.classList.toggle(\'cb-show-all\',box.checked);try{localStorage.setItem(\'cbShowAll\',box.checked?\'1\':\'\');}catch(e){}var active=root.querySelector(\'.corporate-book-tabs-list li.corporate-book-active\');if(active&&getComputedStyle(active).display===\'none\'){root.querySelector(\'.corporate-book-tabs-list li a\').click();}}try{box.checked=localStorage.getItem(\'cbShowAll\')===\'1\';}catch(e){}box.addEventListener(\'change\',apply);apply();})();</script>'; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- fixed script.
   }
 
   public function update_settings() {

@@ -503,6 +503,14 @@ async function waitFor(ready, ms) {
     check(hook.status === 401, `Razorpay webhook rejects a bad signature (${hook.status})`);
     await page.goto(`${BASE}/wp-admin/post-new.php?post_type=corporate_book`);
     check(/\[corporate_book id="\d+"\]/.test(await page.$eval('input.cb-shortcode', (e) => e.value).catch(() => '')), 'new book shows its shortcode before the first save');
+    const editorSimple = await page.evaluate(() => !document.querySelector('a[href="#corporate-book-tab-content-layout"]').offsetParent && !!document.querySelector('#corporate_book_pdf_source').closest('.corporate-book-tab-content').offsetParent).catch(() => false);
+    check(editorSimple, 'book editor shows only the Book tab until "Show more options"');
+    await page.goto(settingsUrl);
+    const simple = await page.evaluate(() => ({ main: !!document.querySelector('#corporate_book_bg_color_box').offsetParent, extra: !!document.querySelector('#corporate_book_duration_box').offsetParent, layoutTab: !!document.querySelector('a[href="#corporate-book-tab-content-layout"]').offsetParent }));
+    await page.check('#cb-show-all');
+    const all = await page.evaluate(() => !!document.querySelector('#corporate_book_duration_box').offsetParent && !!document.querySelector('a[href="#corporate-book-tab-content-layout"]').offsetParent);
+    check(simple.main && !simple.extra && !simple.layoutTab && all, `Global Settings show main settings first, all with "Show all settings" (${JSON.stringify(simple)} ${all})`);
+    await page.uncheck('#cb-show-all');
   } catch (e) {
     check(false, e.message);
   } finally {

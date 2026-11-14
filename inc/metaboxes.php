@@ -82,6 +82,8 @@ class Corporate_Book_Meta_boxes {
     wp_enqueue_style( $this->base->plugin_slug . '-metabox-style' );
     wp_enqueue_style( 'wp-color-picker' );
     wp_enqueue_script( 'wp-color-picker' );
+    wp_add_inline_style( 'wp-color-picker', '.cb-simple-root:not(.cb-show-all) .cb-advanced{display:none!important}.cb-simple-bar{display:flex;gap:12px;align-items:center;justify-content:space-between;margin:0;padding:12px 16px;background:#f0f6fc;border-bottom:1px solid #c5d9ed;font-size:13px}.cb-simple-bar label{font-weight:600;white-space:nowrap}.cb-simple-bar input{margin-right:6px}' );
+    add_action( 'admin_footer', array( 'Corporate_Book_Settings', 'simple_mode_script' ) );
     wp_add_inline_script( 'wp-color-picker', 'jQuery(function($){$("#corporate_book_bg_color").wpColorPicker();});' );
 
     // Load necessary metabox scripts.
@@ -158,10 +160,10 @@ class Corporate_Book_Meta_boxes {
     wp_nonce_field( $this->base->plugin_slug, $this->base->plugin_slug );
 
     $tabs = array(
-        'source'  => __( 'Source', '3d-corporate-book' ),
-        'layout'   => __( 'General/Layout', '3d-corporate-book' ),
-        'flipbook' => __( 'Corporate Book', '3d-corporate-book' ),
-        'outline' => __( 'Outline', '3d-corporate-book' )
+        'source'  => __( 'Book', '3d-corporate-book' ),
+        'layout'   => __( 'Look', '3d-corporate-book' ),
+        'flipbook' => __( 'Flip effect', '3d-corporate-book' ),
+        'outline' => __( 'Table of contents', '3d-corporate-book' )
     );
 
     if ( $error = get_transient( "my_save_post_errors_{$post->ID}" ) ) { ?>
@@ -174,14 +176,16 @@ class Corporate_Book_Meta_boxes {
 
     //create tabs and content
     ?>
-    <div class="corporate-book-tabs">
+    <div class="corporate-book-tabs cb-simple-root">
+      <div class="cb-simple-bar"><span><?php esc_html_e( 'Pick the PDF and publish. Look, flip effect and table of contents follow Global Settings unless you change them here.', '3d-corporate-book' ); ?></span>
+        <label><input type="checkbox" id="cb-show-all"/><?php esc_html_e( 'Show more options', '3d-corporate-book' ); ?></label></div>
       <ul class="corporate-book-tabs-list">
         <?php
         //create tabs
         $active_set = false;
         foreach ( (array) $tabs as $id => $title ) {
           ?>
-          <li class="corporate-book-update-hash corporate-book-tab <?php echo( $active_set == false ? 'corporate-book-active' : '' ) ?>">
+          <li class="corporate-book-update-hash corporate-book-tab <?php echo( $active_set == false ? 'corporate-book-active' : '' ) ?><?php echo 'source' === $id ? '' : ' cb-advanced'; ?>">
             <a href="#corporate-book-tab-content-<?php echo esc_attr( $id ) ?>"><?php echo esc_attr( $title ) ?></a></li>
           <?php $active_set = true;
         }
