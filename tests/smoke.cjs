@@ -454,6 +454,38 @@ async function waitFor(ready, ms) {
     check(/Monthly.*399.*30 days/.test(planCards) && /Yearly/.test(planCards) && await a.$('.cb-plans-page form.cb-signin') !== null
       && await a.$('.cb-plan-card .cb-plan-signin') !== null, `subscription page is created with a card per plan and sign-in for guests (${planCards.slice(0, 80)})`);
     await acct.close();
+
+    // Readers never see WordPress itself: no toolbar, no dashboard, no wp-login screens; a front-end account page instead.
+    const r = await visit('reader');
+    check(!r.body.includes('id="wpadminbar"'), 'signed-in readers get no WordPress toolbar');
+    await r.p.goto(`${BASE}/wp-admin/profile.php`).catch(() => {});
+    check(/my-account/.test(r.p.url()) && !/wp-admin/.test(r.p.url()), `readers who open the dashboard land on My account (${r.p.url()})`);
+    let profile = false;
+    for (let i = 0; i < 10 && !profile; i++) {
+      await r.p.goto(`${BASE}/?pagename=my-account`);
+      profile = await r.p.$('.cb-profile form.cb-profile-details [name="email"]') !== null;
+      if (!profile) await r.p.waitForTimeout(500);
+    }
+    check(profile && await r.p.$('.cb-profile form.cb-profile-password') !== null && await r.p.$('.cb-profile .cb-profile-orders') !== null,
+      'My account page has details, password and payment history');
+    await r.p.fill('.cb-profile-details [name="first_name"]', 'Ria').catch(() => {});
+    await r.p.fill('.cb-profile-details [name="phone"]', '+91 98765 43210').catch(() => {});
+    await r.p.click('.cb-profile-details button[type="submit"]').catch(() => {});
+    await r.p.waitForFunction(() => /saved/i.test(document.querySelector('.cb-profile-details').closest('.cb-account').querySelector('.cb-account-message').textContent), null, { timeout: 30000 }).catch(() => {});
+    let saved = '';
+    for (let i = 0; i < 10 && saved !== 'Ria +91 98765 43210'; i++) {
+      await r.p.goto(`${BASE}/?pagename=my-account`);
+      saved = await r.p.evaluate(() => ['first_name', 'phone'].map((n) => document.querySelector(`.cb-profile-details [name="${n}"]`).value).join(' ')).catch(() => '');
+    }
+    check(saved === 'Ria +91 98765 43210', `readers can save their details (${saved})`);
+    await r.ctx.close();
+    const lost = await (await browser.newContext()).newPage();
+    await lost.goto(`${BASE}/wp-login.php?action=lostpassword`).catch(() => {});
+    check(/my-account/.test(lost.url()) && await lost.$('form.cb-lost') !== null, `lost password opens the site's own form, not wp-login (${lost.url()})`);
+    await lost.fill('form.cb-lost [name="email"]', 'reader@example.com').catch(() => {});
+    await lost.click('form.cb-lost button[type="submit"]').catch(() => {});
+    await lost.waitForFunction(() => /email/i.test(document.querySelector('form.cb-lost').closest('.cb-account').querySelector('.cb-account-message').textContent), null, { timeout: 30000 }).catch(() => {});
+    check(/email/i.test(await lost.$eval('.cb-account-message', (e) => e.textContent).catch(() => '')), 'lost password form answers on the page');
   } catch (e) {
     check(false, e.message);
   } finally {

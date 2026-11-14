@@ -31,15 +31,25 @@
   }
 
   function say(box, text) {
-    box.querySelector('.cb-account-message').textContent = text || '';
+    var message = box.querySelector('.cb-account-message');
+    if (message) {
+      message.textContent = text || '';
+    }
   }
 
   // Runs one request for a box: reloads the page when it works, shows the reason when it does not.
   function run(box, control, request) {
     control.disabled = true;
     say(box, '');
-    request().then(function () {
-      window.location.reload();
+    request().then(function (data) {
+      if (data && data.message) {
+        control.disabled = false;
+        say(box, data.message);
+      } else if (data && data.go) {
+        window.location.href = data.go;
+      } else {
+        window.location.reload();
+      }
     }, function (error) {
       control.disabled = false;
       say(box, error.message);
@@ -93,13 +103,12 @@
 
   document.addEventListener('submit', function (event) {
     var form = event.target;
-    var signin = form.classList.contains('cb-signin');
     var box = form.closest('.cb-account');
-    if (!box || !(signin || form.classList.contains('cb-signup'))) {
+    if (!box || !form.getAttribute('data-action')) {
       return;
     }
     event.preventDefault();
-    var data = { action: signin ? 'corporate_book_signin' : 'corporate_book_signup' };
+    var data = { action: form.getAttribute('data-action') };
     Array.prototype.forEach.call(form.elements, function (field) {
       if (field.name) {
         data[field.name] = field.value;

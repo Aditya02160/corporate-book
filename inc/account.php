@@ -17,12 +17,29 @@ class Corporate_Book_Account {
   const NONCE  = 'corporate_book_account';
   const UNTIL  = 'corporate_book_subscription_until';
   const ORDERS = 'corporate_book_orders';
+  const ROLE   = 'cb_reader';
 
   public function __construct() {
     foreach ( array( 'signin', 'signup' ) as $action ) {
       add_action( 'wp_ajax_nopriv_corporate_book_' . $action, array( $this, $action ) );
       add_action( 'wp_ajax_corporate_book_' . $action, array( $this, $action ) );
     }
+    foreach ( array( 'lost', 'reset' ) as $action ) {
+      add_action( 'wp_ajax_nopriv_corporate_book_' . $action, array( $this, $action ) );
+      add_action( 'wp_ajax_corporate_book_' . $action, array( $this, $action ) );
+    }
+    add_action( 'wp_ajax_corporate_book_profile', array( $this, 'save_profile' ) );
+    add_action( 'wp_ajax_corporate_book_password', array( $this, 'change_password' ) );
+    add_shortcode( 'corporate_book_profile', array( $this, 'profile_page' ) );
+    add_action( 'admin_init', array( $this, 'create_profile_page' ) );
+    // Readers live on the front end only: no toolbar, no dashboard, no wp-login screens.
+    if ( ! get_role( self::ROLE ) ) {
+      add_role( self::ROLE, __( 'Corporate Book Reader', '3d-corporate-book' ), array( 'read' => true ) );
+    }
+    add_filter( 'show_admin_bar', array( $this, 'hide_toolbar' ) );
+    add_action( 'admin_init', array( $this, 'keep_out_of_dashboard' ), 1 );
+    add_filter( 'login_redirect', array( $this, 'login_redirect' ), 10, 3 );
+    add_action( 'login_init', array( $this, 'keep_out_of_wp_login' ) );
     add_action( 'wp_ajax_corporate_book_order', array( $this, 'order' ) );
     add_action( 'wp_ajax_corporate_book_verify', array( $this, 'verify' ) );
     add_shortcode( 'corporate_book_account', array( $this, 'shortcode' ) );
@@ -128,14 +145,14 @@ class Corporate_Book_Account {
     if ( ! is_user_logged_in() ) {
       $signup = 'true' === self::config( 'subscription_signup' );
       $html  .= '' !== $link ? $link . '<div class="cb-lock-or">' . esc_html__( 'OR', '3d-corporate-book' ) . '</div>' : '';
-      $html  .= '<form class="cb-signin" method="post">'
+      $html  .= '<form class="cb-signin" method="post" data-action="corporate_book_signin">'
         . '<input type="text" name="log" required autocomplete="username" placeholder="' . esc_attr__( 'Email or username', '3d-corporate-book' ) . '" aria-label="' . esc_attr__( 'Email or username', '3d-corporate-book' ) . '"/>'
         . '<input type="password" name="pwd" required autocomplete="current-password" placeholder="' . esc_attr__( 'Password', '3d-corporate-book' ) . '" aria-label="' . esc_attr__( 'Password', '3d-corporate-book' ) . '"/>'
         . '<button type="submit" class="cb-lock-signin">' . esc_html( $base->get_translate( 'text_sign_in' ) ) . '</button>'
-        . '<p class="cb-account-links"><a href="' . esc_url( wp_lostpassword_url() ) . '">' . esc_html__( 'Forgot password?', '3d-corporate-book' ) . '</a>'
+        . '<p class="cb-account-links"><a href="' . esc_url( add_query_arg( 'cb_lost', '1', self::profile_url() ) ) . '">' . esc_html__( 'Forgot password?', '3d-corporate-book' ) . '</a>'
         . ( $signup ? ' &middot; <a href="#" class="cb-show-signup">' . esc_html__( 'Create an account', '3d-corporate-book' ) . '</a>' : '' ) . '</p></form>';
       if ( $signup ) {
-        $html .= '<form class="cb-signup" method="post" hidden>'
+        $html .= '<form class="cb-signup" method="post" data-action="corporate_book_signup" hidden>'
           . '<input type="email" name="email" required autocomplete="email" placeholder="' . esc_attr__( 'Email', '3d-corporate-book' ) . '" aria-label="' . esc_attr__( 'Email', '3d-corporate-book' ) . '"/>'
           . '<input type="password" name="pwd" required minlength="8" autocomplete="new-password" placeholder="' . esc_attr__( 'Password (8 characters or more)', '3d-corporate-book' ) . '" aria-label="' . esc_attr__( 'Password', '3d-corporate-book' ) . '"/>'
           . '<button type="submit" class="cb-lock-signin">' . esc_html__( 'Create account', '3d-corporate-book' ) . '</button>'
@@ -162,6 +179,7 @@ class Corporate_Book_Account {
       }
       /* translators: %s: reader's name */
       $html .= '<p class="cb-account-links">' . esc_html( sprintf( __( 'Signed in as %s', '3d-corporate-book' ), $user->display_name ) )
+        . ' &middot; <a class="cb-my-account" href="' . esc_url( self::profile_url() ) . '">' . esc_html__( 'My account', '3d-corporate-book' ) . '</a>'
         . ' &middot; <a class="cb-signout" href="' . esc_url( wp_logout_url( self::here() ) ) . '">' . esc_html__( 'Sign out', '3d-corporate-book' ) . '</a></p>';
     }
     return $html . '<p class="cb-account-message" role="alert"></p></div>';
@@ -180,7 +198,7 @@ class Corporate_Book_Account {
       /* translators: %s: date */
       $text .= ' · ' . sprintf( __( 'Subscription active until %s', '3d-corporate-book' ), self::date( self::until( $user->ID ) ) );
     }
-    return '<p class="cb-account-bar">' . esc_html( $text ) . ' &middot; <a class="cb-signout" href="' . esc_url( wp_logout_url( self::here() ) ) . '">' . esc_html__( 'Sign out', '3d-corporate-book' ) . '</a></p>';
+    return '<p class="cb-account-bar">' . esc_html( $text ) . ' &middot; <a class="cb-my-account" href="' . esc_url( self::profile_url() ) . '">' . esc_html__( 'My account', '3d-corporate-book' ) . '</a> &middot; <a class="cb-signout" href="' . esc_url( wp_logout_url( self::here() ) ) . '">' . esc_html__( 'Sign out', '3d-corporate-book' ) . '</a></p>';
   }
 
   /**
@@ -240,6 +258,258 @@ class Corporate_Book_Account {
     update_option( 'corporate_book_subscription_page', $page ? (int) $page : -1 );
   }
 
+  // ---- Readers stay on the front end ---------------------------------------------------------
+
+  /**
+   * Whether a user is a reader rather than site staff (staff can write posts).
+   *
+   * @param WP_User|int|null $user User; the current user when null.
+   *
+   * @return bool
+   */
+  private static function is_reader( $user = null ) {
+    $user = null === $user ? wp_get_current_user() : ( $user instanceof WP_User ? $user : get_userdata( (int) $user ) );
+    return $user && $user->exists() && ! user_can( $user, 'edit_posts' );
+  }
+
+  /**
+   * URL of the My account page.
+   *
+   * @return string
+   */
+  public static function profile_url() {
+    $page = (int) get_option( 'corporate_book_profile_page' );
+    $url  = $page > 0 ? get_permalink( $page ) : '';
+    return $url ? $url : home_url( '/' );
+  }
+
+  public function hide_toolbar( $show ) {
+    return self::is_reader() ? false : $show;
+  }
+
+  public function keep_out_of_dashboard() {
+    if ( wp_doing_ajax() || ! self::is_reader() ) {
+      return;
+    }
+    wp_safe_redirect( self::profile_url() );
+    exit;
+  }
+
+  public function login_redirect( $redirect, $requested, $user ) {
+    if ( $user instanceof WP_User && self::is_reader( $user ) && ( '' === $requested || false !== strpos( $redirect, admin_url() ) ) ) {
+      return self::profile_url();
+    }
+    return $redirect;
+  }
+
+  /**
+   * Readers never see wp-login.php: sign up, lost password and reset happen on My account.
+   * The plain sign-in form stays for site staff.
+   */
+  public function keep_out_of_wp_login() {
+    // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- only picks which page to show.
+    $action = isset( $_REQUEST['action'] ) ? sanitize_key( wp_unslash( $_REQUEST['action'] ) ) : 'login';
+    if ( in_array( $action, array( 'register', 'lostpassword', 'retrievepassword', 'rp', 'resetpass' ), true ) ) {
+      wp_safe_redirect( 'register' === $action ? self::profile_url() : add_query_arg( 'cb_lost', '1', self::profile_url() ) );
+      exit;
+    }
+    if ( 'login' === $action && self::is_reader() ) {
+      wp_safe_redirect( self::profile_url() );
+      exit;
+    }
+  }
+
+  /**
+   * Creates the "My account" page once, the first time an administrator opens the dashboard.
+   */
+  public function create_profile_page() {
+    if ( get_option( 'corporate_book_profile_page' ) || ! current_user_can( 'manage_options' ) ) {
+      return;
+    }
+    $page = wp_insert_post( array( 'post_type' => 'page', 'post_status' => 'publish', 'post_title' => __( 'My account', '3d-corporate-book' ), 'post_name' => 'my-account', 'post_content' => '[corporate_book_profile]' ) );
+    update_option( 'corporate_book_profile_page', $page ? (int) $page : -1 );
+  }
+
+  private static function field( $name, $label, $value, $type = 'text', $extra = '' ) {
+    return '<label class="cb-field"><span>' . esc_html( $label ) . '</span><input type="' . esc_attr( $type ) . '" name="' . esc_attr( $name ) . '" value="' . esc_attr( $value ) . '" ' . $extra . '/></label>';
+  }
+
+  /**
+   * [corporate_book_profile]: the reader's account page. Guests sign in, sign up or reset their password;
+   * readers edit their details, change their password, see their subscription and payments, and subscribe.
+   *
+   * @return string HTML.
+   */
+  public function profile_page() {
+    if ( ! defined( 'DONOTCACHEPAGE' ) ) {
+      define( 'DONOTCACHEPAGE', true );
+    }
+    wp_enqueue_style( 'corporate-book-style' );
+    $box = self::box( false ); // also loads the account script
+    // phpcs:disable WordPress.Security.NonceVerification.Recommended -- these only pick which form to show.
+    if ( ! is_user_logged_in() ) {
+      if ( isset( $_GET['cb_reset'], $_GET['login'] ) ) {
+        $form = '<form class="cb-reset" method="post" data-action="corporate_book_reset"><h3>' . esc_html__( 'Choose a new password', '3d-corporate-book' ) . '</h3>'
+          . '<input type="hidden" name="key" value="' . esc_attr( sanitize_text_field( wp_unslash( $_GET['cb_reset'] ) ) ) . '"/>'
+          . '<input type="hidden" name="login" value="' . esc_attr( sanitize_user( wp_unslash( $_GET['login'] ) ) ) . '"/>'
+          . self::field( 'pwd', __( 'New password (8 characters or more)', '3d-corporate-book' ), '', 'password', 'required minlength="8" autocomplete="new-password"' )
+          . '<button type="submit">' . esc_html__( 'Save password', '3d-corporate-book' ) . '</button></form>';
+      } elseif ( isset( $_GET['cb_lost'] ) ) {
+        $form = '<form class="cb-lost" method="post" data-action="corporate_book_lost"><h3>' . esc_html__( 'Forgot your password?', '3d-corporate-book' ) . '</h3>'
+          . '<p>' . esc_html__( 'Enter your email and we will send you a link to choose a new one.', '3d-corporate-book' ) . '</p>'
+          . self::field( 'email', __( 'Email', '3d-corporate-book' ), '', 'email', 'required autocomplete="email"' )
+          . '<button type="submit">' . esc_html__( 'Send link', '3d-corporate-book' ) . '</button>'
+          . '<p class="cb-account-links"><a href="' . esc_url( self::profile_url() ) . '">' . esc_html__( 'Back to sign in', '3d-corporate-book' ) . '</a></p></form>';
+      } else {
+        return '<div class="cb-profile cb-profile-guest"><div class="cb-lock cb-lock-static"><div class="cb-lock-box">' . $box . '</div></div></div>';
+      }
+      return '<div class="cb-profile cb-profile-guest"><div class="cb-account cb-profile-card">' . $form . '<p class="cb-account-message" role="alert"></p></div></div>';
+    }
+    // phpcs:enable
+    $user = wp_get_current_user();
+    if ( ! self::is_active( $user->ID ) && self::razorpay_ready() ) {
+      self::reconcile( $user->ID );
+    }
+    if ( self::is_active( $user->ID ) ) {
+      /* translators: %s: date */
+      $status = '<p class="cb-account-status">' . esc_html( sprintf( __( 'Your subscription is active until %s.', '3d-corporate-book' ), self::date( self::until( $user->ID ) ) ) ) . '</p>';
+    } else {
+      $status = '<p class="cb-account-status cb-inactive">' . esc_html__( 'You have no active subscription.', '3d-corporate-book' ) . '</p>';
+    }
+    $plans = '';
+    if ( self::razorpay_ready() ) {
+      foreach ( self::plans() as $index => $plan ) {
+        /* translators: 1: plan name, 2: price, 3: days of access */
+        $label  = sprintf( __( '%1$s: %2$s for %3$d days', '3d-corporate-book' ), $plan['name'], self::price( $plan['price'] ), $plan['days'] );
+        $plans .= '<button type="button" class="cb-plan" data-plan="' . (int) $index . '">' . esc_html( $label ) . '</button>';
+      }
+      $plans = '<div class="cb-profile-plans"><p>' . esc_html( self::is_active( $user->ID ) ? __( 'Extend your subscription:', '3d-corporate-book' ) : __( 'Choose a plan:', '3d-corporate-book' ) ) . '</p>' . $plans . '</div>';
+    } else {
+      $sub   = (int) get_option( 'corporate_book_subscription_page' );
+      $link  = self::config( 'subscription_url' ) ? self::config( 'subscription_url' ) : ( $sub > 0 ? get_permalink( $sub ) : '' );
+      $plans = $link ? '<p><a class="cb-plan-signin" href="' . esc_url( $link ) . '">' . esc_html__( 'See subscription plans', '3d-corporate-book' ) . '</a></p>' : '';
+    }
+    $rows = '';
+    foreach ( array_reverse( self::orders( $user->ID ), true ) as $order ) {
+      $rows .= '<tr><td>' . esc_html( self::date( (int) $order['time'] ) ) . '</td><td>' . esc_html( $order['plan'] ) . '</td><td>' . esc_html( self::price( $order['amount'] / 100 ) ) . '</td><td>'
+        . esc_html( $order['paid'] ? __( 'Paid', '3d-corporate-book' ) : __( 'Not paid', '3d-corporate-book' ) ) . '</td></tr>';
+    }
+    $orders = '<table class="cb-profile-orders"><thead><tr><th>' . esc_html__( 'Date', '3d-corporate-book' ) . '</th><th>' . esc_html__( 'Plan', '3d-corporate-book' ) . '</th><th>' . esc_html__( 'Amount', '3d-corporate-book' ) . '</th><th>' . esc_html__( 'Status', '3d-corporate-book' ) . '</th></tr></thead><tbody>'
+      . ( '' !== $rows ? $rows : '<tr><td colspan="4">' . esc_html__( 'No payments yet.', '3d-corporate-book' ) . '</td></tr>' ) . '</tbody></table>';
+    $message = '<p class="cb-account-message" role="alert"></p>';
+    return '<div class="cb-profile">'
+      . '<div class="cb-account cb-profile-card"><h3>' . esc_html__( 'Subscription', '3d-corporate-book' ) . '</h3>' . $status . $plans . $message . '</div>'
+      . '<div class="cb-account cb-profile-card"><h3>' . esc_html__( 'My details', '3d-corporate-book' ) . '</h3><form class="cb-profile-details" method="post" data-action="corporate_book_profile">'
+      . self::field( 'first_name', __( 'First name', '3d-corporate-book' ), $user->first_name, 'text', 'autocomplete="given-name"' )
+      . self::field( 'last_name', __( 'Last name', '3d-corporate-book' ), $user->last_name, 'text', 'autocomplete="family-name"' )
+      . self::field( 'email', __( 'Email', '3d-corporate-book' ), $user->user_email, 'email', 'required autocomplete="email"' )
+      . self::field( 'phone', __( 'Phone', '3d-corporate-book' ), get_user_meta( $user->ID, 'cb_phone', true ), 'tel', 'autocomplete="tel"' )
+      . self::field( 'company', __( 'Company', '3d-corporate-book' ), get_user_meta( $user->ID, 'cb_company', true ), 'text', 'autocomplete="organization"' )
+      . '<button type="submit">' . esc_html__( 'Save details', '3d-corporate-book' ) . '</button></form>' . $message . '</div>'
+      . '<div class="cb-account cb-profile-card"><h3>' . esc_html__( 'Change password', '3d-corporate-book' ) . '</h3><form class="cb-profile-password" method="post" data-action="corporate_book_password">'
+      . self::field( 'current', __( 'Current password', '3d-corporate-book' ), '', 'password', 'required autocomplete="current-password"' )
+      . self::field( 'pwd', __( 'New password (8 characters or more)', '3d-corporate-book' ), '', 'password', 'required minlength="8" autocomplete="new-password"' )
+      . '<button type="submit">' . esc_html__( 'Change password', '3d-corporate-book' ) . '</button></form>' . $message . '</div>'
+      . '<div class="cb-account cb-profile-card cb-profile-wide"><h3>' . esc_html__( 'Payment history', '3d-corporate-book' ) . '</h3>' . $orders . '</div>'
+      . '<p class="cb-profile-signout"><a class="cb-signout" href="' . esc_url( wp_logout_url( home_url( '/' ) ) ) . '">' . esc_html__( 'Sign out', '3d-corporate-book' ) . '</a></p>'
+      . '</div>';
+  }
+
+  public function save_profile() {
+    check_ajax_referer( self::NONCE );
+    $user = wp_get_current_user();
+    if ( ! $user->exists() ) {
+      wp_send_json_error( __( 'Sign in again.', '3d-corporate-book' ), 401 );
+    }
+    // phpcs:disable WordPress.Security.NonceVerification.Missing -- checked above.
+    $get   = function ( $key ) {
+      return isset( $_POST[ $key ] ) ? sanitize_text_field( wp_unslash( $_POST[ $key ] ) ) : '';
+    };
+    $email = isset( $_POST['email'] ) ? sanitize_email( wp_unslash( $_POST['email'] ) ) : '';
+    // phpcs:enable
+    if ( ! is_email( $email ) ) {
+      wp_send_json_error( __( 'Enter a valid email address.', '3d-corporate-book' ), 400 );
+    }
+    $owner = email_exists( $email );
+    if ( $owner && (int) $owner !== $user->ID ) {
+      wp_send_json_error( __( 'Another account already uses this email.', '3d-corporate-book' ), 400 );
+    }
+    $name   = trim( $get( 'first_name' ) . ' ' . $get( 'last_name' ) );
+    $result = wp_update_user( array( 'ID' => $user->ID, 'first_name' => $get( 'first_name' ), 'last_name' => $get( 'last_name' ), 'user_email' => $email, 'display_name' => '' !== $name ? $name : $user->display_name ) );
+    if ( is_wp_error( $result ) ) {
+      wp_send_json_error( $result->get_error_message(), 400 );
+    }
+    update_user_meta( $user->ID, 'cb_phone', $get( 'phone' ) );
+    update_user_meta( $user->ID, 'cb_company', $get( 'company' ) );
+    wp_send_json_success( array( 'message' => __( 'Your details are saved.', '3d-corporate-book' ) ) );
+  }
+
+  public function change_password() {
+    check_ajax_referer( self::NONCE );
+    $user = wp_get_current_user();
+    // phpcs:disable WordPress.Security.NonceVerification.Missing, WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- checked above; passwords must reach WordPress unchanged.
+    $current  = isset( $_POST['current'] ) ? (string) wp_unslash( $_POST['current'] ) : '';
+    $password = isset( $_POST['pwd'] ) ? (string) wp_unslash( $_POST['pwd'] ) : '';
+    // phpcs:enable
+    $key = self::throttle_key( 'password', (string) $user->ID );
+    if ( ! $user->exists() || self::too_many( $key, 5 ) ) {
+      wp_send_json_error( __( 'Too many attempts. Try again in 15 minutes.', '3d-corporate-book' ), 429 );
+    }
+    if ( ! wp_check_password( $current, $user->user_pass, $user->ID ) ) {
+      self::count_try( $key );
+      wp_send_json_error( __( 'Your current password is not right.', '3d-corporate-book' ), 400 );
+    }
+    if ( strlen( $password ) < 8 ) {
+      wp_send_json_error( __( 'Use a password of 8 characters or more.', '3d-corporate-book' ), 400 );
+    }
+    wp_set_password( $password, $user->ID );
+    wp_set_auth_cookie( $user->ID, true, is_ssl() ); // wp_set_password signs the reader out everywhere
+    wp_send_json_success();
+  }
+
+  public function lost() {
+    check_ajax_referer( self::NONCE );
+    $key = self::throttle_key( 'lost' );
+    if ( self::too_many( $key, 5 ) ) {
+      wp_send_json_error( __( 'Too many attempts. Try again in 15 minutes.', '3d-corporate-book' ), 429 );
+    }
+    self::count_try( $key );
+    // phpcs:ignore WordPress.Security.NonceVerification.Missing -- checked above.
+    $email = isset( $_POST['email'] ) ? sanitize_email( wp_unslash( $_POST['email'] ) ) : '';
+    $user  = is_email( $email ) ? get_user_by( 'email', $email ) : false;
+    if ( $user ) {
+      $reset = get_password_reset_key( $user );
+      if ( ! is_wp_error( $reset ) ) {
+        $link = add_query_arg( array( 'cb_reset' => $reset, 'login' => rawurlencode( $user->user_login ) ), self::profile_url() );
+        /* translators: %s: site name */
+        $subject = sprintf( __( '[%s] Choose a new password', '3d-corporate-book' ), wp_specialchars_decode( get_bloginfo( 'name' ), ENT_QUOTES ) );
+        /* translators: %s: link */
+        wp_mail( $user->user_email, $subject, sprintf( __( "Someone asked to reset the password of your account.\n\nTo choose a new password, open this link:\n%s\n\nIf it was not you, ignore this email.", '3d-corporate-book' ), $link ) );
+      }
+    }
+    // The same answer either way, so the form does not reveal who has an account.
+    wp_send_json_success( array( 'message' => __( 'If this email has an account, we sent it a link to choose a new password.', '3d-corporate-book' ) ) );
+  }
+
+  public function reset() {
+    check_ajax_referer( self::NONCE );
+    // phpcs:disable WordPress.Security.NonceVerification.Missing, WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- checked above; passwords must reach WordPress unchanged.
+    $login    = isset( $_POST['login'] ) ? sanitize_user( wp_unslash( $_POST['login'] ) ) : '';
+    $reset    = isset( $_POST['key'] ) ? sanitize_text_field( wp_unslash( $_POST['key'] ) ) : '';
+    $password = isset( $_POST['pwd'] ) ? (string) wp_unslash( $_POST['pwd'] ) : '';
+    // phpcs:enable
+    $user = check_password_reset_key( $reset, $login );
+    if ( is_wp_error( $user ) ) {
+      wp_send_json_error( __( 'This link has expired. Ask for a new one.', '3d-corporate-book' ), 400 );
+    }
+    if ( strlen( $password ) < 8 ) {
+      wp_send_json_error( __( 'Use a password of 8 characters or more.', '3d-corporate-book' ), 400 );
+    }
+    reset_password( $user, $password );
+    wp_signon( array( 'user_login' => $user->user_login, 'user_password' => $password, 'remember' => true ), is_ssl() );
+    wp_send_json_success( array( 'go' => self::profile_url() ) );
+  }
+
   // ---- Sign in and sign up -------------------------------------------------------------------
 
   private static function throttle_key( $what, $who = '' ) {
@@ -295,7 +565,7 @@ class Corporate_Book_Account {
       wp_send_json_error( __( 'This email already has an account. Sign in instead.', '3d-corporate-book' ), 400 );
     }
     self::count_try( $key );
-    $user_id = wp_insert_user( array( 'user_login' => $email, 'user_email' => $email, 'user_pass' => $password, 'role' => get_option( 'default_role', 'subscriber' ) ) );
+    $user_id = wp_insert_user( array( 'user_login' => $email, 'user_email' => $email, 'user_pass' => $password, 'role' => self::ROLE ) );
     if ( is_wp_error( $user_id ) ) {
       wp_send_json_error( $user_id->get_error_message(), 400 );
     }

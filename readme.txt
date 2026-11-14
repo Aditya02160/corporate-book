@@ -105,6 +105,8 @@ Readers sign in, create an account and sign out inside the book. To sell subscri
 
 The plugin creates a **Subscription** page for you (`[corporate_book_subscription]`): one card per plan with its price and a Subscribe button, plus sign in, sign up and sign out. Add `[corporate_book_account]` to any page for a box with sign in, plans and sign out. Administrators see each reader's subscription in the Users list and can change the "Subscription active until" date on the reader's profile.
 
+Readers never see WordPress itself. The plugin creates a **My account** page (`[corporate_book_profile]`) where readers edit their name, email, phone and company, change or reset their password, see their subscription and payment history, and subscribe or renew. New readers get the Corporate Book Reader role. Readers get no WordPress toolbar, and opening the dashboard or the WordPress sign-up, lost-password or reset screens takes them to My account. Staff who can write posts keep the normal WordPress screens.
+
 Razorpay Checkout loads from checkout.razorpay.com when a reader picks a plan, and the plugin calls api.razorpay.com to create and confirm payments. See Razorpay's terms and privacy policy.
 
 On nginx, add this rule so the protected folder cannot be opened directly (Apache uses the included .htaccess):
