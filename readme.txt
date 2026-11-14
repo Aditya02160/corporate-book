@@ -100,6 +100,22 @@ Readers can buy printed books as well as the digital subscription.
 * With the Razorpay webhook set up, a payment counts even if the reader closes the page, and a refund in Razorpay marks the order Refunded.
 * Printed books are GST-exempt in India (HSN 4901), so no tax lines are added; prices are final.
 
+### More for readers
+* **Coupons:** Global Settings > Print > Coupon Codes, one per line (`WELCOME10 | 10%`, `FLAT100 | 100`, optionally `| 2026-12-31` as the last day).
+* **Delivery estimate:** the third column of Shipping by Distance (`300 | 30 | 2-3`) shows "Delivery in about 2-3 days" in the cart.
+* **Gifts:** tick "This is a gift" at checkout to add a message (printed on the packing slip, no prices). On the Subscription page, "Buy it as a gift" sends the days to another email; an account is made for them if needed.
+* **Cancel:** readers cancel orders that have not shipped from My account; online payments are refunded through Razorpay automatically (you are emailed if the refund fails).
+* **Invoice:** each paid order has an invoice page (Print / Save as PDF) with a running number, your business name, address and GSTIN.
+* **Saved books** ("Save for later") on My account, and **Email me when back in stock** on sold-out books.
+* **Continue reading** from the last page and **bookmarks** under each book, kept in the reader's browser.
+* **Online reading with print:** Global Settings > Print > Online Reading With Print gives free days with each print order.
+
+### More for you
+* **Corporate Books > Sales:** print and subscription sales for 12 months, best sellers, active subscribers, readers, and anonymous reading statistics per book (opened, average pages read, how many reached the end of the free preview).
+* **Export CSV** on Print Orders; **Packing slip** and **Invoice** buttons on each order.
+* **Shiprocket:** add an API user's email and password in Global Settings > Print and the pickup location name; each order gets **Send to Shiprocket**, and the tracking number is filled in when Shiprocket returns one.
+* **Low stock alert** email at the number you choose; **Make them all now** on the book list creates every missing preview and thumbnail.
+
 ### Realistic book and reading desk
 * **Realistic Book** (Global Settings > General, on by default): hard 3D cover, visible page thickness, soft curling paper, a slight tilt and a slower page turn. The cover opens by itself when the book comes into view, and the top page lifts when the mouse nears its outer bottom corner. 3D mode only; readers who ask for reduced motion skip the opening animation.
 * **Reading Desk** (on by default): embedded books lie on a wooden desk with a desk lamp, a steaming cup of coffee, a pen and reading glasses. A lamp button in the corner switches the light on and off; the choice is remembered in the reader's browser. On phones only the lamp is shown.

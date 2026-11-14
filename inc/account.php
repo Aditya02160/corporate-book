@@ -730,6 +730,8 @@ class Corporate_Book_Account {
       $subject = sprintf( __( '[%s] Payment received', '3d-corporate-book' ), wp_specialchars_decode( get_bloginfo( 'name' ), ENT_QUOTES ) );
       /* translators: 1: plan, 2: amount, 3: payment ID, 4: date, 5: account page URL */
       $body = sprintf( __( "Thank you for subscribing.\n\nPlan: %1\$s\nAmount: %2\$s\nPayment ID: %3\$s\nAccess until: %4\$s\n\nYour account: %5\$s", '3d-corporate-book' ), $order['plan'], self::price( $order['amount'] / 100 ), $payment_id, self::date( self::until( $user_id ) ), self::profile_url() );
+      /* translators: %s: email address */
+      $body .= '' !== $gift ? "\n\n" . sprintf( __( 'This was a gift for %s. We have emailed them.', '3d-corporate-book' ), $gift ) : '';
       wp_mail( $user->user_email, $subject, $body );
     }
   }

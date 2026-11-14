@@ -42,7 +42,8 @@
   }
 
   function setupBook(node, app) {
-    var book = parseInt(node.id, 10);
+    // The viewer's element id is "df_" plus the book's post ID.
+    var book = parseInt(String(node.id).replace(/\D+/g, ''), 10);
     if (!book) {
       return;
     }

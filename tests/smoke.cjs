@@ -637,6 +637,112 @@ async function waitFor(ready, ms) {
     check(!!codNo && (await page.content()).includes('Cash on delivery'), `cash on delivery orders are placed without paying online (${codNo})`);
     check(shopErrors.length === 0, `shop pages have no JavaScript errors ${shopErrors.join(' | ')}`);
     await shopCtx.close();
+
+    {
+    // ---- New features: coupons, gifts, invoices, cancel, CSV, Shiprocket, dashboard, wishlist, stock alerts, bookmarks, gift subscription. ----
+    const lastMail = () => { try { return fs.readFileSync(path.join(fixtures, 'mail.txt'), 'utf8'); } catch (e) { return ''; } };
+    await saveSettings({ print_coupons: 'WELCOME10 | 10%', shiprocket_email: 'api@example.test', shiprocket_password: 'secret', invoice_gstin: '09ABCDE1234F1Z5' }, { print_coupons: 'WELCOME10 | 10%' }).catch(() => '');
+    const fx = await browser.newContext();
+    await fx.exposeBinding('cbSign', (src, o, p) => require('crypto').createHmac('sha256', 'smokesecret').update(`${o}|${p}`).digest('hex'));
+    const m = await fx.newPage();
+    m.setDefaultTimeout(90000);
+    const fxErrors = []; m.on('pageerror', (e) => fxErrors.push(e.message));
+    m.on('dialog', (d) => d.accept());
+    await m.goto(`${BASE}/wp-login.php`);
+    await m.fill('#user_login', 'member'); await m.fill('#user_pass', 'password');
+    await Promise.all([m.waitForNavigation(), m.click('#wp-submit')]);
+    // Wishlist.
+    await m.goto(`${BASE}/?pagename=subscription`);
+    await m.click('.cb-print-card:has(h3:text-is("Test Book")) .cb-wish');
+    await m.waitForFunction(() => document.querySelector('.cb-wish.cb-wished'), null, { timeout: 20000 }).catch(() => {});
+    let saved = '';
+    for (let i = 0; i < 10 && !/Test Book/.test(saved); i++) {
+      await m.goto(`${BASE}/?pagename=my-account`);
+      saved = await m.$eval('.cb-wishlist', (e) => e.textContent).catch(() => '');
+    }
+    check(/Test Book/.test(saved), 'Save for later lists the book under Saved books');
+    // Coupon, delivery estimate, gift and cash on delivery in one order.
+    await m.goto(`${BASE}/?pagename=subscription`);
+    await m.click('.cb-print-card:has(h3:text-is("Bulk Book")) .cb-add-cart');
+    await m.goto(`${BASE}/?pagename=cart`);
+    await m.waitForSelector('.cb-cart-table tr', { timeout: 30000 }).catch(() => {});
+    await m.fill('.cb-checkout [name="pin"]', '201301');
+    await m.fill('.cb-checkout [name="coupon"]', 'welcome10');
+    await m.click('.cb-apply-coupon');
+    await m.waitForFunction(() => /WELCOME10/.test(document.querySelector('.cb-cart-totals').textContent), null, { timeout: 20000 }).catch(() => {});
+    const totals = await m.$eval('.cb-cart-totals', (e) => e.textContent.replace(/\s+/g, ' ')).catch(() => '');
+    check(/Coupon WELCOME10− ₹25/.test(totals) && /Delivery in about 1-2 days/.test(totals), `coupon and delivery estimate in the cart (${totals})`);
+    await m.check('.cb-checkout [name="gift"]');
+    await m.fill('.cb-checkout [name="gift_message"]', 'Happy birthday, Ravi!');
+    await m.check('.cb-pay [value="cod"]').catch(() => {});
+    await m.click('.cb-place-order');
+    await m.waitForSelector('.cb-cart-done', { timeout: 40000 }).catch(() => {});
+    const giftNo = ((await m.$eval('.cb-cart-done', (e) => e.textContent).catch(() => '')).match(/#(\d+)/) || [])[1];
+    check(!!giftNo, `gift order with coupon placed (${giftNo})`);
+    // Admin: packing slip, invoice, Shiprocket.
+    const slip = await (await page.goto(`${BASE}/?cb_doc=slip&cb_order=${giftNo}`)).text();
+    check(/Happy birthday, Ravi!/.test(slip) && !/₹/.test(slip), 'packing slip shows the gift message and no prices');
+    const invoice = await (await page.goto(`${BASE}/?cb_doc=invoice&cb_order=${giftNo}`)).text();
+    check(/CB-\d{5}/.test(invoice) && /09ABCDE1234F1Z5/.test(invoice) && /HSN 4901/.test(invoice), 'invoice has a running number, the GSTIN and the GST note');
+    await page.goto(`${BASE}/wp-admin/post.php?post=${giftNo}&action=edit`);
+    await Promise.all([page.waitForNavigation(), page.click('.cb-order-docs a:has-text("Send to Shiprocket")')]).catch(() => {});
+    check(/Sent to Shiprocket/.test(await page.content()) && await page.$eval('#cb_order_tracking', (e) => e.value).catch(() => '') === 'SR123AWB', 'Send to Shiprocket stores the courier tracking number');
+    // Reader: invoice link and cancel.
+    let rowText = '';
+    for (let i = 0; i < 10 && !rowText.includes(`#${giftNo}`); i++) {
+      await m.goto(`${BASE}/?pagename=my-account`);
+      rowText = await m.$eval('.cb-print-orders', (e) => e.textContent).catch(() => '');
+    }
+    check(await m.$(`.cb-order-actions a[href*="cb_order=${giftNo}"]`) !== null, 'My account links to the invoice');
+    const ownInvoice = await (await m.goto(`${BASE}/?cb_doc=invoice&cb_order=${giftNo}`)).text();
+    check(/Invoice/.test(ownInvoice) && /Bulk Book/.test(ownInvoice), 'readers can open their own invoice');
+    const otherSlip = await m.goto(`${BASE}/?cb_doc=slip&cb_order=${giftNo}`);
+    check(otherSlip.status() === 403, 'readers cannot open packing slips');
+    await m.goto(`${BASE}/?pagename=my-account`);
+    await m.click(`.cb-cancel-order[data-order="${giftNo}"]`).catch(() => {});
+    await m.waitForTimeout(3500);
+    let cancelled = '';
+    for (let i = 0; i < 10 && !/Cancelled/.test(cancelled); i++) {
+      await m.goto(`${BASE}/?pagename=my-account`);
+      cancelled = await m.$eval('.cb-print-orders', (e) => e.textContent).catch(() => '');
+    }
+    check(/Cancelled/.test(cancelled), 'readers can cancel an order that has not shipped');
+    // CSV export.
+    await page.goto(`${BASE}/wp-admin/edit.php?post_type=cb_order`);
+    const csvUrl = await page.$eval('a:has-text("Export CSV")', (e) => e.href).catch(() => '');
+    const csv = csvUrl ? await (await page.request.get(csvUrl)).text() : '';
+    check(/Order,Date,Status/.test(csv) && /Asha Rao/.test(csv), 'orders export as CSV');
+    // Back in stock.
+    await setPrint(bulkEdit, { print_sell: 'true', print_price: '250', print_shipping: '30', print_stock: '0' });
+    await m.goto(`${BASE}/?pagename=subscription`);
+    await m.click('.cb-print-card:has(h3:text-is("Bulk Book")) .cb-notify').catch(() => {});
+    await m.waitForFunction(() => /email you/i.test((document.querySelector('.cb-notify') || {}).textContent || ''), null, { timeout: 20000 }).catch(() => {});
+    await setPrint(bulkEdit, { print_sell: 'true', print_price: '250', print_shipping: '30', print_stock: '5' });
+    check(/back in stock/i.test(lastMail()), `readers who asked are emailed when a book is back in stock (${lastMail().slice(0, 50)})`);
+    // Gift a digital subscription.
+    const giftOrder = await m.evaluate(async () => {
+      const f = new FormData(); f.append('action', 'corporate_book_order'); f.append('plan', '0'); f.append('gift_email', 'friend@example.test'); f.append('_ajax_nonce', window.corporateBookAccount.nonce);
+      return (await (await fetch('/wp-admin/admin-ajax.php', { method: 'POST', body: f, credentials: 'same-origin' })).json()).data || {};
+    }).catch(() => ({}));
+    const giftPay = String(giftOrder.order_id || '').replace('order_', 'pay_');
+    const giftSig = require('crypto').createHmac('sha256', 'smokesecret').update(`${giftOrder.order_id}|${giftPay}`).digest('hex');
+    await m.evaluate(async (d) => {
+      const f = new FormData(); f.append('action', 'corporate_book_verify'); f.append('order_id', d.o); f.append('payment_id', d.p); f.append('signature', d.s); f.append('_ajax_nonce', window.corporateBookAccount.nonce);
+      return fetch('/wp-admin/admin-ajax.php', { method: 'POST', body: f, credentials: 'same-origin' });
+    }, { o: String(giftOrder.order_id), p: giftPay, s: giftSig }).catch(() => {});
+    await page.goto(`${BASE}/wp-admin/users.php?s=friend%40example.test`);
+    check(/friend@example.test/.test(await page.content()) && /gift for friend@example.test/.test(lastMail()), 'a gifted subscription creates the friend\'s account and emails them');
+    // Bookmarks and reading statistics.
+    await m.goto(`${BASE}/?pagename=book-test`);
+    await m.waitForSelector('.cb-mark-add', { timeout: 30000 }).catch(() => {});
+    await m.click('.cb-mark-add').catch(() => {});
+    check(await m.$('.cb-mark .cb-mark-go') !== null, 'readers can bookmark a page');
+    await m.waitForTimeout(2500);
+    const sales = await (await page.goto(`${BASE}/wp-admin/edit.php?post_type=corporate_book&page=corporate_book-sales`)).text();
+    check(/Print sales/.test(sales) && /₹/.test(sales) && /Test Book|Book Test/.test(sales.slice(sales.indexOf('Reading'))), 'Sales page shows sales and reading statistics');
+    check(fxErrors.length === 0, `new feature pages have no JavaScript errors ${fxErrors.join(' | ')}`);
+    await fx.close();
+    }
     await page.goto(settingsUrl);
     const simple = await page.evaluate(() => ({ main: !!document.querySelector('#corporate_book_bg_color_box').offsetParent, extra: !!document.querySelector('#corporate_book_duration_box').offsetParent, layoutTab: !!document.querySelector('a[href="#corporate-book-tab-content-layout"]').offsetParent }));
     await page.check('#cb-show-all');
