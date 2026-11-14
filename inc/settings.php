@@ -51,7 +51,7 @@ class Corporate_Book_Settings {
       'controls' => array( 'more_controls', 'hide_controls', 'enable_search', 'share_prefix' ),
       'pdf' => array( 'enable_annotation', 'link_target', 'range_size', 'attachment_lightbox' ),
       'translate' => array( 'external_translate', 'text_toggle_sound', 'text_toggle_thumbnails', 'text_toggle_outline', 'text_previous_page', 'text_next_page', 'text_toggle_fullscreen', 'text_zoom_in', 'text_zoom_out', 'text_toggle_help', 'text_single_page_mode', 'text_double_page_mode', 'text_goto_first_page', 'text_goto_last_page', 'text_share', 'text_mail_subject', 'text_mail_body', 'text_loading', 'text_sign_in', 'text_subscribe', 'text_locked', 'text_subscribe_button', 'text_preview' ),
-      'subscription' => array( 'subscription_enable', 'subscription_url', 'subscription_preview_percent', 'subscription_roles', 'subscription_login_shortcode', 'subscription_signup', 'razorpay_key_id', 'razorpay_key_secret', 'subscription_currency', 'subscription_plans' ),
+      'subscription' => array( 'subscription_enable', 'subscription_url', 'subscription_preview_percent', 'subscription_roles', 'subscription_login_shortcode', 'subscription_signup', 'razorpay_key_id', 'razorpay_key_secret', 'razorpay_webhook_secret', 'subscription_currency', 'subscription_plans' ),
       'advanced' => array( 'selectiveScriptLoading', 'enable_analytics' ),
   );
 
@@ -208,7 +208,8 @@ class Corporate_Book_Settings {
       return esc_url_raw( $value );
     }
     if ( 'subscription_roles' === $key ) {
-      return implode( ',', array_filter( array_map( 'sanitize_key', explode( ',', $value ) ) ) );
+      // The reader role is given to everyone who signs up, so it can never mean "paid".
+      return implode( ',', array_diff( array_filter( array_map( 'sanitize_key', explode( ',', $value ) ) ), array( 'cb_reader' ) ) );
     }
     if ( 'subscription_preview_percent' === $key ) {
       return is_numeric( $value ) ? max( 1, min( 100, (int) ceil( $value ) ) ) : 10;
@@ -235,8 +236,21 @@ class Corporate_Book_Settings {
   public function subscription_role_warning() {
     $roles = explode( ',', (string) $this->base->get_config( 'subscription_roles' ) );
     if ( in_array( 'subscriber', $roles, true ) ) {
-      echo '<div class="notice notice-warning inline cb-role-warning"><p>' . esc_html__( 'Warning: WordPress gives the "subscriber" role to every new account, so everyone who signs up would read the full book.', '3d-corporate-book' ) . '</p></div>';
+      echo '<div class="notice notice-warning inline cb-role-warning"><p>' . esc_html__( 'Warning: WordPress gives the "subscriber" role to every new account, so everyone who signs up would read the full books. List only the role your membership plugin gives paying members. The Corporate Book Reader role is never accepted here.', '3d-corporate-book' ) . '</p></div>';
     }
+    // Plan lines that are not "Name | Price | Days" are ignored by the site, so say which ones.
+    $bad = array();
+    foreach ( preg_split( '/\r\n|\r|\n/', (string) $this->base->get_config( 'subscription_plans' ) ) as $number => $line ) {
+      $parts = array_map( 'trim', explode( '|', $line ) );
+      if ( '' !== trim( $line ) && ! ( 3 === count( $parts ) && '' !== $parts[0] && is_numeric( $parts[1] ) && $parts[1] > 0 && ctype_digit( $parts[2] ) && $parts[2] > 0 ) ) {
+        $bad[] = sprintf( /* translators: 1: line number, 2: line */ __( 'line %1$d: "%2$s"', '3d-corporate-book' ), $number + 1, $line );
+      }
+    }
+    if ( $bad ) {
+      echo '<div class="notice notice-error inline cb-plan-errors"><p>' . esc_html__( 'These Subscription Plans lines are ignored because they are not "Name | Price | Days":', '3d-corporate-book' ) . ' ' . esc_html( implode( '; ', $bad ) ) . '</p></div>';
+    }
+    echo '<p><button type="button" class="button" id="corporate_book_razorpay_test" data-nonce="' . esc_attr( wp_create_nonce( 'corporate_book_razorpay_test' ) ) . '">' . esc_html__( 'Test Razorpay connection', '3d-corporate-book' ) . '</button> <span id="corporate_book_razorpay_result" role="status"></span></p>';
+    echo "<script>document.getElementById('corporate_book_razorpay_test').addEventListener('click',function(){var b=this,r=document.getElementById('corporate_book_razorpay_result');r.textContent='…';var f=new FormData();f.append('action','corporate_book_razorpay_test');f.append('_ajax_nonce',b.dataset.nonce);fetch(ajaxurl,{method:'POST',body:f,credentials:'same-origin'}).then(function(x){return x.json();}).then(function(a){r.textContent=a.data;r.style.color=a.success?'#1a7f37':'#b32d2e';}).catch(function(){r.textContent='Failed';});});</script>";
   }
 
   public function update_settings() {

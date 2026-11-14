@@ -42,7 +42,12 @@
     control.disabled = true;
     say(box, '');
     request().then(function (data) {
-      if (data && data.message) {
+      if (data && data.reload) {
+        say(box, data.message);
+        setTimeout(function () {
+          window.location.reload();
+        }, 2500);
+      } else if (data && data.message) {
         control.disabled = false;
         say(box, data.message);
       } else if (data && data.go) {

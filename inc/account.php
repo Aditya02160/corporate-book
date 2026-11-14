@@ -40,6 +40,15 @@ class Corporate_Book_Account {
     add_action( 'admin_init', array( $this, 'keep_out_of_dashboard' ), 1 );
     add_filter( 'login_redirect', array( $this, 'login_redirect' ), 10, 3 );
     add_action( 'login_init', array( $this, 'keep_out_of_wp_login' ) );
+    add_action( 'wp_ajax_corporate_book_razorpay_test', array( $this, 'razorpay_test' ) );
+    add_action( 'wp_ajax_nopriv_corporate_book_webhook', array( $this, 'webhook' ) );
+    add_action( 'wp_ajax_corporate_book_webhook', array( $this, 'webhook' ) );
+    add_action( 'corporate_book_reminders', array( $this, 'send_reminders' ) );
+    if ( ! wp_next_scheduled( 'corporate_book_reminders' ) ) {
+      wp_schedule_event( time() + HOUR_IN_SECONDS, 'daily', 'corporate_book_reminders' );
+    }
+    add_filter( 'wp_privacy_personal_data_exporters', array( $this, 'register_exporter' ) );
+    add_filter( 'wp_privacy_personal_data_erasers', array( $this, 'register_eraser' ) );
     add_action( 'wp_ajax_corporate_book_order', array( $this, 'order' ) );
     add_action( 'wp_ajax_corporate_book_verify', array( $this, 'verify' ) );
     add_shortcode( 'corporate_book_account', array( $this, 'shortcode' ) );
@@ -94,7 +103,9 @@ class Corporate_Book_Account {
 
   public static function price( $amount ) {
     $number = rtrim( rtrim( number_format( $amount, 2, '.', ',' ), '0' ), '.' );
-    return 'INR' === self::config( 'subscription_currency' ) ? "\u{20B9}" . $number : self::config( 'subscription_currency' ) . ' ' . $number;
+    $symbols = array( 'INR' => "\u{20B9}", 'USD' => '$', 'EUR' => "\u{20AC}", 'GBP' => "\u{00A3}" );
+    $code    = self::config( 'subscription_currency' );
+    return isset( $symbols[ $code ] ) ? $symbols[ $code ] . $number : $code . ' ' . $number;
   }
 
   private static function date( $time ) {
@@ -405,6 +416,7 @@ class Corporate_Book_Account {
       . self::field( 'email', __( 'Email', '3d-corporate-book' ), $user->user_email, 'email', 'required autocomplete="email"' )
       . self::field( 'phone', __( 'Phone', '3d-corporate-book' ), get_user_meta( $user->ID, 'cb_phone', true ), 'tel', 'autocomplete="tel"' )
       . self::field( 'company', __( 'Company', '3d-corporate-book' ), get_user_meta( $user->ID, 'cb_company', true ), 'text', 'autocomplete="organization"' )
+      . self::field( 'current', __( 'Current password (only to change your email)', '3d-corporate-book' ), '', 'password', 'autocomplete="current-password"' )
       . '<button type="submit">' . esc_html__( 'Save details', '3d-corporate-book' ) . '</button></form>' . $message . '</div>'
       . '<div class="cb-account cb-profile-card"><h3>' . esc_html__( 'Change password', '3d-corporate-book' ) . '</h3><form class="cb-profile-password" method="post" data-action="corporate_book_password">'
       . self::field( 'current', __( 'Current password', '3d-corporate-book' ), '', 'password', 'required autocomplete="current-password"' )
@@ -429,6 +441,11 @@ class Corporate_Book_Account {
     // phpcs:enable
     if ( ! is_email( $email ) ) {
       wp_send_json_error( __( 'Enter a valid email address.', '3d-corporate-book' ), 400 );
+    }
+    // phpcs:ignore WordPress.Security.NonceVerification.Missing, WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- checked above; passwords must reach WordPress unchanged.
+    $current = isset( $_POST['current'] ) ? (string) wp_unslash( $_POST['current'] ) : '';
+    if ( strtolower( $email ) !== strtolower( $user->user_email ) && ! wp_check_password( $current, $user->user_pass, $user->ID ) ) {
+      wp_send_json_error( __( 'To change your email, enter your current password.', '3d-corporate-book' ), 400 );
     }
     $owner = email_exists( $email );
     if ( $owner && (int) $owner !== $user->ID ) {
@@ -644,6 +661,15 @@ class Corporate_Book_Account {
     $orders[ $order_id ]['paid'] = $payment_id;
     update_user_meta( $user_id, self::ORDERS, $orders );
     update_user_meta( $user_id, self::UNTIL, max( time(), self::until( $user_id ) ) + $orders[ $order_id ]['days'] * DAY_IN_SECONDS );
+    $user = get_userdata( $user_id );
+    if ( $user ) {
+      $order = $orders[ $order_id ];
+      /* translators: %s: site name */
+      $subject = sprintf( __( '[%s] Payment received', '3d-corporate-book' ), wp_specialchars_decode( get_bloginfo( 'name' ), ENT_QUOTES ) );
+      /* translators: 1: plan, 2: amount, 3: payment ID, 4: date, 5: account page URL */
+      $body = sprintf( __( "Thank you for subscribing.\n\nPlan: %1\$s\nAmount: %2\$s\nPayment ID: %3\$s\nAccess until: %4\$s\n\nYour account: %5\$s", '3d-corporate-book' ), $order['plan'], self::price( $order['amount'] / 100 ), $payment_id, self::date( self::until( $user_id ) ), self::profile_url() );
+      wp_mail( $user->user_email, $subject, $body );
+    }
   }
 
   /**
@@ -747,7 +773,117 @@ class Corporate_Book_Account {
       }
       self::settle( $user_id, $order_id, $payment_id );
     }
-    wp_send_json_success( array( 'until' => self::until( $user_id ) ) );
+    /* translators: %s: date */
+    wp_send_json_success( array( 'until' => self::until( $user_id ), 'reload' => true, 'message' => sprintf( __( 'Payment successful. Your subscription is active until %s. A receipt is on its way to your email.', '3d-corporate-book' ), self::date( self::until( $user_id ) ) ) ) );
+  }
+
+  /**
+   * Global Settings button: checks the saved Razorpay keys.
+   */
+  public function razorpay_test() {
+    check_ajax_referer( 'corporate_book_razorpay_test' );
+    if ( ! current_user_can( 'manage_options' ) ) {
+      wp_send_json_error( __( 'Not allowed.', '3d-corporate-book' ), 403 );
+    }
+    if ( ! self::razorpay_ready() ) {
+      wp_send_json_error( __( 'Save your Razorpay Key ID and Key Secret first.', '3d-corporate-book' ) );
+    }
+    $answer = self::api( 'GET', 'orders?count=1' );
+    if ( is_wp_error( $answer ) ) {
+      wp_send_json_error( __( 'Razorpay refused the keys:', '3d-corporate-book' ) . ' ' . $answer->get_error_message() );
+    }
+    wp_send_json_success( 0 === strpos( self::config( 'razorpay_key_id' ), 'rzp_test_' ) ? __( 'Connected (Test Mode).', '3d-corporate-book' ) : __( 'Connected (Live Mode).', '3d-corporate-book' ) );
+  }
+
+  /**
+   * Razorpay webhook: payment.captured / order.paid start access even when the reader closed the tab;
+   * refund.processed / payment.refunded take the days back. Razorpay signs the raw body with the webhook secret.
+   */
+  public function webhook() {
+    $secret = self::config( 'razorpay_webhook_secret' );
+    $body   = (string) file_get_contents( 'php://input' );
+    $sign   = isset( $_SERVER['HTTP_X_RAZORPAY_SIGNATURE'] ) ? sanitize_text_field( wp_unslash( $_SERVER['HTTP_X_RAZORPAY_SIGNATURE'] ) ) : '';
+    if ( '' === $secret || '' === $sign || ! hash_equals( hash_hmac( 'sha256', $body, $secret ), $sign ) ) {
+      wp_send_json_error( 'bad signature', 401 );
+    }
+    $event   = json_decode( $body, true );
+    $payment = isset( $event['payload']['payment']['entity'] ) ? $event['payload']['payment']['entity'] : array();
+    $type    = isset( $event['event'] ) ? $event['event'] : '';
+    $user_id = isset( $payment['notes']['user_id'] ) ? (int) $payment['notes']['user_id'] : 0;
+    $orders  = $user_id ? self::orders( $user_id ) : array();
+    $oid     = isset( $payment['order_id'] ) ? (string) $payment['order_id'] : '';
+    if ( ! isset( $orders[ $oid ] ) ) {
+      wp_send_json_success( 'ignored' ); // not one of ours; 2xx so Razorpay stops retrying
+    }
+    $order = $orders[ $oid ];
+    if ( in_array( $type, array( 'payment.captured', 'order.paid' ), true ) && '' === $order['paid'] && isset( $payment['amount'], $payment['id'] ) && (int) $payment['amount'] === (int) $order['amount'] ) {
+      self::settle( $user_id, $oid, (string) $payment['id'] );
+    } elseif ( in_array( $type, array( 'refund.processed', 'payment.refunded' ), true ) && '' !== $order['paid'] && empty( $order['refunded'] ) ) {
+      $orders[ $oid ]['refunded'] = time();
+      update_user_meta( $user_id, self::ORDERS, $orders );
+      update_user_meta( $user_id, self::UNTIL, max( 0, self::until( $user_id ) - $order['days'] * DAY_IN_SECONDS ) );
+    }
+    wp_send_json_success( 'ok' );
+  }
+
+  /**
+   * Daily: emails readers whose subscription ends in the next 3 days, once per end date.
+   */
+  public function send_reminders() {
+    $users = get_users( array( 'meta_query' => array( array( 'key' => self::UNTIL, 'value' => array( time(), time() + 3 * DAY_IN_SECONDS ), 'compare' => 'BETWEEN', 'type' => 'NUMERIC' ) ), 'number' => 500 ) );
+    foreach ( $users as $user ) {
+      $until = self::until( $user->ID );
+      if ( (int) get_user_meta( $user->ID, 'corporate_book_reminded', true ) === $until ) {
+        continue;
+      }
+      update_user_meta( $user->ID, 'corporate_book_reminded', $until );
+      /* translators: %s: site name */
+      $subject = sprintf( __( '[%s] Your subscription ends soon', '3d-corporate-book' ), wp_specialchars_decode( get_bloginfo( 'name' ), ENT_QUOTES ) );
+      /* translators: 1: date, 2: account page URL */
+      wp_mail( $user->user_email, $subject, sprintf( __( "Your subscription ends on %1\$s.\n\nRenew it from your account: %2\$s", '3d-corporate-book' ), self::date( $until ), self::profile_url() ) );
+    }
+  }
+
+  public function register_exporter( $exporters ) {
+    $exporters['corporate-book'] = array( 'exporter_friendly_name' => __( 'Corporate Book account', '3d-corporate-book' ), 'callback' => array( $this, 'export_data' ) );
+    return $exporters;
+  }
+
+  public function register_eraser( $erasers ) {
+    $erasers['corporate-book'] = array( 'eraser_friendly_name' => __( 'Corporate Book account', '3d-corporate-book' ), 'callback' => array( $this, 'erase_data' ) );
+    return $erasers;
+  }
+
+  public function export_data( $email ) {
+    $user = get_user_by( 'email', $email );
+    $data = array();
+    if ( $user ) {
+      $fields = array(
+        array( 'name' => __( 'Phone', '3d-corporate-book' ), 'value' => get_user_meta( $user->ID, 'cb_phone', true ) ),
+        array( 'name' => __( 'Company', '3d-corporate-book' ), 'value' => get_user_meta( $user->ID, 'cb_company', true ) ),
+        array( 'name' => __( 'Subscription active until', '3d-corporate-book' ), 'value' => self::until( $user->ID ) ? self::date( self::until( $user->ID ) ) : '' ),
+      );
+      $data[] = array( 'group_id' => 'corporate-book', 'group_label' => __( 'Corporate Book account', '3d-corporate-book' ), 'item_id' => 'account-' . $user->ID, 'data' => $fields );
+      foreach ( self::orders( $user->ID ) as $id => $order ) {
+        $data[] = array( 'group_id' => 'corporate-book-payments', 'group_label' => __( 'Corporate Book payments', '3d-corporate-book' ), 'item_id' => $id, 'data' => array(
+          array( 'name' => __( 'Date', '3d-corporate-book' ), 'value' => self::date( (int) $order['time'] ) ),
+          array( 'name' => __( 'Plan', '3d-corporate-book' ), 'value' => $order['plan'] ),
+          array( 'name' => __( 'Amount', '3d-corporate-book' ), 'value' => self::price( $order['amount'] / 100 ) ),
+          array( 'name' => __( 'Payment ID', '3d-corporate-book' ), 'value' => $order['paid'] ),
+        ) );
+      }
+    }
+    return array( 'data' => $data, 'done' => true );
+  }
+
+  public function erase_data( $email ) {
+    $user = get_user_by( 'email', $email );
+    if ( $user ) {
+      // Payment records are kept for tax and accounting; contact details are removed.
+      delete_user_meta( $user->ID, 'cb_phone' );
+      delete_user_meta( $user->ID, 'cb_company' );
+    }
+    return array( 'items_removed' => (bool) $user, 'items_retained' => (bool) $user && self::orders( $user->ID ), 'messages' => $user ? array( __( 'Corporate Book payment records were kept for accounting.', '3d-corporate-book' ) ) : array(), 'done' => true );
   }
 
   // ---- Administrators: see and change a reader's subscription --------------------------------

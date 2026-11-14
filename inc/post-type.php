@@ -77,6 +77,17 @@ class Corporate_Book_Post_Type {
     );
     
     register_post_type( 'corporate_book', $args );
+    // Once, on update: sites that saved settings before kept the old defaults that load the viewer on
+    // every page and start with sound on.
+    if ( (int) get_option( 'corporate_book_db_version' ) < 2 ) {
+      $settings = get_option( '_corporate_book_settings', array() );
+      if ( is_array( $settings ) && $settings ) {
+        $settings['selectiveScriptLoading'] = 'true';
+        $settings['auto_sound']             = 'false';
+        update_option( '_corporate_book_settings', $settings );
+      }
+      update_option( 'corporate_book_db_version', 2 );
+    }
     if ( get_option( 'corporate_book_flush_rules' ) ) {
       delete_option( 'corporate_book_flush_rules' );
       flush_rewrite_rules();

@@ -185,7 +185,7 @@ if ( !class_exists( 'Corporate_Book' ) ) {
               'std'         => 3,
           ),
           'auto_sound'         => array(
-              'std'     => 'true',
+              'std'     => 'false',
               'choices' => array(
                   'global' => __( 'Global Setting', '3d-corporate-book' ),
                   'true'   => __( 'True', '3d-corporate-book' ),
@@ -423,7 +423,7 @@ if ( !class_exists( 'Corporate_Book' ) ) {
       );
 
       $this->defaults['selectiveScriptLoading'] = array(
-        'std'     => 'false',
+        'std'     => 'true',
         'choices' => array(
           'true'  => 'True (Enable)',
           'false' => 'False (Disable)',
@@ -456,7 +456,7 @@ if ( !class_exists( 'Corporate_Book' ) ) {
       }
       // Subscription lock: readers sign in; only subscribers read past the free preview.
       $this->defaults['subscription_enable']          = array( 'std' => 'false', 'title' => __( 'Subscription Lock', '3d-corporate-book' ), 'desc' => __( 'Readers must sign in to read. Only subscribers read past the free preview.', '3d-corporate-book' ), 'choices' => $bool );
-      $this->defaults['subscription_url']             = array( 'std' => '', 'title' => __( 'Subscribe Page Link', '3d-corporate-book' ), 'desc' => __( 'Link to your subscription page, shown when the preview ends.', '3d-corporate-book' ), 'type' => 'url' );
+      $this->defaults['subscription_url']             = array( 'std' => '', 'title' => __( 'Subscribe Page Link', '3d-corporate-book' ), 'desc' => __( 'Link to your subscription page, shown when the preview ends.', '3d-corporate-book' ) . ' ' . __( 'Leave empty to use the Subscription page the plugin creates.', '3d-corporate-book' ), 'type' => 'url' );
       $this->defaults['subscription_preview_percent'] = array( 'std' => 10, 'title' => __( 'Free Preview (%)', '3d-corporate-book' ), 'type' => 'number', 'attr' => array( 'min' => '1', 'max' => '100' ) );
       $this->defaults['subscription_roles']           = array( 'std' => '', 'title' => __( 'Subscriber Roles', '3d-corporate-book' ), 'desc' => __( 'Comma separated roles that count as subscribed, set by your membership plugin, e.g. cb_member.', '3d-corporate-book' ), 'type' => 'text' );
       $this->defaults['subscription_login_shortcode'] = array( 'std' => '', 'title' => __( 'Social Login Shortcode', '3d-corporate-book' ), 'desc' => __( 'Shortcode of your social login plugin (Google, LinkedIn), e.g. [nextend_social_login]', '3d-corporate-book' ), 'type' => 'text' );
@@ -470,7 +470,8 @@ if ( !class_exists( 'Corporate_Book' ) ) {
       $this->defaults['subscription_signup']   = array( 'std' => 'true', 'title' => __( 'Sign Up in the Book', '3d-corporate-book' ), 'desc' => __( 'Lets readers create an account inside the book.', '3d-corporate-book' ), 'choices' => $bool );
       $this->defaults['razorpay_key_id']       = array( 'std' => '', 'title' => __( 'Razorpay Key ID', '3d-corporate-book' ), 'desc' => __( 'From Razorpay Dashboard, Account and Settings, API Keys. Start with a Test Mode key.', '3d-corporate-book' ), 'type' => 'text' );
       $this->defaults['razorpay_key_secret']   = array( 'std' => '', 'title' => __( 'Razorpay Key Secret', '3d-corporate-book' ), 'desc' => __( 'Kept on the server; never sent to readers.', '3d-corporate-book' ), 'type' => 'password' );
-      $this->defaults['subscription_currency'] = array( 'std' => 'INR', 'title' => __( 'Currency', '3d-corporate-book' ), 'type' => 'text' );
+      $this->defaults['subscription_currency'] = array( 'std' => 'INR', 'title' => __( 'Currency', '3d-corporate-book' ), 'choices' => array( 'INR' => 'INR (₹)', 'USD' => 'USD ($)', 'EUR' => 'EUR (€)', 'GBP' => 'GBP (£)', 'AED' => 'AED', 'SGD' => 'SGD', 'AUD' => 'AUD', 'CAD' => 'CAD' ) );
+      $this->defaults['razorpay_webhook_secret'] = array( 'std' => '', 'title' => __( 'Razorpay Webhook Secret', '3d-corporate-book' ), 'desc' => sprintf( /* translators: %s: webhook URL */ __( 'In Razorpay Dashboard, Webhooks, add %s with the events payment.captured and refund.processed, and paste the same secret here. Payments then count even when the reader closes the tab, and refunds end access.', '3d-corporate-book' ), admin_url( 'admin-ajax.php?action=corporate_book_webhook' ) ), 'type' => 'password' );
       $this->defaults['subscription_plans']    = array( 'std' => "Monthly | 399 | 30\nYearly | 3999 | 365", 'title' => __( 'Subscription Plans', '3d-corporate-book' ), 'desc' => __( 'One plan per line: Name | Price | Days of access.', '3d-corporate-book' ), 'type' => 'textarea' );
 
       // Extra 3D and display features.
@@ -481,7 +482,7 @@ if ( !class_exists( 'Corporate_Book' ) ) {
       $this->defaults['tilt_left']     = array( 'std' => 0, 'title' => __( '3D Tilt Left', '3d-corporate-book' ), 'desc' => __( 'Degrees the 3D book turns to the left.', '3d-corporate-book' ), 'type' => 'number', 'attr' => array( 'step' => 'any' ) );
       $this->defaults['page_rotation'] = array( 'std' => '0', 'title' => __( 'PDF Page Rotation', '3d-corporate-book' ), 'choices' => array( '0' => '0', '90' => '90', '180' => '180', '270' => '270' ) );
       $this->defaults['shelf_image']   = array( 'std' => '', 'title' => __( 'Book Shelf Image', '3d-corporate-book' ), 'desc' => __( 'Optional shelf picture for [corporate_book books="all" shelf="true"].', '3d-corporate-book' ), 'type' => 'upload', 'placeholder' => __( 'Select an image', '3d-corporate-book' ), 'button-text' => __( 'Select Image', '3d-corporate-book' ) );
-      $this->defaults['post_urls']     = array( 'std' => 'false', 'title' => __( 'Book Post URLs', '3d-corporate-book' ), 'desc' => __( 'Gives every book its own page at /corporate-book/book-name/.', '3d-corporate-book' ), 'choices' => $bool );
+      $this->defaults['post_urls']     = array( 'std' => 'true', 'title' => __( 'Book Post URLs', '3d-corporate-book' ), 'desc' => __( 'Gives every book its own page at /corporate-book/book-name/.', '3d-corporate-book' ), 'choices' => $bool );
 
 
 
