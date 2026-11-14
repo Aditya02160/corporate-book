@@ -675,7 +675,7 @@ async function waitFor(ready, ms) {
     await m.waitForFunction(() => document.querySelector('.cb-wish.cb-wished'), null, { timeout: 20000 }).catch(() => {});
     let saved = '';
     for (let i = 0; i < 10 && !/Test Book/.test(saved); i++) {
-      await m.goto(`${BASE}/?pagename=my-account`);
+      await m.goto(`${BASE}/?pagename=my-account`).catch(() => {});
       saved = await m.$eval('.cb-wishlist', (e) => e.textContent).catch(() => '');
     }
     check(/Test Book/.test(saved), 'Save for later lists the book under Saved books');
@@ -708,7 +708,7 @@ async function waitFor(ready, ms) {
     // Reader: invoice link and cancel.
     let rowText = '';
     for (let i = 0; i < 10 && !rowText.includes(`#${giftNo}`); i++) {
-      await m.goto(`${BASE}/?pagename=my-account`);
+      await m.goto(`${BASE}/?pagename=my-account`).catch(() => {});
       rowText = await m.$eval('.cb-print-orders', (e) => e.textContent).catch(() => '');
     }
     check(await m.$(`.cb-order-actions a[href*="cb_order=${giftNo}"]`) !== null, 'My account links to the invoice');
@@ -716,12 +716,12 @@ async function waitFor(ready, ms) {
     check(/Invoice/.test(ownInvoice) && /Bulk Book/.test(ownInvoice), 'readers can open their own invoice');
     const otherSlip = await m.goto(`${BASE}/?cb_doc=slip&cb_order=${giftNo}`);
     check(otherSlip.status() === 403, 'readers cannot open packing slips');
-    await m.goto(`${BASE}/?pagename=my-account`);
+    await m.goto(`${BASE}/?pagename=my-account`).catch(() => {});
     await m.click(`.cb-cancel-order[data-order="${giftNo}"]`).catch(() => {});
     await m.waitForTimeout(3500);
     let cancelled = '';
     for (let i = 0; i < 10 && !/Cancelled/.test(cancelled); i++) {
-      await m.goto(`${BASE}/?pagename=my-account`);
+      await m.goto(`${BASE}/?pagename=my-account`).catch(() => {});
       cancelled = await m.$eval('.cb-print-orders', (e) => e.textContent).catch(() => '');
     }
     check(/Cancelled/.test(cancelled), 'readers can cancel an order that has not shipped');
