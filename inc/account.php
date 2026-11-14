@@ -258,7 +258,7 @@ class Corporate_Book_Account {
       }
       $cards .= '<div class="cb-plan-card"><h3>' . esc_html( $plan['name'] ) . '</h3><div class="cb-plan-price">' . esc_html( self::price( $plan['price'] ) ) . '</div><div class="cb-plan-days">' . esc_html( $days ) . '</div>' . $action . '</div>';
     }
-    return '<div class="cb-account cb-plans-page"><div class="cb-plans">' . $cards . '</div><div id="cb-plans-account" class="cb-lock cb-lock-static"><div class="cb-lock-box">' . $box . '</div></div></div>';
+    return '<div class="cb-account cb-plans-page"><h2 class="cb-plans-heading">' . esc_html__( 'Digital access', '3d-corporate-book' ) . '</h2><div class="cb-plans">' . $cards . '</div>' . Corporate_Book_Shop::print_section() . '<div id="cb-plans-account" class="cb-lock cb-lock-static"><div class="cb-lock-box">' . $box . '</div></div></div>';
   }
 
   /**
@@ -426,6 +426,7 @@ class Corporate_Book_Account {
       . self::field( 'current', __( 'Current password', '3d-corporate-book' ), '', 'password', 'required autocomplete="current-password"' )
       . self::field( 'pwd', __( 'New password (8 characters or more)', '3d-corporate-book' ), '', 'password', 'required minlength="8" autocomplete="new-password"' )
       . '<button type="submit">' . esc_html__( 'Change password', '3d-corporate-book' ) . '</button></form>' . $message . '</div>'
+      . Corporate_Book_Shop::account_cards( $user )
       . '<div class="cb-account cb-profile-card cb-profile-wide"><h3>' . esc_html__( 'Payment history', '3d-corporate-book' ) . '</h3>' . $orders . '</div>'
       . '<p class="cb-profile-signout"><a class="cb-signout" href="' . esc_url( wp_logout_url( home_url( '/' ) ) ) . '">' . esc_html__( 'Sign out', '3d-corporate-book' ) . '</a></p>'
       . '</div>';
@@ -648,7 +649,7 @@ class Corporate_Book_Account {
    *
    * @return array|WP_Error Decoded answer.
    */
-  private static function api( $method, $path, $body = null ) {
+  public static function api( $method, $path, $body = null ) {
     $response = wp_remote_request(
       'https://api.razorpay.com/v1/' . $path,
       array(
@@ -681,7 +682,7 @@ class Corporate_Book_Account {
    *
    * @return bool
    */
-  private static function captured( $payment, $amount ) {
+  public static function captured( $payment, $amount ) {
     if ( ! isset( $payment['id'], $payment['status'] ) || ! preg_match( '/^pay_[A-Za-z0-9]+$/', $payment['id'] ) ) {
       return false;
     }
@@ -868,6 +869,10 @@ class Corporate_Book_Account {
     $event   = json_decode( $body, true );
     $payment = isset( $event['payload']['payment']['entity'] ) ? $event['payload']['payment']['entity'] : array();
     $type    = isset( $event['event'] ) ? $event['event'] : '';
+    if ( isset( $payment['notes']['print_order'] ) ) {
+      Corporate_Book_Shop::razorpay_event( $type, $payment );
+      wp_send_json_success( 'ok' );
+    }
     $user_id = isset( $payment['notes']['user_id'] ) ? (int) $payment['notes']['user_id'] : 0;
     $orders  = $user_id ? self::orders( $user_id ) : array();
     $oid     = isset( $payment['order_id'] ) ? (string) $payment['order_id'] : '';

@@ -513,6 +513,121 @@ async function waitFor(ready, ms) {
     await d.click('.cb-desk-switch').catch(() => {});
     check(deskOk && await d.$('.cb-desk.cb-light-off') !== null && deskErrors.length === 0, `embedded book lies on the reading desk and the lamp switches off ${deskErrors.join(' | ')}`);
     await d.close();
+
+    // ---- Print copies shop: author sets prices, reader buys with a cart, admin ships. ----
+    await saveSettings({ print_cod: 'true' }).catch(() => '');
+    const setPrint = async (url, values) => {
+      for (let i = 0; i < 3; i++) {
+        await page.goto(url);
+        await page.evaluate((v) => { for (const [k, val] of Object.entries(v)) document.querySelector(`#corporate_book_${k}`).value = val; }, values);
+        await Promise.all([page.waitForNavigation(), page.evaluate(() => document.querySelector('#publish').click())]).catch(() => {});
+        await page.goto(url);
+        if (await page.$eval('#corporate_book_print_price', (e) => e.value).catch(() => '') === values.print_price) return true;
+      }
+      return false;
+    };
+    const bulkEdit = `${BASE}/wp-admin/post.php?post=${bulkId}&action=edit`;
+    // An earlier check made Test Book free; lock it again so the preview-ended panel shows.
+    const priced = await setPrint(editUrl, { subscription: 'required', print_sell: 'true', print_price: '499', print_shipping: '40', print_stock: '5' })
+      && await setPrint(bulkEdit, { print_sell: 'true', print_price: '250', print_shipping: '30', print_stock: '' });
+    check(priced, 'authors set print price, shipping charge and stock in the book editor');    const shopCtx = await browser.newContext();
+    await shopCtx.exposeBinding('cbSign', (src, o, p) => require('crypto').createHmac('sha256', 'smokesecret').update(`${o}|${p}`).digest('hex'));
+    // Razorpay Checkout stand-in: "pays" at once with a correctly signed payment.
+    await shopCtx.addInitScript(() => {
+      window.Razorpay = function (o) {
+        this.open = async () => { const p = o.order_id.replace('order_', 'pay_'); o.handler({ razorpay_order_id: o.order_id, razorpay_payment_id: p, razorpay_signature: await window.cbSign(o.order_id, p) }); };
+      };
+    });
+    const s = await shopCtx.newPage();
+    s.setDefaultTimeout(90000);
+    const shopErrors = []; s.on('pageerror', (e) => shopErrors.push(e.message));
+    // The test server can serve the page from before the price was saved for a moment, so reload until it shows.
+    let bookHtml = '';
+    for (let i = 0; i < 10; i++) {
+      bookHtml = await (await s.goto(`${BASE}/?pagename=book-test`)).text();
+      if (bookHtml.includes('cb-add-cart')) break;
+      await s.waitForTimeout(500);
+    }
+    await pastEnd(s).catch(() => {});
+    await s.waitForSelector('.cb-lock .cb-lock-print .cb-add-cart', { state: 'visible', timeout: 30000 }).catch(() => {});
+    check(/Buy print copy/.test(await s.$eval('.cb-lock .cb-add-cart', (e) => e.textContent).catch(() => '')), 'the preview-ended panel offers a print copy');
+    await s.goto(`${BASE}/wp-login.php`);
+    await s.fill('#user_login', 'member'); await s.fill('#user_pass', 'password');
+    await Promise.all([s.waitForNavigation(), s.click('#wp-submit')]);
+    let cards = 0;
+    for (let i = 0; i < 10 && cards < 2; i++) {
+      await s.goto(`${BASE}/?pagename=subscription`);
+      cards = (await s.$$('.cb-print-section .cb-add-cart')).length;
+      if (cards < 2) await s.waitForTimeout(500);
+    }
+    check(cards === 2, `Subscription page lists the print copies (${cards})`);
+    const addBook = (title) => s.click(`.cb-print-card:has(h3:text-is("${title}")) .cb-add-cart`);
+    for (const t of ['Test Book', 'Test Book', 'Bulk Book']) { await addBook(t); await s.waitForTimeout(200); }
+    check(await s.$eval('.cb-toast', (e) => /Added to cart/.test(e.textContent)).catch(() => false), 'adding a book shows "Added to cart"');
+    await s.goto(`${BASE}/?pagename=cart`);
+    await s.waitForSelector('.cb-cart-table tr', { timeout: 30000 }).catch(() => {});
+    const quoteFor = async (pin) => {
+      await s.fill('.cb-checkout [name="pin"]', pin);
+      await s.waitForFunction(() => document.querySelector('.cb-cart-totals') && /Shipping \(/.test(document.querySelector('.cb-cart-totals').textContent), null, { timeout: 20000 }).catch(() => {});
+      await s.waitForTimeout(1500);
+      return s.$eval('.cb-cart-totals', (e) => e.textContent.replace(/\s+/g, ' ')).catch(() => '');
+    };
+    const rows = (await s.$$('.cb-cart-table tr')).length;
+    const local = await quoteFor('201301');
+    const far = await quoteFor('560001');
+    check(rows === 2 && /Shipping \(About \d+ km from Noida\)₹110/.test(local) && /Total₹1,358/.test(local), `cart prices books plus local shipping (${local})`);
+    check(/₹470/.test(far) && /Total₹1,718/.test(far), `shipping grows with distance from Noida (${far})`);
+    const address = { name: 'Asha Rao', phone: '12345', email: 'asha@example.test', line1: 'Flat 4B, Lotus Tower', line2: 'Sector 62', city: 'Noida', pin: '201309' };
+    for (const [k, v] of Object.entries(address)) await s.fill(`.cb-checkout [name="${k}"]`, v);
+    await s.selectOption('.cb-checkout [name="state"]', 'Uttar Pradesh');
+    await s.click('.cb-place-order');
+    await s.waitForFunction(() => document.querySelector('.cb-field-error[data-for="phone"]').textContent !== '', null, { timeout: 20000 }).catch(() => {});
+    check(/mobile/i.test(await s.$eval('.cb-field-error[data-for="phone"]', (e) => e.textContent).catch(() => '')), 'a wrong mobile number is pointed out');
+    await s.fill('.cb-checkout [name="phone"]', '98765 43210');
+    await s.click('.cb-place-order');
+    await s.waitForSelector('.cb-cart-done', { timeout: 40000 }).catch(() => {});
+    const thanks = await s.$eval('.cb-cart-done', (e) => e.textContent).catch(() => '');
+    const orderNo = (thanks.match(/#(\d+)/) || [])[1];
+    check(!!orderNo && await s.evaluate(() => localStorage.getItem('cbCart')) === '[]', `paying online places the order and empties the cart (${thanks.slice(0, 60)})`);
+    let mine = '';
+    for (let i = 0; i < 10 && !/Paid/.test(mine); i++) {
+      await s.goto(`${BASE}/?pagename=my-account`);
+      mine = await s.$eval('.cb-print-orders', (e) => e.textContent).catch(() => '');
+    }
+    check(mine.includes(`#${orderNo}`) && /Paid/.test(mine) && /2 × Test Book/.test(mine), `My account lists the paid order (${mine.slice(0, 80)})`);
+    let stock = '';
+    for (let i = 0; i < 10 && stock !== '3'; i++) {
+      await page.goto(editUrl);
+      stock = await page.$eval('#corporate_book_print_stock', (e) => e.value).catch(() => '');
+    }
+    check(stock === '3', `stock goes down when an order is paid (${stock})`);
+    await page.goto(`${BASE}/wp-admin/edit.php?post_type=cb_order`);
+    check((await page.content()).includes(`Order #${orderNo}`), 'Print Orders lists the order for the admin');
+    await page.goto(`${BASE}/wp-admin/post.php?post=${orderNo}&action=edit`);
+    await page.selectOption('#cb_order_status', 'cb-shipped');
+    await page.fill('#cb_order_courier', 'India Post');
+    await page.fill('#cb_order_tracking', 'EE123456789IN');
+    await Promise.all([page.waitForNavigation(), page.click('#cb_order_manage button[type="submit"]')]).catch(() => {});
+    const mailText = (() => { try { return fs.readFileSync(path.join(fixtures, 'mail.txt'), 'utf8'); } catch (e) { return ''; } })();
+    check(/Shipped/.test(mailText) && /EE123456789IN/.test(mailText), `shipping the order emails the tracking number (${mailText.slice(0, 60)})`);
+    let shipped = '';
+    for (let i = 0; i < 10 && !/Shipped/.test(shipped); i++) {
+      await s.goto(`${BASE}/?pagename=my-account`);
+      shipped = await s.$eval('.cb-print-orders', (e) => e.textContent).catch(() => '');
+    }
+    check(/Shipped/.test(shipped) && /EE123456789IN/.test(shipped), 'the reader sees Shipped with the tracking number');
+    await s.goto(`${BASE}/?pagename=subscription`);
+    await addBook('Bulk Book');
+    await s.goto(`${BASE}/?pagename=cart`);
+    await s.waitForSelector('.cb-cart-table tr', { timeout: 30000 }).catch(() => {});
+    await s.check('.cb-pay [value="cod"]').catch(() => {});
+    await s.click('.cb-place-order');
+    await s.waitForSelector('.cb-cart-done', { timeout: 40000 }).catch(() => {});
+    const codNo = ((await s.$eval('.cb-cart-done', (e) => e.textContent).catch(() => '')).match(/#(\d+)/) || [])[1];
+    await page.goto(`${BASE}/wp-admin/edit.php?post_type=cb_order`);
+    check(!!codNo && (await page.content()).includes('Cash on delivery'), `cash on delivery orders are placed without paying online (${codNo})`);
+    check(shopErrors.length === 0, `shop pages have no JavaScript errors ${shopErrors.join(' | ')}`);
+    await shopCtx.close();
     await page.goto(settingsUrl);
     const simple = await page.evaluate(() => ({ main: !!document.querySelector('#corporate_book_bg_color_box').offsetParent, extra: !!document.querySelector('#corporate_book_duration_box').offsetParent, layoutTab: !!document.querySelector('a[href="#corporate-book-tab-content-layout"]').offsetParent }));
     await page.check('#cb-show-all');

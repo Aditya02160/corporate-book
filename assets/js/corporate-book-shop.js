@@ -1,0 +1,325 @@
+/**
+ * Corporate Book print shop: cart (kept in this browser), cart page, delivery address, checkout.
+ * The server prices everything; this file only sends book IDs, quantities and the address.
+ */
+(function () {
+  'use strict';
+  var cfg = window.corporateBookShop;
+  if (!cfg) {
+    return;
+  }
+  var KEY = 'cbCart';
+
+  function read() {
+    try {
+      var items = JSON.parse(localStorage.getItem(KEY) || '[]');
+      return Array.isArray(items) ? items.filter(function (i) { return i && i.id > 0 && i.qty > 0; }) : [];
+    } catch (e) {
+      return [];
+    }
+  }
+  function write(items) {
+    try {
+      localStorage.setItem(KEY, JSON.stringify(items));
+    } catch (e) { /* private window: the cart lasts for this page only */ }
+    pill();
+  }
+  function count() {
+    return read().reduce(function (sum, i) { return sum + i.qty; }, 0);
+  }
+
+  function post(data) {
+    var form = new FormData();
+    data._ajax_nonce = cfg.nonce;
+    Object.keys(data).forEach(function (key) {
+      form.append(key, data[key]);
+    });
+    return fetch(cfg.url, { method: 'POST', body: form, credentials: 'same-origin' })
+      .then(function (r) { return r.json(); })
+      .catch(function () { throw { message: cfg.failed }; })
+      .then(function (answer) {
+        if (!answer || answer.success !== true) {
+          var d = answer && answer.data;
+          throw typeof d === 'string' ? { message: d } : (d || { message: cfg.failed });
+        }
+        return answer.data || {};
+      });
+  }
+
+  function el(tag, cls, text) {
+    var e = document.createElement(tag);
+    if (cls) { e.className = cls; }
+    if (text !== undefined) { e.textContent = text; }
+    return e;
+  }
+
+  // Floating "Cart (n)" link on every page except the cart itself.
+  function pill() {
+    if (document.querySelector('.cb-cart')) {
+      return;
+    }
+    var link = document.querySelector('.cb-cart-pill');
+    var n = count();
+    if (!link && n) {
+      link = el('a', 'cb-cart-pill');
+      link.href = cfg.cart;
+      document.body.appendChild(link);
+    }
+    if (link) {
+      link.textContent = cfg.cartName + ' (' + n + ')';
+      link.hidden = !n;
+    }
+  }
+
+  function toast(text) {
+    var t = document.querySelector('.cb-toast') || document.body.appendChild(el('div', 'cb-toast'));
+    t.setAttribute('role', 'status');
+    t.textContent = text + ' · ';
+    var a = el('a', '', cfg.view);
+    a.href = cfg.cart;
+    t.appendChild(a);
+    t.classList.add('cb-show');
+    clearTimeout(toast.timer);
+    toast.timer = setTimeout(function () { t.classList.remove('cb-show'); }, 4000);
+  }
+
+  document.addEventListener('click', function (event) {
+    var button = event.target.closest('.cb-add-cart');
+    if (!button) {
+      return;
+    }
+    event.preventDefault();
+    event.stopPropagation();
+    var id = parseInt(button.getAttribute('data-book'), 10);
+    var items = read();
+    var line = items.filter(function (i) { return i.id === id; })[0];
+    if (line) {
+      line.qty = Math.min(10, line.qty + 1);
+    } else {
+      items.push({ id: id, qty: 1 });
+    }
+    write(items);
+    toast(cfg.added);
+  }, true);
+
+  // ---- Cart page ---------------------------------------------------------------------------
+
+  var cart = document.querySelector('.cb-cart');
+  var form = cart && cart.querySelector('.cb-checkout');
+
+  function pin() {
+    var field = form && form.querySelector('[name="pin"]');
+    var value = field ? field.value.replace(/\s+/g, '') : '';
+    return /^[1-9][0-9]{5}$/.test(value) ? value : '';
+  }
+
+  function render(q) {
+    var box = cart.querySelector('.cb-cart-items');
+    box.textContent = '';
+    // The server may drop books that are no longer for sale or lower quantities to the stock.
+    write(q.lines.map(function (l) { return { id: l.id, qty: l.qty }; }));
+    if (q.errors && q.errors.length) {
+      var errors = el('ul', 'cb-cart-errors');
+      q.errors.forEach(function (e) { errors.appendChild(el('li', '', e)); });
+      box.appendChild(errors);
+    }
+    if (!q.lines.length) {
+      box.appendChild(el('p', 'cb-cart-empty', cfg.empty));
+      if (form) { form.hidden = true; }
+      return;
+    }
+    if (form) { form.hidden = false; }
+    var table = el('table', 'cb-cart-table');
+    q.lines.forEach(function (l) {
+      var row = table.insertRow();
+      row.setAttribute('data-book', l.id);
+      var c0 = row.insertCell();
+      if (l.thumb) {
+        var img = el('img');
+        img.src = l.thumb;
+        img.alt = '';
+        c0.appendChild(img);
+      }
+      var c1 = row.insertCell();
+      c1.appendChild(el('strong', '', l.title));
+      c1.appendChild(el('div', 'cb-cart-price', l.price));
+      var c2 = row.insertCell();
+      var minus = el('button', 'cb-qty-minus', '−');
+      var plus = el('button', 'cb-qty-plus', '+');
+      minus.type = plus.type = 'button';
+      minus.setAttribute('aria-label', '−1');
+      plus.setAttribute('aria-label', '+1');
+      minus.disabled = l.qty <= 1;
+      plus.disabled = l.qty >= l.max;
+      c2.className = 'cb-qty';
+      c2.appendChild(minus);
+      c2.appendChild(el('span', 'cb-qty-value', String(l.qty)));
+      c2.appendChild(plus);
+      row.insertCell().textContent = l.total;
+      var c4 = row.insertCell();
+      var remove = el('button', 'cb-cart-remove', cfg.remove);
+      remove.type = 'button';
+      c4.appendChild(remove);
+    });
+    box.appendChild(table);
+    if (form) {
+      var totals = form.querySelector('.cb-cart-totals');
+      totals.textContent = '';
+      var add = function (label, value, cls) {
+        var row = el('div', 'cb-total-row ' + (cls || ''));
+        row.appendChild(el('span', '', label));
+        row.appendChild(el('strong', '', value));
+        totals.appendChild(row);
+      };
+      add(cfg.books || 'Books', q.subtotal);
+      add((cfg.shippingLabel || 'Shipping') + (q.distance ? ' (' + q.distance + ')' : ''), q.shipping === null ? (cfg.enterPin || 'Enter your PIN code') : q.shipping);
+      add(cfg.totalLabel || 'Total', q.total, 'cb-grand-total');
+    }
+  }
+
+  function refresh() {
+    return post({ action: 'corporate_book_cart_quote', items: JSON.stringify(read()), pin: pin() }).then(render, function (e) {
+      cart.querySelector('.cb-cart-items').textContent = e.message;
+    });
+  }
+
+  function say(text) {
+    var m = cart.querySelector('.cb-cart-message');
+    if (m) { m.textContent = text || ''; }
+  }
+
+  function fieldErrors(scope, fields) {
+    scope.querySelectorAll('.cb-field-error').forEach(function (e) {
+      e.textContent = (fields && fields[e.getAttribute('data-for')]) || '';
+    });
+  }
+
+  function loadCheckout() {
+    if (window.Razorpay) {
+      return Promise.resolve();
+    }
+    return new Promise(function (resolve, reject) {
+      var s = document.createElement('script');
+      s.src = 'https://checkout.razorpay.com/v1/checkout.js';
+      s.onload = resolve;
+      s.onerror = function () { reject({ message: cfg.failed }); };
+      document.head.appendChild(s);
+    });
+  }
+
+  function pay(order) {
+    return loadCheckout().then(function () {
+      return new Promise(function (resolve, reject) {
+        new window.Razorpay({
+          key: order.key,
+          amount: order.amount,
+          currency: order.currency,
+          name: order.name,
+          description: order.description,
+          order_id: order.order_id,
+          prefill: order.prefill,
+          handler: resolve,
+          modal: { ondismiss: function () { reject({ message: cfg.cancel }); } }
+        }).open();
+      });
+    }).then(function (paid) {
+      return post({ action: 'corporate_book_print_verify', order: order.order, payment_id: paid.razorpay_payment_id, signature: paid.razorpay_signature });
+    });
+  }
+
+  function done(result) {
+    write([]);
+    cart.textContent = '';
+    var box = el('div', 'cb-cart-done');
+    box.appendChild(el('h3', '', '✓'));
+    box.appendChild(el('p', '', result.message));
+    var a = el('a', 'cb-plan-signin', cfg.myAccount || 'My account');
+    a.href = cfg.account;
+    box.appendChild(a);
+    cart.appendChild(box);
+    cart.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  if (cart) {
+    refresh();
+    cart.addEventListener('click', function (event) {
+      var row = event.target.closest('tr[data-book]');
+      if (!row) {
+        return;
+      }
+      var id = parseInt(row.getAttribute('data-book'), 10);
+      var items = read();
+      items.forEach(function (i) {
+        if (i.id === id) {
+          if (event.target.closest('.cb-qty-plus')) { i.qty = Math.min(10, i.qty + 1); }
+          if (event.target.closest('.cb-qty-minus')) { i.qty = Math.max(1, i.qty - 1); }
+        }
+      });
+      if (event.target.closest('.cb-cart-remove')) {
+        items = items.filter(function (i) { return i.id !== id; });
+      }
+      write(items);
+      refresh();
+    });
+    if (form) {
+      var last = pin();
+      form.addEventListener('input', function (event) {
+        if (event.target.name === 'pin' && pin() !== last) {
+          last = pin();
+          refresh();
+        }
+      });
+      form.addEventListener('submit', function (event) {
+        event.preventDefault();
+        var button = form.querySelector('.cb-place-order');
+        var data = { action: 'corporate_book_checkout', items: JSON.stringify(read()) };
+        Array.prototype.forEach.call(form.elements, function (f) {
+          if (f.name && (f.type !== 'radio' || f.checked)) {
+            data[f.name] = f.value;
+          }
+        });
+        button.disabled = true;
+        say('');
+        fieldErrors(form, null);
+        post(data).then(function (order) {
+          if (order.done) {
+            return order;
+          }
+          say(cfg.paying);
+          return pay(order);
+        }).then(done, function (e) {
+          button.disabled = false;
+          fieldErrors(form, e.fields);
+          say(e.message || cfg.failed);
+          if (e.quote) {
+            render(e.quote);
+          }
+        });
+      });
+    }
+  }
+
+  // ---- My account: delivery address --------------------------------------------------------
+
+  document.addEventListener('submit', function (event) {
+    var f = event.target.closest('.cb-address-form');
+    if (!f) {
+      return;
+    }
+    event.preventDefault();
+    var data = { action: 'corporate_book_save_address' };
+    Array.prototype.forEach.call(f.elements, function (x) {
+      if (x.name) { data[x.name] = x.value; }
+    });
+    var message = f.parentNode.querySelector('.cb-account-message');
+    fieldErrors(f, null);
+    post(data).then(function (r) {
+      message.textContent = r.message;
+    }, function (e) {
+      fieldErrors(f, e.fields);
+      message.textContent = e.message || '';
+    });
+  });
+
+  pill();
+})();

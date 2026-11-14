@@ -12,7 +12,7 @@ if ( ! defined( 'WP_UNINSTALL_PLUGIN' ) ) {
   exit;
 }
 
-foreach ( array( 'corporate_book_subscription_page', 'corporate_book_profile_page' ) as $option ) {
+foreach ( array( 'corporate_book_subscription_page', 'corporate_book_profile_page', 'corporate_book_cart_page' ) as $option ) {
   $page = (int) get_option( $option );
   if ( $page > 0 ) {
     wp_trash_post( $page );

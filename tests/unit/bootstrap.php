@@ -9,7 +9,7 @@ define( 'DAY_IN_SECONDS', 86400 );
 define( 'HOUR_IN_SECONDS', 3600 );
 
 function cb_reset_wp() {
-  $GLOBALS['wp'] = array( 'options' => array(), 'post_meta' => array(), 'user_meta' => array(), 'user' => null, 'caps' => array(), 'filters' => array(), 'users' => array(), 'mail' => array() );
+  $GLOBALS['wp'] = array( 'posts' => array(), 'options' => array(), 'post_meta' => array(), 'user_meta' => array(), 'user' => null, 'caps' => array(), 'filters' => array(), 'users' => array(), 'mail' => array() );
 }
 cb_reset_wp();
 
@@ -70,6 +70,21 @@ function update_option( $key, $value ) {
 }
 function get_post_meta( $id, $key, $single = false ) {
   return isset( $GLOBALS['wp']['post_meta'][ $id ][ $key ] ) ? $GLOBALS['wp']['post_meta'][ $id ][ $key ] : '';
+}
+function get_the_title( $id ) {
+  return isset( $GLOBALS['wp']['posts'][ $id ] ) ? $GLOBALS['wp']['posts'][ $id ]['title'] : '';
+}
+function get_post_status( $id ) {
+  return isset( $GLOBALS['wp']['posts'][ $id ] ) ? $GLOBALS['wp']['posts'][ $id ]['status'] : false;
+}
+function get_post_type( $id = null ) {
+  return isset( $GLOBALS['wp']['posts'][ $id ] ) ? 'corporate_book' : false;
+}
+function sanitize_email( $e ) {
+  return trim( (string) $e );
+}
+function is_email( $e ) {
+  return (bool) filter_var( $e, FILTER_VALIDATE_EMAIL );
 }
 function get_user_meta( $id, $key, $single = false ) {
   return isset( $GLOBALS['wp']['user_meta'][ $id ][ $key ] ) ? $GLOBALS['wp']['user_meta'][ $id ][ $key ] : '';
@@ -203,3 +218,4 @@ require dirname( __DIR__, 2 ) . '/3d-corporate-book.php';
 Corporate_Book::get_instance()->defaults = array(); // filled per test; WordPress builds it on init
 require dirname( __DIR__, 2 ) . '/inc/account.php';
 require dirname( __DIR__, 2 ) . '/inc/settings.php';
+require dirname( __DIR__, 2 ) . '/inc/shop.php';

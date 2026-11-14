@@ -263,6 +263,10 @@ class Corporate_Book_Meta_boxes {
     $this->create_normal_setting( 'pdf_thumb', $post );
     $this->preview_field( $post );
     $this->create_normal_setting( 'subscription', $post );
+    echo '<h3 class="cb-settings-section">' . esc_html__( 'Print copy', '3d-corporate-book' ) . '</h3>';
+    foreach ( array( 'print_sell', 'print_price', 'print_shipping', 'print_stock' ) as $key ) {
+      $this->create_normal_setting( $key, $post );
+    }
 
     ?>
 
@@ -590,6 +594,13 @@ class Corporate_Book_Meta_boxes {
     $subscription = isset( $_POST['_corporate_book']['subscription'] ) ? sanitize_key( wp_unslash( $_POST['_corporate_book']['subscription'] ) ) : 'default';
     $sanitized_data['subscription'] = in_array( $subscription, array( 'default', 'required', 'free' ), true ) ? $subscription : 'default';
     $sanitized_data['preview_pdf'] = isset( $_POST['_corporate_book']['preview_pdf'] ) ? absint( wp_unslash( $_POST['_corporate_book']['preview_pdf'] ) ) : 0;
+    // Print copy: On/Off, money as a plain non-negative number, stock as a whole number or empty (print on demand).
+    $print = isset( $_POST['_corporate_book'] ) && is_array( $_POST['_corporate_book'] ) ? wp_unslash( $_POST['_corporate_book'] ) : array(); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- each value is cleaned below.
+    $sanitized_data['print_sell'] = isset( $print['print_sell'] ) && 'true' === $print['print_sell'] ? 'true' : 'false';
+    foreach ( array( 'print_price', 'print_shipping' ) as $key ) {
+      $sanitized_data[ $key ] = isset( $print[ $key ] ) && is_numeric( $print[ $key ] ) && $print[ $key ] >= 0 ? (string) round( (float) $print[ $key ], 2 ) : '';
+    }
+    $sanitized_data['print_stock'] = isset( $print['print_stock'] ) && '' !== trim( (string) $print['print_stock'] ) && is_numeric( $print['print_stock'] ) ? (string) max( 0, (int) $print['print_stock'] ) : '';
     // A book may only use files its editor may use: not another book's protected PDF, not someone else's preview.
     $old = get_post_meta( $post_id, '_corporate_book_data', true );
     $old = is_array( $old ) ? $old : array();

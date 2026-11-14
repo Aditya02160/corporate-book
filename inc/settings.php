@@ -51,6 +51,7 @@ class Corporate_Book_Settings {
       'controls' => array( 'more_controls', 'hide_controls', 'enable_search', 'share_prefix' ),
       'pdf' => array( 'enable_annotation', 'link_target', 'range_size', 'attachment_lightbox' ),
       'translate' => array( 'external_translate', 'text_toggle_sound', 'text_toggle_thumbnails', 'text_toggle_outline', 'text_previous_page', 'text_next_page', 'text_toggle_fullscreen', 'text_zoom_in', 'text_zoom_out', 'text_toggle_help', 'text_single_page_mode', 'text_double_page_mode', 'text_goto_first_page', 'text_goto_last_page', 'text_share', 'text_mail_subject', 'text_mail_body', 'text_loading', 'text_sign_in', 'text_subscribe', 'text_locked', 'text_subscribe_button', 'text_preview' ),
+      'print' => array( 'print_enable', 'print_bands', 'print_free_above', 'print_cod', 'print_email' ),
       'subscription' => array( 'subscription_enable', 'subscription_url', 'subscription_preview_percent', 'subscription_roles', 'subscription_login_shortcode', 'google_client_id', 'subscription_signup', 'razorpay_key_id', 'razorpay_key_secret', 'razorpay_webhook_secret', 'subscription_currency', 'subscription_plans' ),
       'advanced' => array( 'selectiveScriptLoading', 'enable_analytics' ),
   );
@@ -136,6 +137,11 @@ class Corporate_Book_Settings {
       'razorpay_key_secret'          => __( 'Shown next to the Key ID in Razorpay. Kept on your server only.', '3d-corporate-book' ),
       'razorpay_webhook_secret'      => __( 'Recommended. Makes payments count even if the reader closes the page. See the setup steps in the readme.', '3d-corporate-book' ),
       'subscription_currency'        => __( 'Currency of your prices.', '3d-corporate-book' ),
+      'print_enable'                 => __( 'On: readers can buy printed copies of books that have a print price.', '3d-corporate-book' ),
+      'print_bands'                  => __( 'How shipping grows with distance from Noida. One band per line: Up to km | Extra per book. Example: 300 | 30 adds 30 per book up to 300 km.', '3d-corporate-book' ),
+      'print_free_above'             => __( 'Optional. Orders with books worth at least this amount ship free.', '3d-corporate-book' ),
+      'print_cod'                    => __( 'On: readers may pay the courier in cash instead of paying online.', '3d-corporate-book' ),
+      'print_email'                  => __( 'Where new order emails go. Empty = site admin email.', '3d-corporate-book' ),
       'subscription_plans'           => __( 'One plan per line: Name | Price | Days. Example: Monthly | 399 | 30', '3d-corporate-book' ),
     );
   }
@@ -184,6 +190,7 @@ class Corporate_Book_Settings {
         'pdf' => __( 'PDF', '3d-corporate-book' ),
         'translate' => __( 'Translate', '3d-corporate-book' ),
         'subscription' => __( 'Subscription', '3d-corporate-book' ),
+        'print' => __( 'Print', '3d-corporate-book' ),
         'advanced' => __( 'Advanced', '3d-corporate-book' )
     );
     

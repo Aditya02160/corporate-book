@@ -30,6 +30,10 @@
       panel.find('.cb-lock-text').text(lock.text);
       // Sign-in and sign-up forms, plans or the subscribe link: HTML rendered and escaped by the server.
       panel.find('.cb-lock-account').html(lock.account);
+      if (lock.print) {
+        // "Buy print copy": the server-rendered button; the shop script adds it to the cart.
+        panel.find('.cb-lock-text').after($('<div class="cb-lock-print"></div>').html(lock.print));
+      }
       $('<button type="button" class="cb-lock-back"></button>').text(lock.back).on('click', function () {
         panel.hide();
       }).appendTo(panel.find('.cb-lock-box'));

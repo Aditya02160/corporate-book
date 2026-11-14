@@ -381,7 +381,9 @@ class Corporate_Book_ShortCode {
         } elseif ( is_array( $post_data['source'] ) ) {
           $post_data['source'] = array_slice( $post_data['source'], 0, $base->preview_pages( count( $post_data['source'] ) ) );
         }
-        $post_data['cbLock'] = $base->lock_options();
+        $post_data['cbLock']          = $base->lock_options();
+        // Second way to buy: a printed copy of this book, when it is for sale.
+        $post_data['cbLock']['print'] = Corporate_Book_Shop::buy_button( $post_id );
         wp_enqueue_script( 'corporate-book-lock', plugins_url( 'assets/js/corporate-book-lock.js', $base->file ), array( 'jquery' ), $base->version, true );
       }
       // Readers with access load a locked or protected book's full PDF through the protected link, never its file URL.
