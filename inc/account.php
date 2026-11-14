@@ -842,6 +842,19 @@ class Corporate_Book_Account {
   }
 
   /**
+   * Whether $sign is Razorpay's HMAC-SHA256 of $body with the webhook secret.
+   *
+   * @param string $body   Raw request body.
+   * @param string $sign   X-Razorpay-Signature header.
+   * @param string $secret Webhook secret.
+   *
+   * @return bool
+   */
+  public static function signed( $body, $sign, $secret ) {
+    return '' !== $secret && '' !== $sign && hash_equals( hash_hmac( 'sha256', $body, $secret ), $sign );
+  }
+
+  /**
    * Razorpay webhook: payment.captured / order.paid start access even when the reader closed the tab;
    * refund.processed / payment.refunded take the days back. Razorpay signs the raw body with the webhook secret.
    */
@@ -849,7 +862,7 @@ class Corporate_Book_Account {
     $secret = self::config( 'razorpay_webhook_secret' );
     $body   = (string) file_get_contents( 'php://input' );
     $sign   = isset( $_SERVER['HTTP_X_RAZORPAY_SIGNATURE'] ) ? sanitize_text_field( wp_unslash( $_SERVER['HTTP_X_RAZORPAY_SIGNATURE'] ) ) : '';
-    if ( '' === $secret || '' === $sign || ! hash_equals( hash_hmac( 'sha256', $body, $secret ), $sign ) ) {
+    if ( ! self::signed( $body, $sign, $secret ) ) {
       wp_send_json_error( 'bad signature', 401 );
     }
     $event   = json_decode( $body, true );

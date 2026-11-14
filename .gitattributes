@@ -3,3 +3,5 @@ tests/ export-ignore
 .governor/ export-ignore
 .gitignore export-ignore
 docs/ export-ignore
+composer.json export-ignore
+phpunit.xml.dist export-ignore
