@@ -34,6 +34,7 @@ class WP_Error {
 // Hooks.
 function add_action() {}
 function add_shortcode() {}
+function register_activation_hook() {}
 function add_filter( $tag, $cb ) {
   $GLOBALS['wp']['filters'][ $tag ][] = $cb;
 }

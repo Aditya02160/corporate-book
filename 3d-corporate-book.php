@@ -1003,6 +1003,11 @@ if ( !class_exists( 'Corporate_Book' ) ) {
 
   }
 
+  // Sites that already have rewrite rules saved need them rebuilt, or book pages give 404.
+  register_activation_hook( __FILE__, function () {
+    update_option( 'corporate_book_flush_rules', 1 );
+  } );
+
   //Load the Corporate Book Plugin Class
   $corporate_book = Corporate_Book::get_instance();
 }
