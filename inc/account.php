@@ -259,7 +259,7 @@ class Corporate_Book_Account {
       $cards .= '<div class="cb-plan-card"><h3>' . esc_html( $plan['name'] ) . '</h3><div class="cb-plan-price">' . esc_html( self::price( $plan['price'] ) ) . '</div><div class="cb-plan-days">' . esc_html( $days ) . '</div>' . $action . '</div>';
     }
     $gift = is_user_logged_in() && self::razorpay_ready() && ! $active ? '<p class="cb-gift-sub"><label><input type="checkbox" class="cb-gift-check"/> ' . esc_html__( 'Buy it as a gift for someone else', '3d-corporate-book' ) . '</label> <input type="email" id="cb-gift-email" placeholder="' . esc_attr__( "Their email address", '3d-corporate-book' ) . '" hidden/></p>' : '';
-    return '<div class="cb-account cb-plans-page"><h2 class="cb-plans-heading">' . esc_html__( 'Digital access', '3d-corporate-book' ) . '</h2>' . $gift . '<div class="cb-plans">' . $cards . '</div>' . Corporate_Book_Shop::print_section() . '<div id="cb-plans-account" class="cb-lock cb-lock-static"><div class="cb-lock-box">' . $box . '</div></div></div>';
+    return '<div class="cb-ui cb-account cb-plans-page"><h2 class="cb-plans-heading">' . esc_html__( 'Digital access', '3d-corporate-book' ) . '</h2>' . $gift . '<div class="cb-plans">' . $cards . '</div>' . Corporate_Book_Shop::print_section() . '<div id="cb-plans-account" class="cb-lock cb-lock-static"><div class="cb-lock-box">' . $box . '</div></div></div>';
   }
 
   /**
@@ -377,9 +377,9 @@ class Corporate_Book_Account {
           . '<button type="submit">' . esc_html__( 'Send link', '3d-corporate-book' ) . '</button>'
           . '<p class="cb-account-links"><a href="' . esc_url( self::profile_url() ) . '">' . esc_html__( 'Back to sign in', '3d-corporate-book' ) . '</a></p></form>';
       } else {
-        return '<div class="cb-profile cb-profile-guest"><div class="cb-lock cb-lock-static"><div class="cb-lock-box">' . $box . '</div></div></div>';
+        return '<div class="cb-ui cb-profile cb-profile-guest"><div class="cb-lock cb-lock-static"><div class="cb-lock-box">' . $box . '</div></div></div>';
       }
-      return '<div class="cb-profile cb-profile-guest"><div class="cb-account cb-profile-card">' . $form . '<p class="cb-account-message" role="alert"></p></div></div>';
+      return '<div class="cb-ui cb-profile cb-profile-guest"><div class="cb-account cb-profile-card">' . $form . '<p class="cb-account-message" role="alert"></p></div></div>';
     }
     // phpcs:enable
     $user = wp_get_current_user();
@@ -413,9 +413,9 @@ class Corporate_Book_Account {
     $orders = '<table class="cb-profile-orders"><thead><tr><th>' . esc_html__( 'Date', '3d-corporate-book' ) . '</th><th>' . esc_html__( 'Plan', '3d-corporate-book' ) . '</th><th>' . esc_html__( 'Amount', '3d-corporate-book' ) . '</th><th>' . esc_html__( 'Status', '3d-corporate-book' ) . '</th></tr></thead><tbody>'
       . ( '' !== $rows ? $rows : '<tr><td colspan="4">' . esc_html__( 'No payments yet.', '3d-corporate-book' ) . '</td></tr>' ) . '</tbody></table>';
     $message = '<p class="cb-account-message" role="alert"></p>';
-    return '<div class="cb-profile">'
-      . '<div class="cb-account cb-profile-card"><h3>' . esc_html__( 'Subscription', '3d-corporate-book' ) . '</h3>' . $status . $plans . $message . '</div>'
-      . '<div class="cb-account cb-profile-card"><h3>' . esc_html__( 'My details', '3d-corporate-book' ) . '</h3><form class="cb-profile-details" method="post" data-action="corporate_book_profile">'
+    return '<div class="cb-ui cb-dash">' . self::dash_nav() . '<div class="cb-dash-main">' . self::dash_header( $user ) . '<div class="cb-profile">'
+      . '<div class="cb-account cb-profile-card" id="cb-sec-subscription"><h3>' . esc_html__( 'Subscription', '3d-corporate-book' ) . '</h3>' . $status . $plans . $message . '</div>'
+      . '<div class="cb-account cb-profile-card" id="cb-sec-details"><h3>' . esc_html__( 'My details', '3d-corporate-book' ) . '</h3><form class="cb-profile-details" method="post" data-action="corporate_book_profile">'
       . self::field( 'first_name', __( 'First name', '3d-corporate-book' ), $user->first_name, 'text', 'autocomplete="given-name"' )
       . self::field( 'last_name', __( 'Last name', '3d-corporate-book' ), $user->last_name, 'text', 'autocomplete="family-name"' )
       . self::field( 'email', __( 'Email', '3d-corporate-book' ), $user->user_email, 'email', 'required autocomplete="email"' )
@@ -423,14 +423,52 @@ class Corporate_Book_Account {
       . self::field( 'company', __( 'Company', '3d-corporate-book' ), get_user_meta( $user->ID, 'cb_company', true ), 'text', 'autocomplete="organization"' )
       . self::field( 'current', __( 'Current password (only to change your email)', '3d-corporate-book' ), '', 'password', 'autocomplete="current-password"' )
       . '<button type="submit">' . esc_html__( 'Save details', '3d-corporate-book' ) . '</button></form>' . $message . '</div>'
-      . '<div class="cb-account cb-profile-card"><h3>' . esc_html__( 'Change password', '3d-corporate-book' ) . '</h3><form class="cb-profile-password" method="post" data-action="corporate_book_password">'
+      . '<div class="cb-account cb-profile-card" id="cb-sec-security"><h3>' . esc_html__( 'Change password', '3d-corporate-book' ) . '</h3><form class="cb-profile-password" method="post" data-action="corporate_book_password">'
       . self::field( 'current', __( 'Current password', '3d-corporate-book' ), '', 'password', 'required autocomplete="current-password"' )
       . self::field( 'pwd', __( 'New password (8 characters or more)', '3d-corporate-book' ), '', 'password', 'required minlength="8" autocomplete="new-password"' )
       . '<button type="submit">' . esc_html__( 'Change password', '3d-corporate-book' ) . '</button></form>' . $message . '</div>'
       . Corporate_Book_Shop::account_cards( $user )
-      . '<div class="cb-account cb-profile-card cb-profile-wide"><h3>' . esc_html__( 'Payment history', '3d-corporate-book' ) . '</h3>' . $orders . '</div>'
+      . '<div class="cb-account cb-profile-card cb-profile-wide" id="cb-sec-payments"><h3>' . esc_html__( 'Subscription payments', '3d-corporate-book' ) . '</h3>' . $orders . '</div>'
       . '<p class="cb-profile-signout"><a class="cb-signout" href="' . esc_url( wp_logout_url( home_url( '/' ) ) ) . '">' . esc_html__( 'Sign out', '3d-corporate-book' ) . '</a></p>'
-      . '</div>';
+      . '</div></div></div>';
+  }
+
+  /**
+   * My account header: initials, name, email, subscription badge.
+   */
+  private static function dash_header( $user ) {
+    $name     = trim( $user->first_name . ' ' . $user->last_name );
+    $name     = '' !== $name ? $name : $user->display_name;
+    $initials = strtoupper( implode( '', array_map( function ( $w ) {
+      return function_exists( 'mb_substr' ) ? mb_substr( $w, 0, 1 ) : substr( $w, 0, 1 );
+    }, array_slice( preg_split( '/[\s@._-]+/', $name, -1, PREG_SPLIT_NO_EMPTY ), 0, 2 ) ) ) );
+    $active   = self::is_active( $user->ID );
+    /* translators: %s: date */
+    $badge    = $active ? sprintf( __( 'Subscribed until %s', '3d-corporate-book' ), self::date( self::until( $user->ID ) ) ) : __( 'Free reader', '3d-corporate-book' );
+    /* translators: %s: date */
+    $since    = sprintf( __( 'Member since %s', '3d-corporate-book' ), self::date( strtotime( $user->user_registered ) ) );
+    return '<header class="cb-dash-head"><div class="cb-avatar" aria-hidden="true">' . esc_html( $initials ) . '</div><div class="cb-dash-who"><h2>' . esc_html( $name ) . '</h2><p>' . esc_html( $user->user_email ) . ' · ' . esc_html( $since ) . '</p></div>'
+      . '<span class="cb-badge ' . ( $active ? 'cb-badge-on' : 'cb-badge-off' ) . '">' . esc_html( $badge ) . '</span></header>';
+  }
+
+  /**
+   * My account side menu (every section stays on the page; the menu jumps to it).
+   */
+  private static function dash_nav() {
+    $items = array(
+      'subscription' => __( 'Subscription', '3d-corporate-book' ),
+      'details'      => __( 'My details', '3d-corporate-book' ),
+      'security'     => __( 'Password', '3d-corporate-book' ),
+      'saved'        => __( 'Saved books', '3d-corporate-book' ),
+      'orders'       => __( 'Print orders', '3d-corporate-book' ),
+      'address'      => __( 'Delivery address', '3d-corporate-book' ),
+      'payments'     => __( 'Payments', '3d-corporate-book' ),
+    );
+    $links = '';
+    foreach ( $items as $id => $label ) {
+      $links .= '<a href="#cb-sec-' . esc_attr( $id ) . '">' . esc_html( $label ) . '</a>';
+    }
+    return '<nav class="cb-dash-nav" aria-label="' . esc_attr__( 'My account', '3d-corporate-book' ) . '">' . $links . '<a class="cb-dash-out" href="' . esc_url( wp_logout_url( home_url( '/' ) ) ) . '">' . esc_html__( 'Sign out', '3d-corporate-book' ) . '</a></nav>';
   }
 
   public function save_profile() {

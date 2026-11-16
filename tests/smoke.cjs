@@ -758,6 +758,10 @@ async function waitFor(ready, ms) {
     await m.waitForTimeout(2500);
     const sales = await (await page.goto(`${BASE}/wp-admin/edit.php?post_type=corporate_book&page=corporate_book-sales`)).text();
     check(/Print sales/.test(sales) && /₹/.test(sales) && /Test Book|Book Test/.test(sales.slice(sales.indexOf('Reading'))), 'Sales page shows sales and reading statistics');
+    const readersPage = await (await page.goto(`${BASE}/wp-admin/edit.php?post_type=corporate_book&page=corporate_book-readers`)).text();
+    check(/Reader accounts/.test(readersPage) && /member@example.com/.test(readersPage) && /Active subscribers/.test(readersPage), 'Readers page lists reader accounts with their details');
+    const myAccount = await (await m.goto(`${BASE}/?pagename=my-account`)).text();
+    check(/cb-dash-head/.test(myAccount) && /corporate-book-pages\.css/.test(myAccount), 'My account uses the dashboard layout and its stylesheet');
     check(fxErrors.length === 0, `new feature pages have no JavaScript errors ${fxErrors.join(' | ')}`);
     await fx.close();
     }

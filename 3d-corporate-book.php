@@ -581,6 +581,7 @@ if ( !class_exists( 'Corporate_Book' ) ) {
       include_once dirname( __FILE__ ) . '/inc/shop.php';
       include_once dirname( __FILE__ ) . '/inc/tools.php';
       include_once dirname( __FILE__ ) . '/inc/reader.php';
+      include_once dirname( __FILE__ ) . '/inc/readers.php';
 
     }
 

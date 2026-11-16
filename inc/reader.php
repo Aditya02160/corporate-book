@@ -133,7 +133,7 @@ class Corporate_Book_Reader {
       $link  = get_permalink( $book );
       $rows .= '<li><a href="' . esc_url( $link ) . '">' . esc_html( get_the_title( $book ) ) . '</a> ' . Corporate_Book_Shop::buy_button( $book ) . ' ' . self::save_button( $book ) . '</li>'; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- buttons escape their output.
     }
-    return '<div class="cb-account cb-profile-card cb-profile-wide"><h3>' . esc_html__( 'Saved books', '3d-corporate-book' ) . '</h3>' . ( $rows ? '<ul class="cb-wishlist">' . $rows . '</ul>' : '<p>' . esc_html__( 'Books you save with "Save for later" show here.', '3d-corporate-book' ) . '</p>' ) . '</div>';
+    return '<div class="cb-account cb-profile-card cb-profile-wide" id="cb-sec-saved"><h3>' . esc_html__( 'Saved books', '3d-corporate-book' ) . '</h3>' . ( $rows ? '<ul class="cb-wishlist">' . $rows . '</ul>' : '<p>' . esc_html__( 'Books you save with "Save for later" show here.', '3d-corporate-book' ) . '</p>' ) . '</div>';
   }
 
   // ---- Reading statistics --------------------------------------------------------------------

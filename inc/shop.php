@@ -488,6 +488,8 @@ class Corporate_Book_Shop {
 
   public function register_script() {
     $base = Corporate_Book::get_instance();
+    // Page styles for My account, Cart and Subscription: loaded in the page head on every theme.
+    wp_enqueue_style( 'corporate-book-pages', plugins_url( 'assets/css/corporate-book-pages.css', $base->file ), array(), $base->version );
     wp_register_script( 'corporate-book-shop', plugins_url( 'assets/js/corporate-book-shop.js', $base->file ), array(), $base->version, true );
     wp_localize_script(
       'corporate-book-shop',
@@ -623,13 +625,13 @@ class Corporate_Book_Shop {
     self::enqueue();
     $cart = '<div class="cb-cart-items" aria-live="polite"><p class="cb-cart-loading">' . esc_html__( 'Loading your cart…', '3d-corporate-book' ) . '</p></div>';
     if ( ! is_user_logged_in() ) {
-      return '<div class="cb-cart cb-cart-guest">' . $cart . '<div class="cb-cart-signin"><h3>' . esc_html__( 'Sign in to place your order', '3d-corporate-book' ) . '</h3><p>' . esc_html__( 'Your cart is kept while you sign in or create an account.', '3d-corporate-book' ) . '</p><div class="cb-lock cb-lock-static"><div class="cb-lock-box">' . Corporate_Book_Account::box( false ) . '</div></div></div></div>';
+      return '<div class="cb-ui cb-cart cb-cart-guest">' . $cart . '<div class="cb-cart-signin"><h3>' . esc_html__( 'Sign in to place your order', '3d-corporate-book' ) . '</h3><p>' . esc_html__( 'Your cart is kept while you sign in or create an account.', '3d-corporate-book' ) . '</p><div class="cb-lock cb-lock-static"><div class="cb-lock-box">' . Corporate_Book_Account::box( false ) . '</div></div></div></div>';
     }
     $cod = 'true' === self::config( 'print_cod' );
     $pay = '<fieldset class="cb-pay"><legend>' . esc_html__( 'Payment', '3d-corporate-book' ) . '</legend>'
       . '<label><input type="radio" name="payment" value="razorpay" checked/> ' . esc_html__( 'Pay online now (UPI, cards, net banking)', '3d-corporate-book' ) . '</label>'
       . ( $cod ? '<label><input type="radio" name="payment" value="cod"/> ' . esc_html__( 'Cash on delivery', '3d-corporate-book' ) . '</label>' : '' ) . '</fieldset>';
-    return '<div class="cb-cart">' . $cart
+    return '<div class="cb-ui cb-cart">' . $cart
       . '<form class="cb-checkout" novalidate><h3>' . esc_html__( 'Delivery address', '3d-corporate-book' ) . '</h3><div class="cb-address">' . self::address_fields( self::saved_address( wp_get_current_user() ) ) . '</div>'
       . '<div class="cb-coupon"><label class="cb-field"><span>' . esc_html__( 'Coupon code (optional)', '3d-corporate-book' ) . '</span><input type="text" name="coupon" autocomplete="off"/></label><button type="button" class="cb-apply-coupon">' . esc_html__( 'Apply', '3d-corporate-book' ) . '</button></div>'
       . '<label class="cb-gift-toggle"><input type="checkbox" name="gift" value="1"/> ' . esc_html__( 'This is a gift: deliver to the address above, without prices on the packing slip', '3d-corporate-book' ) . '</label>'
@@ -1144,8 +1146,8 @@ class Corporate_Book_Shop {
     }
     $orders = '<table class="cb-profile-orders cb-print-orders"><thead><tr><th>' . esc_html__( 'Order', '3d-corporate-book' ) . '</th><th>' . esc_html__( 'Books', '3d-corporate-book' ) . '</th><th>' . esc_html__( 'Total', '3d-corporate-book' ) . '</th><th>' . esc_html__( 'Status', '3d-corporate-book' ) . '</th></tr></thead><tbody>'
       . ( '' !== $rows ? $rows : '<tr><td colspan="4">' . esc_html__( 'No print orders yet.', '3d-corporate-book' ) . ' <a href="' . esc_url( self::cart_url() ) . '">' . esc_html__( 'Go to cart', '3d-corporate-book' ) . '</a></td></tr>' ) . '</tbody></table>';
-    return Corporate_Book_Reader::wishlist_card( $user ) . '<div class="cb-account cb-profile-card cb-profile-wide"><h3>' . esc_html__( 'My print orders', '3d-corporate-book' ) . '</h3>' . $orders . '</div>'
-      . '<div class="cb-account cb-profile-card cb-profile-wide"><h3>' . esc_html__( 'Delivery address', '3d-corporate-book' ) . '</h3><form class="cb-address-form cb-address" novalidate>' . self::address_fields( self::saved_address( $user ) ) . '<button type="submit">' . esc_html__( 'Save address', '3d-corporate-book' ) . '</button></form><p class="cb-account-message" role="alert"></p></div>';
+    return Corporate_Book_Reader::wishlist_card( $user ) . '<div class="cb-account cb-profile-card cb-profile-wide" id="cb-sec-orders"><h3>' . esc_html__( 'My print orders', '3d-corporate-book' ) . '</h3>' . $orders . '</div>'
+      . '<div class="cb-account cb-profile-card cb-profile-wide" id="cb-sec-address"><h3>' . esc_html__( 'Delivery address', '3d-corporate-book' ) . '</h3><form class="cb-address-form cb-address" novalidate>' . self::address_fields( self::saved_address( $user ) ) . '<button type="submit">' . esc_html__( 'Save address', '3d-corporate-book' ) . '</button></form><p class="cb-account-message" role="alert"></p></div>';
   }
 }
 
