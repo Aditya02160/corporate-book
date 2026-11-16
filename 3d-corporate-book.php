@@ -460,7 +460,9 @@ if ( !class_exists( 'Corporate_Book' ) ) {
       $this->defaults['subscription_preview_percent'] = array( 'std' => 10, 'title' => __( 'Free Preview (%)', '3d-corporate-book' ), 'type' => 'number', 'attr' => array( 'min' => '1', 'max' => '100' ) );
       $this->defaults['subscription_roles']           = array( 'std' => '', 'title' => __( 'Subscriber Roles', '3d-corporate-book' ), 'desc' => __( 'Comma separated roles that count as subscribed, set by your membership plugin, e.g. cb_member.', '3d-corporate-book' ), 'type' => 'text' );
       $this->defaults['subscription_login_shortcode'] = array( 'std' => '', 'title' => __( 'Social Login Shortcode', '3d-corporate-book' ), 'desc' => __( 'Shortcode of your social login plugin (Google, LinkedIn), e.g. [nextend_social_login]', '3d-corporate-book' ), 'type' => 'text' );
-      $this->defaults['subscription']                 = array( 'std' => 'default', 'title' => __( 'Subscription', '3d-corporate-book' ), 'desc' => __( 'Required always locks this book, Free never does.', '3d-corporate-book' ), 'choices' => array( 'default' => __( 'Use Subscription tab setting', '3d-corporate-book' ), 'required' => __( 'Required', '3d-corporate-book' ), 'free' => __( 'Free', '3d-corporate-book' ) ) );
+      $this->defaults['subscription']                 = array( 'std' => 'default', 'title' => __( 'Subscription', '3d-corporate-book' ), 'desc' => __( 'Required always locks this book, Free never does. Free until a date: everyone reads it in full until the last free day, then the Subscription tab setting applies again.', '3d-corporate-book' ), 'choices' => array( 'default' => __( 'Use Subscription tab setting', '3d-corporate-book' ), 'required' => __( 'Required', '3d-corporate-book' ), 'free' => __( 'Free', '3d-corporate-book' ), 'until' => __( 'Free until a date', '3d-corporate-book' ) ) );
+      $this->defaults['free_until']                   = array( 'std' => '', 'title' => __( 'Last Free Day', '3d-corporate-book' ), 'desc' => __( 'With "Free until a date": everyone reads this book free until the end of this day.', '3d-corporate-book' ), 'type' => 'date' );
+      $this->defaults['subscription_free_until']      = array( 'std' => '', 'title' => __( 'Everyone Reads Free Until', '3d-corporate-book' ), 'desc' => __( 'Optional promotion: every book is free to read in full, without signing in, until the end of this day. Leave empty for none.', '3d-corporate-book' ), 'type' => 'date' );
       $this->defaults['text_sign_in']                 = __( 'Sign in', '3d-corporate-book' );
       $this->defaults['text_subscribe']               = __( 'Subscribe to read the full book', '3d-corporate-book' );
       $this->defaults['text_locked']                  = __( 'Your free preview has ended', '3d-corporate-book' );
@@ -761,10 +763,34 @@ if ( !class_exists( 'Corporate_Book' ) ) {
     public function book_is_locked( $book_id ) {
       $data = get_post_meta( $book_id, '_corporate_book_data', true );
       $mode = is_array( $data ) && isset( $data['subscription'] ) ? $data['subscription'] : 'global';
-      if ( 'free' === $mode ) {
+      if ( 'free' === $mode || '' !== $this->free_until( $book_id ) ) {
         return false;
       }
       return 'required' === $mode || 'true' === $this->get_config( 'subscription_enable' );
+    }
+
+    /**
+     * Last day (YYYY-MM-DD, site time) a book is free for everyone, or '' when it is not free for a limited time now:
+     * the book's own "Free until a date" or the site-wide promotion, whichever ends later.
+     *
+     * @param int $book_id Book post ID.
+     *
+     * @return string
+     */
+    public function free_until( $book_id ) {
+      $data  = get_post_meta( $book_id, '_corporate_book_data', true );
+      $dates = array( (string) $this->get_config( 'subscription_free_until' ) );
+      if ( is_array( $data ) && isset( $data['subscription'], $data['free_until'] ) && 'until' === $data['subscription'] ) {
+        $dates[] = (string) $data['free_until'];
+      }
+      $today = wp_date( 'Y-m-d' );
+      $last  = '';
+      foreach ( $dates as $date ) {
+        if ( preg_match( '/^\d{4}-\d{2}-\d{2}$/', $date ) && $date >= $today && $date > $last ) {
+          $last = $date;
+        }
+      }
+      return $last;
     }
 
     /**

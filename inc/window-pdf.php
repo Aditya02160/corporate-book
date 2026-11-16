@@ -492,7 +492,25 @@ class Corporate_Book_Window {
    *
    * @return int Saved start, or 0 when this reader has not opened a preview yet and none is requested.
    */
-  public static function reader_start( $book_id, $requested = null ) {
+  /** Signature of a preview link for a page: only editors can make one, so readers cannot change the page. */
+  public static function share_key( $book_id, $page ) {
+    return substr( wp_hash( 'cb-preview|' . (int) $book_id . '|' . (int) $page ), 0, 12 );
+  }
+
+  public static function share_url( $book_id, $page, $url ) {
+    return add_query_arg( array( 'cb_from' => (int) $page, 'cb_key' => self::share_key( $book_id, $page ) ), remove_query_arg( array( 'cb_from', 'cb_key' ), $url ) );
+  }
+
+  /** Page of a valid preview link for this book in the current request, or 0. */
+  public static function shared_start( $book_id ) {
+    // phpcs:disable WordPress.Security.NonceVerification.Recommended -- a signed public link, checked below.
+    $page = isset( $_GET['cb_from'] ) ? absint( $_GET['cb_from'] ) : 0;
+    $key  = isset( $_GET['cb_key'] ) ? sanitize_key( wp_unslash( $_GET['cb_key'] ) ) : '';
+    // phpcs:enable
+    return $page > 0 && '' !== $key && hash_equals( self::share_key( $book_id, $page ), $key ) ? $page : 0;
+  }
+
+  public static function reader_start( $book_id, $requested = null, $force = false ) {
     $user = get_current_user_id();
     // shortcut: guests are told apart by IP address, so readers behind one office IP share a preview.
     $ip   = isset( $_SERVER['REMOTE_ADDR'] ) ? sanitize_text_field( wp_unslash( $_SERVER['REMOTE_ADDR'] ) ) : '';
@@ -502,6 +520,11 @@ class Corporate_Book_Window {
     $mine = isset( $meta[ $book_id ] ) ? (int) $meta[ $book_id ] : 0;
     // Signing up or signing out does not open a second free window: the account and the IP share one.
     $saved = $mine ? $mine : (int) get_transient( $key );
+    if ( $force && $requested ) {
+      // A preview link from the publisher moves this reader's free window to the linked page.
+      $saved = max( 1, (int) $requested );
+      set_transient( $key, $saved, 30 * DAY_IN_SECONDS );
+    }
     if ( ! $saved && null !== $requested ) {
       $saved = max( 1, (int) $requested );
       set_transient( $key, $saved, 30 * DAY_IN_SECONDS );

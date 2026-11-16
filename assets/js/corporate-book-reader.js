@@ -104,6 +104,28 @@
     draw();
     bar.appendChild(marks);
 
+    // Editors: a preview link from the current page (readers who open it get the free preview from there).
+    if (opt.cbShare) {
+      var share = el('button', 'cb-share', cfg.share);
+      share.type = 'button';
+      var out = el('input', 'cb-share-out');
+      out.readOnly = true;
+      out.hidden = true;
+      out.onfocus = function () { out.select(); };
+      share.onclick = function () {
+        post({ action: 'corporate_book_share', book: book, page: app.currentPageNumber, url: window.location.href }).then(function (a) {
+          if (!a || !a.success) { return; }
+          out.value = a.data.url;
+          out.hidden = false;
+          out.focus();
+          if (navigator.clipboard) { navigator.clipboard.writeText(a.data.url).catch(function () {}); }
+          share.textContent = cfg.copied;
+        });
+      };
+      bar.appendChild(share);
+      bar.appendChild(out);
+    }
+
     // Remember the page and count how far readers get.
     track(book, 'open', 0);
     var furthest = 0;

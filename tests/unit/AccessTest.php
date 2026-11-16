@@ -17,6 +17,46 @@ class AccessTest extends CB_Unit_Test {
     $this->assertFalse( $cb->book_is_locked( $this->book( 4, 'free' ) ) );
   }
 
+  public function test_free_until_a_date_opens_the_book_for_everyone_until_that_day() {
+    $cb = Corporate_Book::get_instance();
+    $this->settings( array( 'subscription_enable' => 'true' ) );
+    $today     = gmdate( 'Y-m-d' );
+    $tomorrow  = gmdate( 'Y-m-d', time() + DAY_IN_SECONDS );
+    $yesterday = gmdate( 'Y-m-d', time() - DAY_IN_SECONDS );
+    $open      = $this->book( 1, 'until' );
+    $GLOBALS['wp']['post_meta'][ $open ]['_corporate_book_data']['free_until'] = $tomorrow;
+    $this->assertFalse( $cb->book_is_locked( $open ) );
+    $this->assertSame( $tomorrow, $cb->free_until( $open ) );
+    $GLOBALS['wp']['post_meta'][ $open ]['_corporate_book_data']['free_until'] = $today;
+    $this->assertFalse( $cb->book_is_locked( $open ), 'free through the whole last day' );
+    $GLOBALS['wp']['post_meta'][ $open ]['_corporate_book_data']['free_until'] = $yesterday;
+    $this->assertTrue( $cb->book_is_locked( $open ), 'after the last free day the lock is back' );
+    $this->assertSame( '', $cb->free_until( $open ) );
+    $GLOBALS['wp']['post_meta'][ $open ]['_corporate_book_data']['free_until'] = 'soon';
+    $this->assertTrue( $cb->book_is_locked( $open ), 'a bad date frees nothing' );
+  }
+
+  public function test_site_wide_free_reading_until_a_date() {
+    $cb = Corporate_Book::get_instance();
+    $this->settings( array( 'subscription_enable' => 'true', 'subscription_free_until' => gmdate( 'Y-m-d', time() + 3 * DAY_IN_SECONDS ) ) );
+    $this->assertFalse( $cb->book_is_locked( $this->book( 1 ) ) );
+    $this->assertFalse( $cb->book_is_locked( $this->book( 2, 'required' ) ), 'the promotion opens every book' );
+    $this->settings( array( 'subscription_enable' => 'true', 'subscription_free_until' => gmdate( 'Y-m-d', time() - DAY_IN_SECONDS ) ) );
+    $this->assertTrue( $cb->book_is_locked( $this->book( 3 ) ) );
+  }
+
+  public function test_preview_links_are_signed_per_book_and_page() {
+    $key = Corporate_Book_Window::share_key( 7, 20 );
+    $_GET = array( 'cb_from' => '20', 'cb_key' => $key );
+    $this->assertSame( 20, Corporate_Book_Window::shared_start( 7 ) );
+    $this->assertSame( 0, Corporate_Book_Window::shared_start( 8 ), 'another book' );
+    $_GET = array( 'cb_from' => '40', 'cb_key' => $key );
+    $this->assertSame( 0, Corporate_Book_Window::shared_start( 7 ), 'a changed page number is refused' );
+    $_GET = array( 'cb_from' => '20' );
+    $this->assertSame( 0, Corporate_Book_Window::shared_start( 7 ) );
+    $_GET = array();
+  }
+
   public function test_guest_reads_only_the_preview_of_a_locked_book() {
     $this->settings( array( 'subscription_enable' => 'true' ) );
     $this->assertFalse( Corporate_Book::get_instance()->user_has_access( $this->book( 1 ) ) );

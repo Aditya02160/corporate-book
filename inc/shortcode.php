@@ -217,6 +217,13 @@ class Corporate_Book_ShortCode {
       . '</div><div class="cb-library-main">' . $note . $main . '</div></div>';
   }
 
+  /** "Free to read until 30 Nov" while a book is free for a limited time. */
+  private function free_note( $post_id, $class ) {
+    $last = is_numeric( $post_id ) ? $this->base->free_until( (int) $post_id ) : '';
+    /* translators: %s: date */
+    return '' === $last ? '' : '<div class="' . esc_attr( $class ) . '">' . esc_html( sprintf( __( 'Free to read until %s', '3d-corporate-book' ), date_i18n( get_option( 'date_format' ), strtotime( $last . ' 12:00:00' ) ) ) ) . '</div>';
+  }
+
   /** "Print copy · ₹499" line on a cover card, when the book is sold in print. */
   private function card_price( $post_id ) {
     $info = is_numeric( $post_id ) && class_exists( 'Corporate_Book_Shop' ) ? Corporate_Book_Shop::book_info( (int) $post_id ) : null;
@@ -403,7 +410,8 @@ class Corporate_Book_ShortCode {
           $total       = '' !== $full ? Corporate_Book_Window::count_pages( $full ) : 0;
           if ( $total > 0 ) {
             // Free preview from any page: the server sends every page, but only the window starting where the reader opens is real.
-            $saved       = min( $total, Corporate_Book_Window::reader_start( $post_id ) );
+            $shared      = min( $total, Corporate_Book_Window::shared_start( (int) $post_id ) );
+            $saved       = min( $total, Corporate_Book_Window::reader_start( $post_id, $shared ? $shared : null, $shared > 0 ) );
             $preview_url = add_query_arg( 'start', max( 1, $saved ), Corporate_Book_Protected_PDF::url( $post_id ) );
             $cb_window   = array( 'count' => $base->preview_pages( $total ), 'total' => $total, 'start' => max( 1, $saved ), 'fixed' => $saved > 0 );
           }
@@ -511,13 +519,13 @@ class Corporate_Book_ShortCode {
           $html = '<div class="_df_button cb-trigger-custom cb-cover" id="' . esc_attr( $id ) . '_cover" data-option="option_' . esc_attr( $id ) . '" ' . $attrHTML . '><img src="' . esc_url( $thumb_url ) . '" alt="' . esc_attr( $title ) . '" loading="lazy"/></div>';
         }
         $html = '<div class="cb-thumb-card">' . $html . '<div class="cb-thumb-title">' . esc_html( $title ) . '</div>'
-            . $this->card_price( $post_id )
+            . $this->free_note( $post_id, 'cb-free-badge' ) . $this->card_price( $post_id )
             . '<div class="cb-thumb-actions"><div class="_df_button cb-preview-button" id="' . esc_attr( $id ) . '_preview" data-option="option_' . esc_attr( $id ) . '" ' . $attrHTML . '>' . esc_html( $base->get_translate( 'text_preview' ) ) . '</div>'
             . $this->card_cart( $post_id ) . '</div></div>';
       }
     }
     else {
-      $html = '<div class="_df_book df-lite' . esc_attr( $class ) . '" id="' . esc_attr( $id ) . '" ' . $attrHTML . '></div>';
+      $html = $this->free_note( $post_id, 'cb-free-note' ) . '<div class="_df_book df-lite' . esc_attr( $class ) . '" id="' . esc_attr( $id ) . '" ' . $attrHTML . '></div>';
     }
 
     if ( count( $post_data ) > 0 ) {
@@ -527,6 +535,15 @@ class Corporate_Book_ShortCode {
 		    $post_data['outline'] = $this->array_outline_escaped($post_data['outline']);
 	    }
 			
+      // Preview links open readers who may read everything at the linked page too.
+      if ( is_numeric( $post_id ) && empty( $post_data['cbLock']['window'] ) && Corporate_Book_Window::shared_start( (int) $post_id ) ) {
+        $post_data['openPage'] = Corporate_Book_Window::shared_start( (int) $post_id );
+      }
+      // Editors get a "Copy preview link from this page" button under the book.
+      // Set for every embed: a book and its cover card on one page share the same options object.
+      if ( is_numeric( $post_id ) && current_user_can( 'edit_post', (int) $post_id ) ) {
+        $post_data['cbShare'] = 1;
+      }
       /*Normally this occurs only when a valid post id is added*/
       $code = 'window.option_' . esc_js($id) . ' = ' . json_encode( $post_data ) . ';'
         // Free preview from any page: the window starts at the page in the link (#cbstart-10 or a share link ending in /10/).

@@ -6,6 +6,22 @@
 
 define( 'ABSPATH', __DIR__ . '/' );
 define( 'DAY_IN_SECONDS', 86400 );
+if ( ! function_exists( 'wp_hash' ) ) {
+  function wp_hash( $data ) {
+    return hash_hmac( 'md5', $data, 'unit-test-salt' );
+  }
+}
+if ( ! function_exists( 'absint' ) ) {
+  function absint( $n ) {
+    return abs( (int) $n );
+  }
+}
+if ( ! function_exists( 'wp_unslash' ) ) {
+  function wp_unslash( $v ) {
+    return $v;
+  }
+}
+
 define( 'HOUR_IN_SECONDS', 3600 );
 
 function cb_reset_wp() {
@@ -172,8 +188,8 @@ function get_permalink( $id ) {
 function date_i18n( $format, $time ) {
   return gmdate( 'Y-m-d', $time );
 }
-function wp_date( $format, $time ) {
-  return gmdate( 'Y-m-d', $time );
+function wp_date( $format, $time = null ) {
+  return gmdate( 'Y-m-d', null === $time ? time() : $time );
 }
 function wp_mail( $to, $subject, $body ) {
   $GLOBALS['wp']['mail'][] = compact( 'to', 'subject', 'body' );

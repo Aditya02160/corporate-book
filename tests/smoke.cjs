@@ -247,6 +247,23 @@ async function waitFor(ready, ms) {
     await sp.waitForSelector('._df_book .cb-lock', { state: 'visible', timeout: 20000 }).catch(() => {});
     check(await sp.$('._df_book .cb-lock .cb-lock-from') === null, 'the panel has no button to start another free preview');
     await startCtx.close();
+    // Preview link from a page: the book's editor copies it from the bar under the book; it moves the free preview there.
+    await page.goto(`${BASE}/?pagename=book-test`);
+    await page.waitForSelector('.cb-reader-bar .cb-share', { timeout: 60000 }).catch(() => {});
+    await page.evaluate(() => window.jQuery('._df_book').data('df-app').gotoPage(2)).catch(() => {});
+    await page.waitForTimeout(1000);
+    await page.click('.cb-reader-bar .cb-share').catch(() => {});
+    await page.waitForFunction(() => /cb_key=/.test((document.querySelector('.cb-share-out') || {}).value || ''), null, { timeout: 20000 }).catch(() => {});
+    const shareLink = await page.$eval('.cb-share-out', (e) => e.value).catch(() => '');
+    const sharedPage = parseInt((shareLink.match(/cb_from=(\d+)/) || [])[1] || '0', 10);
+    const linkCtx = await browser.newContext();
+    const lp = await linkCtx.newPage();
+    lp.setDefaultTimeout(90000);
+    const windowStart = async (url) => { await lp.goto(url); return lp.evaluate(() => { const o = window['option_' + document.querySelector('._df_book').id]; return o && o.cbLock && o.cbLock.window ? o.cbLock.window.start : 0; }).catch(() => 0); };
+    const linked = shareLink ? await windowStart(shareLink) : 0;
+    const tampered = shareLink ? await windowStart(shareLink.replace(/cb_from=\d+/, `cb_from=${sharedPage === 1 ? 2 : 1}`)) : 0;
+    check(sharedPage > 0 && linked === sharedPage && tampered === sharedPage, `a preview link starts the free preview at its page, and a changed page number does not (${shareLink.slice(-40)} ${linked} ${tampered})`);
+    await linkCtx.close();
     await page.goto(editUrl);
     check(await page.$('#corporate_book_enable_download') === null, 'book editor has no download option');
     const preview = await page.evaluate(async (pdf) => {
@@ -557,7 +574,17 @@ async function waitFor(ready, ms) {
     // An earlier check made Test Book free; lock it again so the preview-ended panel shows.
     const priced = await setPrint(editUrl, { subscription: 'required', print_sell: 'true', print_price: '499', print_weight: '200', print_stock: '5' })
       && await setPrint(bulkEdit, { print_sell: 'true', print_price: '250', print_cost: '120', print_stock: '' });
-    check(priced, 'authors set print price, weight, cost and stock in the book editor');    const shopCtx = await browser.newContext();
+    check(priced, 'authors set print price, weight, cost and stock in the book editor');
+    // Free until a date: everyone reads the whole book until the last free day.
+    const tomorrow = new Date(Date.now() + 86400000).toISOString().slice(0, 10);
+    const freed = await setPrint(editUrl, { subscription: 'until', free_until: tomorrow, print_price: '499' });
+    let freeHtml = '';
+    for (let i = 0; i < 8 && !/cb-free-note/.test(freeHtml); i++) {
+      freeHtml = await (await fetch(`${BASE}/?pagename=book-test`)).text();
+      if (!/cb-free-note/.test(freeHtml)) await new Promise((r) => setTimeout(r, 1500));
+    }
+    check(freed && /Free to read until/.test(freeHtml) && !/start=\d/.test(freeHtml), 'a book free until a date opens in full for everyone, with a "Free to read until" note');
+    await setPrint(editUrl, { subscription: 'required', free_until: '', print_price: '499' });    const shopCtx = await browser.newContext();
     await shopCtx.exposeBinding('cbSign', (src, o, p) => require('crypto').createHmac('sha256', 'smokesecret').update(`${o}|${p}`).digest('hex'));
     // Razorpay Checkout stand-in: "pays" at once with a correctly signed payment.
     await shopCtx.addInitScript(() => {

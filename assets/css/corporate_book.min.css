@@ -66,3 +66,9 @@
 .cb-library .cb-library-item{display:flex}
 .cb-library .cb-library-item>.cb-thumb-card{flex:1}
 .cb-library .cb-thumb-actions{margin-top:auto;padding-top:12px}
+
+/* Free for a limited time; preview-link button */
+.cb-free-badge{display:inline-block;margin-top:6px;padding:3px 10px;border-radius:999px;background:#e7f6ec;color:#0a7a3d;font-size:12px;font-weight:700}
+.cb-free-note{max-width:640px;margin:0 auto 12px;padding:10px 16px;border-radius:10px;background:#e7f6ec;color:#0a7a3d;font-weight:700;text-align:center}
+.cb-reader-bar .cb-share{margin-left:8px;padding:6px 12px;border:1px solid #0b1f5c;border-radius:999px;background:#fff;color:#0b1f5c;font-size:13px;cursor:pointer}
+.cb-reader-bar .cb-share-out{display:block;width:100%;max-width:560px;margin:8px auto 0;padding:6px 10px;font-size:12px}

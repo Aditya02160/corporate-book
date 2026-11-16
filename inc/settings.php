@@ -52,7 +52,7 @@ class Corporate_Book_Settings {
       'pdf' => array( 'enable_annotation', 'link_target', 'range_size', 'attachment_lightbox' ),
       'translate' => array( 'external_translate', 'text_toggle_sound', 'text_toggle_thumbnails', 'text_toggle_outline', 'text_previous_page', 'text_next_page', 'text_toggle_fullscreen', 'text_zoom_in', 'text_zoom_out', 'text_toggle_help', 'text_single_page_mode', 'text_double_page_mode', 'text_goto_first_page', 'text_goto_last_page', 'text_share', 'text_mail_subject', 'text_mail_body', 'text_loading', 'text_sign_in', 'text_subscribe', 'text_locked', 'text_subscribe_button', 'text_preview' ),
       'print' => array( 'print_enable', 'print_unit_cost', 'print_pack_cost', 'print_copy_weight', 'print_pack_weight', 'print_ship_mode', 'print_zones', 'print_flat_rate', 'print_free_above', 'print_cod', 'print_coupons', 'print_bundle_days', 'print_email', 'print_low_stock', 'invoice_business', 'invoice_gstin', 'invoice_address', 'invoice_prefix', 'shiprocket_email', 'shiprocket_password', 'shiprocket_pickup' ),
-      'subscription' => array( 'subscription_enable', 'subscription_url', 'subscription_preview_percent', 'subscription_roles', 'subscription_login_shortcode', 'google_client_id', 'subscription_signup', 'razorpay_key_id', 'razorpay_key_secret', 'razorpay_webhook_secret', 'subscription_currency', 'subscription_plans' ),
+      'subscription' => array( 'subscription_enable', 'subscription_free_until', 'subscription_url', 'subscription_preview_percent', 'subscription_roles', 'subscription_login_shortcode', 'google_client_id', 'subscription_signup', 'razorpay_key_id', 'razorpay_key_secret', 'razorpay_webhook_secret', 'subscription_currency', 'subscription_plans' ),
       'advanced' => array( 'selectiveScriptLoading', 'enable_analytics', 'delete_data' ),
   );
 
@@ -135,6 +135,7 @@ class Corporate_Book_Settings {
       'post_urls'                    => __( 'On: every book gets its own web page, and /corporate-book/ lists all books.', '3d-corporate-book' ),
       'enable_search'                => __( 'Adds a search button so readers can find words in the PDF.', '3d-corporate-book' ),
       'subscription_enable'          => __( 'On: readers see only the free preview until they subscribe. Off: every book is free to read.', '3d-corporate-book' ),
+      'subscription_free_until'      => __( 'Optional promotion: every book is free to read in full until the end of this day. Empty = no promotion.', '3d-corporate-book' ),
       'subscription_preview_percent' => __( 'How much of each book is free. 10 means the first 10% of pages.', '3d-corporate-book' ),
       'subscription_signup'          => __( 'On: readers can create an account themselves.', '3d-corporate-book' ),
       'google_client_id'             => __( 'Optional. Adds a "Continue with Google" button. Leave empty if you do not use it.', '3d-corporate-book' ),
@@ -314,6 +315,9 @@ class Corporate_Book_Settings {
     if ( 'subscription_roles' === $key ) {
       // The reader role is given to everyone who signs up, so it can never mean "paid".
       return implode( ',', array_diff( array_filter( array_map( 'sanitize_key', explode( ',', $value ) ) ), array( 'cb_reader' ) ) );
+    }
+    if ( is_array( $setting ) && isset( $setting['type'] ) && 'date' === $setting['type'] ) {
+      return preg_match( '/^\d{4}-\d{2}-\d{2}$/', trim( $value ) ) ? trim( $value ) : '';
     }
     if ( 'subscription_preview_percent' === $key ) {
       return is_numeric( $value ) ? max( 1, min( 100, (int) ceil( $value ) ) ) : 10;

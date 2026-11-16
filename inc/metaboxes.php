@@ -263,6 +263,14 @@ class Corporate_Book_Meta_boxes {
     $this->create_normal_setting( 'pdf_thumb', $post );
     $this->preview_field( $post );
     $this->create_normal_setting( 'subscription', $post );
+    $this->create_normal_setting( 'free_until', $post );
+    if ( 'publish' === $post->post_status ) {
+      // Preview link from any page: whoever opens it gets the free preview starting at that page.
+      echo '<p class="cb-share-tool"><label>' . esc_html__( 'Preview link from page', '3d-corporate-book' ) . ' <input type="number" min="1" value="1" style="width:80px" id="cb-share-page"></label> '
+        . '<button type="button" class="button" id="cb-share-make" data-book="' . (int) $post->ID . '" data-url="' . esc_url( get_permalink( $post ) ) . '" data-nonce="' . esc_attr( wp_create_nonce( Corporate_Book_Reader::NONCE ) ) . '">' . esc_html__( 'Make link', '3d-corporate-book' ) . '</button> '
+        . '<input type="text" readonly class="widefat" id="cb-share-out" style="margin-top:6px" onfocus="this.select()"></p>'
+        . '<script>document.getElementById("cb-share-make").addEventListener("click",function(){var b=this,f=new FormData();f.append("action","corporate_book_share");f.append("book",b.dataset.book);f.append("page",document.getElementById("cb-share-page").value);f.append("url",b.dataset.url);f.append("_ajax_nonce",b.dataset.nonce);fetch(ajaxurl,{method:"POST",body:f,credentials:"same-origin"}).then(function(r){return r.json();}).then(function(a){var o=document.getElementById("cb-share-out");o.value=a&&a.success?a.data.url:(a&&a.data)||"";o.focus();});});</script>'; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- escaped parts and a fixed script.
+    }
     echo '<h3 class="cb-settings-section">' . esc_html__( 'Print copy', '3d-corporate-book' ) . '</h3>';
     foreach ( array( 'print_sell', 'print_price', 'print_stock', 'print_weight', 'print_cost' ) as $key ) {
       $this->create_normal_setting( $key, $post );
@@ -592,7 +600,9 @@ class Corporate_Book_Meta_boxes {
     $sanitized_data['pdf_source'] = isset($_POST['_corporate_book']['pdf_source']) ? esc_url_raw( wp_unslash($_POST['_corporate_book']['pdf_source']) ) : null;
     $sanitized_data['pdf_thumb'] = isset($_POST['_corporate_book']['pdf_thumb']) ? esc_url_raw( wp_unslash($_POST['_corporate_book']['pdf_thumb']) ) : null;
     $subscription = isset( $_POST['_corporate_book']['subscription'] ) ? sanitize_key( wp_unslash( $_POST['_corporate_book']['subscription'] ) ) : 'default';
-    $sanitized_data['subscription'] = in_array( $subscription, array( 'default', 'required', 'free' ), true ) ? $subscription : 'default';
+    $sanitized_data['subscription'] = in_array( $subscription, array( 'default', 'required', 'free', 'until' ), true ) ? $subscription : 'default';
+    $free_until                     = isset( $_POST['_corporate_book']['free_until'] ) ? trim( sanitize_text_field( wp_unslash( $_POST['_corporate_book']['free_until'] ) ) ) : '';
+    $sanitized_data['free_until']   = preg_match( '/^\d{4}-\d{2}-\d{2}$/', $free_until ) ? $free_until : '';
     $sanitized_data['preview_pdf'] = isset( $_POST['_corporate_book']['preview_pdf'] ) ? absint( wp_unslash( $_POST['_corporate_book']['preview_pdf'] ) ) : 0;
     // Print copy: On/Off, money as a plain non-negative number, stock as a whole number or empty (print on demand).
     $print = isset( $_POST['_corporate_book'] ) && is_array( $_POST['_corporate_book'] ) ? wp_unslash( $_POST['_corporate_book'] ) : array(); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- each value is cleaned below.

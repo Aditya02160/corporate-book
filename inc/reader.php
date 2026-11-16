@@ -22,6 +22,7 @@ class Corporate_Book_Reader {
     add_action( 'wp_ajax_corporate_book_wishlist', array( $this, 'ajax_wishlist' ) );
     add_action( 'wp_ajax_corporate_book_notify', array( $this, 'ajax_notify' ) );
     add_action( 'wp_ajax_corporate_book_track', array( $this, 'ajax_track' ) );
+    add_action( 'wp_ajax_corporate_book_share', array( $this, 'ajax_share' ) );
     add_action( 'wp_ajax_nopriv_corporate_book_track', array( $this, 'ajax_track' ) );
     add_action( 'update_post_meta', array( $this, 'watch_stock' ), 10, 4 );
     add_action( 'corporate_book_sales_dashboard', array( $this, 'dashboard' ) );
@@ -46,6 +47,8 @@ class Corporate_Book_Reader {
         'save'     => __( 'Save for later', '3d-corporate-book' ),
         'notified' => __( 'We will email you', '3d-corporate-book' ),
         'signin'   => __( 'Sign in first, from My account.', '3d-corporate-book' ),
+        'share'    => __( 'Copy preview link from this page', '3d-corporate-book' ),
+        'copied'   => __( 'Link copied. Whoever opens it gets the free preview from this page.', '3d-corporate-book' ),
       )
     );
   }
@@ -186,6 +189,22 @@ class Corporate_Book_Reader {
    * Counts a reading event: open (a reader opened the book), page (a reader reached this page for the
    * first time in this visit) or locked (a reader reached the end of the free preview). Anonymous.
    */
+  /**
+   * Preview link from a page, for the book's editors: whoever opens it gets the free preview from that page.
+   */
+  public function ajax_share() {
+    check_ajax_referer( self::NONCE );
+    $book = isset( $_POST['book'] ) ? absint( $_POST['book'] ) : 0;
+    $page = isset( $_POST['page'] ) ? max( 1, absint( $_POST['page'] ) ) : 1;
+    $url  = isset( $_POST['url'] ) ? esc_url_raw( wp_unslash( $_POST['url'] ) ) : '';
+    if ( 'corporate_book' !== get_post_type( $book ) || ! current_user_can( 'edit_post', $book ) ) {
+      wp_send_json_error( __( 'Only the book\'s editors can make preview links.', '3d-corporate-book' ), 403 );
+    }
+    // Only links to this site; anything else falls back to the book's own page.
+    $url = wp_validate_redirect( strtok( $url, '#' ), get_permalink( $book ) );
+    wp_send_json_success( array( 'url' => Corporate_Book_Window::share_url( $book, $page, $url ) ) );
+  }
+
   public function ajax_track() {
     // phpcs:disable WordPress.Security.NonceVerification.Missing -- anonymous counter; nothing private is read or changed.
     $book  = isset( $_POST['book'] ) ? absint( $_POST['book'] ) : 0;
