@@ -122,6 +122,8 @@ class Corporate_Book_Protected_PDF {
       $total = $book && 'corporate_book' === $book->post_type && 'publish' === $book->post_status && isset( $_GET['start'] ) && '' !== $path ? Corporate_Book_Window::count_pages( $path ) : 0; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
       if ( $total > 0 ) {
         $start = min( $total, max( 1, absint( $_GET['start'] ) ) ); // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+        // One free window per reader and book: later requests get the first window again.
+        $start = min( $total, Corporate_Book_Window::reader_start( $book_id, $start ) );
         $note  = __( 'Subscribe to read this page', '3d-corporate-book' );
         // The placeholder text is drawn with a built-in PDF font, which only has Latin letters.
         $note  = preg_match( '/^[\x20-\x7E]+$/', $note ) ? $note : 'Subscribe to read this page';

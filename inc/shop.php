@@ -537,14 +537,14 @@ class Corporate_Book_Shop {
    *
    * @return string HTML.
    */
-  public static function buy_button( $book_id ) {
+  public static function buy_button( $book_id, $label = '' ) {
     $book = self::book_info( $book_id );
     if ( ! $book || ( null !== $book['stock'] && $book['stock'] < 1 ) ) {
       return '';
     }
     self::enqueue();
     /* translators: %s: price */
-    $label = sprintf( __( 'Buy print copy · %s', '3d-corporate-book' ), self::money( $book['price'] ) );
+    $label = '' !== $label ? $label . ' · ' . self::money( $book['price'] ) : sprintf( __( 'Buy print copy · %s', '3d-corporate-book' ), self::money( $book['price'] ) );
     return '<button type="button" class="cb-add-cart" data-book="' . (int) $book['id'] . '">' . esc_html( $label ) . '</button>';
   }
 

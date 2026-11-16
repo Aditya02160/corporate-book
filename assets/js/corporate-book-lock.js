@@ -34,13 +34,6 @@
         // "Buy print copy": the server-rendered button; the shop script adds it to the cart.
         panel.find('.cb-lock-text').after($('<div class="cb-lock-print"></div>').html(lock.print));
       }
-      if (lock.window) {
-        // Free preview from any page: start a new window here (the page reloads with the new start).
-        $('<button type="button" class="cb-lock-from"></button>').on('click', function () {
-          window.location.hash = 'cbstart-' + $(this).data('page');
-          window.location.reload();
-        }).insertAfter(panel.find('.cb-lock-text'));
-      }
       $('<button type="button" class="cb-lock-back"></button>').text(lock.back).on('click', function () {
         panel.hide();
         if (lock.window) {
@@ -52,9 +45,6 @@
         event.stopPropagation();
       });
       app.container.append(panel);
-    }
-    if (lock.window && page) {
-      panel.find('.cb-lock-from').data('page', page).text(lock.from.replace('%d', page));
     }
     panel.toggleClass('cb-lock-full', app.container.width() < 700).show();
   }

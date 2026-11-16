@@ -26,7 +26,7 @@
 
   // Counts each event once per visit (per browser tab session).
   function track(book, event, page) {
-    var key = 'cbT:' + book + ':' + event + ':' + (page || 0);
+    var key = 'cbT:' + (cfg.user || 0) + ':' + book + ':' + event + ':' + (page || 0);
     try {
       if (sessionStorage.getItem(key)) { return; }
       sessionStorage.setItem(key, '1');
@@ -133,6 +133,15 @@
     }
     if (++tries > 120) { clearInterval(timer); }
   }, 500);
+
+  // Books opened from a cover card read in a pop-up; count those opens too.
+  document.addEventListener('click', function (event) {
+    var card = event.target.closest('.cb-cover[id], .cb-preview-button[id]');
+    var book = card ? parseInt(String(card.id).replace(/^df_(\d+).*$/, '$1'), 10) : 0;
+    if (book) {
+      track(book, 'open', 0);
+    }
+  });
 
   // Save for later and back-in-stock buttons.
   document.addEventListener('click', function (event) {

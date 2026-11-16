@@ -482,6 +482,39 @@ class Corporate_Book_Window {
   /**
    * Number of pages of a PDF file, remembered per file version; 0 when it cannot be read.
    */
+  /**
+   * Where this reader's one free preview of a book starts. The first window a reader opens is kept
+   * (signed-in readers: in their account; guests: by IP address for 30 days), so opening the book
+   * again at another page shows the same pages, not a new free window.
+   *
+   * @param int      $book_id   Book ID.
+   * @param int|null $requested Page the reader asks for; null only reads the saved start.
+   *
+   * @return int Saved start, or 0 when this reader has not opened a preview yet and none is requested.
+   */
+  public static function reader_start( $book_id, $requested = null ) {
+    $user = get_current_user_id();
+    if ( $user ) {
+      $saved = get_user_meta( $user, 'cb_window', true );
+      $saved = is_array( $saved ) ? $saved : array();
+      if ( ! empty( $saved[ $book_id ] ) || null === $requested ) {
+        return isset( $saved[ $book_id ] ) ? (int) $saved[ $book_id ] : 0;
+      }
+      $saved[ $book_id ] = (int) $requested;
+      update_user_meta( $user, 'cb_window', $saved );
+      return (int) $requested;
+    }
+    // shortcut: guests are told apart by IP address, so readers behind one office IP share a preview.
+    $ip    = isset( $_SERVER['REMOTE_ADDR'] ) ? sanitize_text_field( wp_unslash( $_SERVER['REMOTE_ADDR'] ) ) : '';
+    $key   = 'cb_win_' . md5( $ip . '|' . $book_id );
+    $saved = (int) get_transient( $key );
+    if ( $saved || null === $requested ) {
+      return $saved;
+    }
+    set_transient( $key, (int) $requested, 30 * DAY_IN_SECONDS );
+    return (int) $requested;
+  }
+
   public static function count_pages( $path ) {
     $key    = 'cb_pages_' . md5( $path . '|' . @filemtime( $path ) ); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
     $cached = get_transient( $key );

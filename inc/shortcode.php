@@ -186,20 +186,23 @@ class Corporate_Book_ShortCode {
     $button = function ( $filter, $label, $active = false ) {
       return '<button type="button" class="cb-filter' . ( $active ? ' cb-active' : '' ) . '" data-filter="' . esc_attr( $filter ) . '">' . esc_html( $label ) . '</button>';
     };
-    $all  = $button( 'all', __( 'All', '3d-corporate-book' ), true );
-    $side = $all;
-    $top  = $all;
+    $top  = $button( 'all', __( 'All', '3d-corporate-book' ), true );
+    $side = '';
     $main = '';
     foreach ( $years as $year => $cards ) {
-      $side .= $button( $year, $year );
       $top  .= $button( $year, $year );
       $main .= '<section class="cb-library-year"><h2>' . esc_html( $year ) . '</h2><div class="cb-library-grid">' . implode( '', $cards ) . '</div></section>';
     }
     foreach ( $terms as $slug => $name ) {
       $side .= $button( 'cat-' . $slug, $name );
     }
-    return '<div class="cb-library"><aside class="cb-library-filter"><div class="cb-library-filter-title">' . esc_html__( 'Filter', '3d-corporate-book' ) . '</div>' . $side . '</aside>'
-      . '<div class="cb-library-main">' . $note . '<div class="cb-library-years">' . $top . '</div>' . $main . '</div></div>';
+    $search = '<form class="cb-library-search" role="search" method="get" action="' . esc_url( remove_query_arg( 'cb_q' ) ) . '">'
+      . ( isset( $_GET['post_type'] ) ? '<input type="hidden" name="post_type" value="corporate_book">' : '' ) // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+      . '<input type="search" name="cb_q" value="' . esc_attr( $query ) . '" placeholder="' . esc_attr__( 'Search magazines…', '3d-corporate-book' ) . '" aria-label="' . esc_attr__( 'Search magazines', '3d-corporate-book' ) . '"><button type="submit">' . esc_html__( 'Search', '3d-corporate-book' ) . '</button></form>';
+    return '<div class="cb-library"><div class="cb-library-bar">' . $search
+      . '<div class="cb-chip-row"><span class="cb-chip-label">' . esc_html__( 'Year', '3d-corporate-book' ) . '</span><div class="cb-library-years">' . $top . '</div></div>'
+      . ( $side ? '<div class="cb-chip-row"><span class="cb-chip-label">' . esc_html__( 'Edition', '3d-corporate-book' ) . '</span><div class="cb-library-filter">' . $side . '</div></div>' : '' )
+      . '</div><div class="cb-library-main">' . $note . $main . '</div></div>';
   }
 
   public function lock_box() {
@@ -377,8 +380,9 @@ class Corporate_Book_ShortCode {
           $total       = '' !== $full ? Corporate_Book_Window::count_pages( $full ) : 0;
           if ( $total > 0 ) {
             // Free preview from any page: the server sends every page, but only the window starting where the reader opens is real.
-            $preview_url = add_query_arg( 'start', 1, Corporate_Book_Protected_PDF::url( $post_id ) );
-            $cb_window   = array( 'count' => $base->preview_pages( $total ), 'total' => $total, 'start' => 1 );
+            $saved       = min( $total, Corporate_Book_Window::reader_start( $post_id ) );
+            $preview_url = add_query_arg( 'start', max( 1, $saved ), Corporate_Book_Protected_PDF::url( $post_id ) );
+            $cb_window   = array( 'count' => $base->preview_pages( $total ), 'total' => $total, 'start' => max( 1, $saved ), 'fixed' => $saved > 0 );
           }
           if ( '' === $preview_url ) {
             if ( 'thumb' === $atts['type'] && ! ( isset( $attr['shelf'] ) && 'true' === trim( $attr['shelf'] ) ) ) {
@@ -484,7 +488,8 @@ class Corporate_Book_ShortCode {
           $html = '<div class="_df_button cb-trigger-custom cb-cover" id="' . esc_attr( $id ) . '_cover" data-option="option_' . esc_attr( $id ) . '" ' . $attrHTML . '><img src="' . esc_url( $thumb_url ) . '" alt="' . esc_attr( $title ) . '" loading="lazy"/></div>';
         }
         $html = '<div class="cb-thumb-card">' . $html . '<div class="cb-thumb-title">' . esc_html( $title ) . '</div>'
-            . '<div class="_df_button cb-preview-button" id="' . esc_attr( $id ) . '_preview" data-option="option_' . esc_attr( $id ) . '" ' . $attrHTML . '>' . esc_html( $base->get_translate( 'text_preview' ) ) . '</div></div>';
+            . '<div class="cb-thumb-actions"><div class="_df_button cb-preview-button" id="' . esc_attr( $id ) . '_preview" data-option="option_' . esc_attr( $id ) . '" ' . $attrHTML . '>' . esc_html( $base->get_translate( 'text_preview' ) ) . '</div>'
+            . ( is_numeric( $post_id ) && class_exists( 'Corporate_Book_Shop' ) ? Corporate_Book_Shop::buy_button( (int) $post_id, __( 'Add to cart', '3d-corporate-book' ) ) : '' ) . '</div></div>';
       }
     }
     else {
@@ -501,7 +506,7 @@ class Corporate_Book_ShortCode {
       /*Normally this occurs only when a valid post id is added*/
       $code = 'window.option_' . esc_js($id) . ' = ' . json_encode( $post_data ) . ';'
         // Free preview from any page: the window starts at the page in the link (#cbstart-10 or a share link ending in /10/).
-        . '(function(o){var w=o.cbLock&&o.cbLock.window;if(!w){return;}var m=(location.hash||"").match(/(\\d+)\\/?$/),s=m?Math.min(Math.max(parseInt(m[1],10),1),w.total):1;w.start=s;o.openPage=s;o.source=o.source.replace(/([?&]start=)\\d+/,"$1"+s);})(window.option_' . esc_js( $id ) . ');'
+        . '(function(o){var w=o.cbLock&&o.cbLock.window;if(!w){return;}if(w.fixed){o.openPage=w.start;return;}var m=(location.hash||"").match(/(\\d+)\\/?$/),s=m?Math.min(Math.max(parseInt(m[1],10),1),w.total):1;w.start=s;o.openPage=s;o.source=o.source.replace(/([?&]start=)\\d+/,"$1"+s);})(window.option_' . esc_js( $id ) . ');'
         . ' if(window.CORPORATE_BOOK && window.CORPORATE_BOOK.parseBooks){window.CORPORATE_BOOK.parseBooks();}';
 
       $html .= '<script class="df-shortcode-script" nowprocket type="application/javascript">' . $code . '</script>';

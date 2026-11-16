@@ -187,9 +187,10 @@ async function waitFor(ready, ms) {
     check(await l.$('.cb-thumb-card .cb-cover img[src*="cover.png"]') !== null && (await l.$eval('.cb-thumb-card .cb-preview-button', (e) => e.textContent)).trim() === 'Read Magazine',
       'cards show the cover image and a Read Magazine button');
     await l.click('.cb-library-years .cb-filter[data-filter="all"]');
-    await l.click(`.cb-library-filter .cb-filter[data-filter="${year}"]`);
+    await l.click(`.cb-library-years .cb-filter[data-filter="${year}"]`);
     check(await l.$$eval('.cb-library-item', (e) => e.filter((i) => !i.hidden).length) >= 2
-      && await l.$eval(`.cb-library-years .cb-filter[data-filter="${year}"]`, (e) => e.classList.contains('cb-active')), 'year filter keeps that year and marks both buttons');
+      && await l.$eval(`.cb-library-years .cb-filter[data-filter="${year}"]`, (e) => e.classList.contains('cb-active')), 'year filter keeps that year and marks its chip');
+    check(await l.$('.cb-library-bar .cb-library-search [name="cb_q"]') !== null && await l.$('.cb-library aside') === null, 'library has one toolbar with search and chips, no sidebar');
     await lib.close();
     let v = await visit(null);
     check(hasFile(v.body, 'corporate_book_pdf=') && hasFile(v.body, 'start=1') && !hasFile(v.body, 'cb-test/sample.pdf') && !v.body.includes('cb-sign-in'), 'guest gets the free preview (from the protected link, never the file)');
@@ -223,8 +224,9 @@ async function waitFor(ready, ms) {
     const editUrl = await page.locator('a.row-title', { hasText: /^Test Book$/ }).first().getAttribute('href');
     // Free preview from any page: only the reader's window is real (10% of the 3-page sample is 1 page).
     const testBookId = new URL(editUrl).searchParams.get('post');
+    // One free window per reader: this IP already opened the book from page 1, so asking for page 3 gets page 1 again.
     const win = Buffer.from(await (await fetch(`${BASE}/?corporate_book_pdf=${testBookId}&start=3`)).arrayBuffer()).toString('latin1');
-    check(/\(Page 3\)/.test(win) && !/\(Page 1\)/.test(win) && !/\(Page 2\)/.test(win) && /Subscribe to read this page/.test(win), 'readers without access get only the pages of their window');
+    check(/\(Page 1\)/.test(win) && !/\(Page 2\)/.test(win) && !/\(Page 3\)/.test(win) && /Subscribe to read this page/.test(win), 'a reader gets only one free window per book, even when asking for another page');
     const full = await fetch(`${BASE}/?corporate_book_pdf=${testBookId}`);
     check(full.status === 403, `the full PDF still needs access (${full.status})`);
     const startCtx = await browser.newContext();
@@ -233,11 +235,11 @@ async function waitFor(ready, ms) {
     await sp.goto(`${BASE}/?pagename=book-test#cbstart-3`);
     await sp.waitForFunction(() => { const a = window.jQuery && window.jQuery('._df_book').data('df-app'); return a && a.pageCount; }, null, { timeout: 60000 }).catch(() => {});
     await sp.waitForTimeout(2500);
-    const opened = await sp.evaluate(() => { const a = window.jQuery('._df_book').data('df-app'); const l = document.querySelector('._df_book .cb-lock'); return { page: a.currentPageNumber, total: a.pageCount, lock: !!(l && l.offsetParent) }; }).catch(() => ({}));
-    check(opened.total === 3 && opened.page >= 2 && !opened.lock, `a start link opens the book at that page, inside the free window (${JSON.stringify(opened)})`);
-    await sp.evaluate(() => window.jQuery('._df_book').data('df-app').gotoPage(1)).catch(() => {});
-    await sp.waitForSelector('._df_book .cb-lock .cb-lock-from', { state: 'visible', timeout: 20000 }).catch(() => {});
-    check(/Read the free preview from page 1/.test(await sp.$eval('._df_book .cb-lock .cb-lock-from', (e) => e.textContent).catch(() => '')), 'outside the window the panel offers a preview from that page');
+    const opened = await sp.evaluate(() => { const a = window.jQuery('._df_book').data('df-app'); return { page: a.currentPageNumber, start: window['option_' + document.querySelector('._df_book').id].cbLock.window.start }; }).catch(() => ({}));
+    check(opened.start === 1, `a start link does not open a second free window (${JSON.stringify(opened)})`);
+    await sp.evaluate(() => window.jQuery('._df_book').data('df-app').gotoPage(3)).catch(() => {});
+    await sp.waitForSelector('._df_book .cb-lock', { state: 'visible', timeout: 20000 }).catch(() => {});
+    check(await sp.$('._df_book .cb-lock .cb-lock-from') === null, 'the panel has no button to start another free preview');
     await startCtx.close();
     await page.goto(editUrl);
     check(await page.$('#corporate_book_enable_download') === null, 'book editor has no download option');
@@ -527,9 +529,9 @@ async function waitFor(ready, ms) {
     d.setDefaultTimeout(90000);
     const deskErrors = []; d.on('pageerror', (e) => deskErrors.push(e.message));
     await d.goto(`${BASE}/?pagename=book-test`);
-    const deskOk = await d.waitForSelector('.cb-desk ._df_book', { timeout: 30000 }).then(() => true).catch(() => false);
-    await d.click('.cb-desk-switch').catch(() => {});
-    check(deskOk && await d.$('.cb-desk.cb-light-off') !== null && deskErrors.length === 0, `embedded book lies on the reading desk and the lamp switches off ${deskErrors.join(' | ')}`);
+    await d.waitForSelector('._df_book', { timeout: 30000 }).catch(() => {});
+    await d.waitForTimeout(1500);
+    check(await d.$('.cb-desk') === null && deskErrors.length === 0, `by default the book shows plain, without the desk background ${deskErrors.join(' | ')}`);
     await d.close();
 
     // ---- Print copies shop: author sets prices, reader buys with a cart, admin ships. ----
@@ -582,6 +584,9 @@ async function waitFor(ready, ms) {
     const addBook = (title) => s.click(`.cb-print-card:has(h3:text-is("${title}")) .cb-add-cart`);
     for (const t of ['Test Book', 'Test Book', 'Bulk Book']) { await addBook(t); await s.waitForTimeout(200); }
     check(await s.$eval('.cb-toast', (e) => /Added to cart/.test(e.textContent)).catch(() => false), 'adding a book shows "Added to cart"');
+    await s.goto(`${BASE}/?post_type=corporate_book`);
+    check(/Add to cart · ₹/.test(await s.$eval('.cb-thumb-card .cb-thumb-actions .cb-add-cart', (e) => e.textContent).catch(() => '')), 'library cards have Add to cart next to Read Magazine');
+    await s.goto(`${BASE}/?pagename=subscription`);
     check(/^2 in your cart/.test(await s.$eval('.cb-print-card:has(h3:text-is("Test Book")) .cb-in-cart', (e) => e.textContent).catch(() => '')), 'the book card shows how many copies are in the cart');
     await s.goto(`${BASE}/?pagename=cart`);
     await s.waitForSelector('.cb-cart-table tr', { timeout: 30000 }).catch(() => {});

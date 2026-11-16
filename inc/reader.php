@@ -36,6 +36,7 @@ class Corporate_Book_Reader {
       array(
         'url'      => admin_url( 'admin-ajax.php' ),
         'nonce'    => wp_create_nonce( self::NONCE ),
+        'user'     => get_current_user_id(),
         'resume'   => __( 'Continue from page %d?', '3d-corporate-book' ),
         'yes'      => __( 'Continue', '3d-corporate-book' ),
         'no'       => __( 'Start over', '3d-corporate-book' ),
