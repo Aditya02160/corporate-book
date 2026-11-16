@@ -88,7 +88,19 @@ class Corporate_Book_Readers {
       'orders'  => $orders,
       'print'   => $print,
       'saved'   => count( Corporate_Book_Reader::wishlist( $user->ID ) ),
+      'read'    => array_keys( Corporate_Book_Reader::history( $user->ID ) ),
     );
+  }
+
+  /** Count of books read, with the latest three titles. */
+  private static function read_cell( $books ) {
+    if ( ! $books ) {
+      return '—';
+    }
+    $titles = array_map( function ( $id ) {
+      return '<a href="' . esc_url( get_permalink( $id ) ) . '">' . esc_html( get_the_title( $id ) ) . '</a>';
+    }, array_slice( $books, 0, 3 ) );
+    return '<strong>' . count( $books ) . '</strong><br><small>' . implode( ', ', $titles ) . ( count( $books ) > 3 ? ' …' : '' ) . '</small>';
   }
 
   private static function status_args( $status ) {
@@ -147,6 +159,7 @@ class Corporate_Book_Readers {
         . '<td><span class="cbr-badge cbr-' . esc_attr( $r['status'] ) . '">' . esc_html( $label[ $r['status'] ] ) . '</span>' . ( $r['until'] ? '<br><small>' . esc_html( ( 'active' === $r['status'] ? __( 'until', '3d-corporate-book' ) : __( 'ended', '3d-corporate-book' ) ) . ' ' . self::date( $r['until'] ) ) . '</small>' : '' ) . '</td>'
         . '<td>' . $money( $r['subs'] ) . '<br><small>' . esc_html( sprintf( /* translators: %d: number */ _n( '%d plan', '%d plans', $r['plans'], '3d-corporate-book' ), $r['plans'] ) ) . '</small></td>'
         . '<td>' . $money( $r['print'] ) . '<br><small><a href="' . esc_url( admin_url( 'edit.php?post_type=cb_order&author=' . $user->ID ) ) . '">' . esc_html( sprintf( /* translators: %d: number */ _n( '%d order', '%d orders', $r['orders'], '3d-corporate-book' ), $r['orders'] ) ) . '</a></small></td>'
+        . '<td>' . self::read_cell( $r['read'] ) . '</td>'
         . '<td>' . (int) $r['saved'] . '</td>'
         . '<td>' . esc_html( self::date( $r['joined'] ) ) . '</td>'
         . '<td>' . esc_html( $r['login'] ? human_time_diff( $r['login'] ) . ' ' . __( 'ago', '3d-corporate-book' ) : '—' ) . '</td>'
@@ -173,7 +186,7 @@ class Corporate_Book_Readers {
       . '</div>'
       . '<div class="cbr-bar"><nav class="cbr-tabs">' . $tab( 'all', __( 'All', '3d-corporate-book' ), $total ) . $tab( 'active', __( 'Active', '3d-corporate-book' ), $active ) . $tab( 'expired', __( 'Expired', '3d-corporate-book' ), $expired ) . $tab( 'free', __( 'Never subscribed', '3d-corporate-book' ), max( 0, $total - $active - $expired ) ) . '</nav>'
       . '<form method="get"><input type="hidden" name="post_type" value="corporate_book"/><input type="hidden" name="page" value="corporate_book-readers"/><input type="hidden" name="cb_status" value="' . esc_attr( $status ) . '"/><input type="search" name="s" value="' . esc_attr( $search ) . '" placeholder="' . esc_attr__( 'Search name or email', '3d-corporate-book' ) . '"/> <button class="button">' . esc_html__( 'Search', '3d-corporate-book' ) . '</button></form></div>'
-      . '<div class="cbr-table"><table class="widefat"><thead><tr><th>' . esc_html__( 'Reader', '3d-corporate-book' ) . '</th><th>' . esc_html__( 'Company / city', '3d-corporate-book' ) . '</th><th>' . esc_html__( 'Subscription', '3d-corporate-book' ) . '</th><th>' . esc_html__( 'Subscriptions paid', '3d-corporate-book' ) . '</th><th>' . esc_html__( 'Print orders', '3d-corporate-book' ) . '</th><th>' . esc_html__( 'Saved', '3d-corporate-book' ) . '</th><th>' . esc_html__( 'Joined', '3d-corporate-book' ) . '</th><th>' . esc_html__( 'Last sign-in', '3d-corporate-book' ) . '</th><th></th></tr></thead><tbody>'
+      . '<div class="cbr-table"><table class="widefat"><thead><tr><th>' . esc_html__( 'Reader', '3d-corporate-book' ) . '</th><th>' . esc_html__( 'Company / city', '3d-corporate-book' ) . '</th><th>' . esc_html__( 'Subscription', '3d-corporate-book' ) . '</th><th>' . esc_html__( 'Subscriptions paid', '3d-corporate-book' ) . '</th><th>' . esc_html__( 'Print orders', '3d-corporate-book' ) . '</th><th>' . esc_html__( 'Books read', '3d-corporate-book' ) . '</th><th>' . esc_html__( 'Saved', '3d-corporate-book' ) . '</th><th>' . esc_html__( 'Joined', '3d-corporate-book' ) . '</th><th>' . esc_html__( 'Last sign-in', '3d-corporate-book' ) . '</th><th></th></tr></thead><tbody>'
       . ( $rows ? $rows : '<tr><td colspan="9" class="cbr-empty">' . esc_html__( 'No readers match.', '3d-corporate-book' ) . '</td></tr>' ) . '</tbody></table></div>' // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- escaped while building.
       . ( $nav ? '<div class="tablenav"><div class="tablenav-pages">' . $nav . '</div></div>' : '' ) . '</div>'; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- paginate_links escapes.
   }
@@ -208,10 +221,10 @@ class Corporate_Book_Readers {
     header( 'Content-Disposition: attachment; filename=readers-' . gmdate( 'Y-m-d' ) . '.csv' );
     $out = fopen( 'php://output', 'w' );
     fwrite( $out, "\xEF\xBB\xBF" );
-    fputcsv( $out, array( 'Name', 'Email', 'Phone', 'Company', 'City', 'Joined', 'Last sign-in', 'Subscription', 'Until', 'Plans paid', 'Subscriptions amount', 'Print orders', 'Print amount', 'Saved books' ) );
+    fputcsv( $out, array( 'Name', 'Email', 'Phone', 'Company', 'City', 'Joined', 'Last sign-in', 'Subscription', 'Until', 'Plans paid', 'Subscriptions amount', 'Print orders', 'Print amount', 'Saved books', 'Books read' ) );
     foreach ( self::query( array( 'number' => 10000 ) )->get_results() as $user ) {
       $r   = self::row( $user );
-      $row = array( $r['name'], $r['email'], $r['phone'], $r['company'], $r['city'], gmdate( 'Y-m-d', $r['joined'] ), $r['login'] ? gmdate( 'Y-m-d H:i', $r['login'] ) : '', $r['status'], $r['until'] ? gmdate( 'Y-m-d', $r['until'] ) : '', $r['plans'], $r['subs'] / 100, $r['orders'], $r['print'] / 100, $r['saved'] );
+      $row = array( $r['name'], $r['email'], $r['phone'], $r['company'], $r['city'], gmdate( 'Y-m-d', $r['joined'] ), $r['login'] ? gmdate( 'Y-m-d H:i', $r['login'] ) : '', $r['status'], $r['until'] ? gmdate( 'Y-m-d', $r['until'] ) : '', $r['plans'], $r['subs'] / 100, $r['orders'], $r['print'] / 100, $r['saved'], implode( '; ', array_map( 'get_the_title', $r['read'] ) ) );
       // Cells starting with = + - @ would run as spreadsheet formulas.
       fputcsv( $out, array_map( function ( $c ) {
         $c = (string) $c;

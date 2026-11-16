@@ -136,6 +136,48 @@ class Corporate_Book_Reader {
     return '<div class="cb-account cb-profile-card cb-profile-wide" id="cb-sec-saved"><h3>' . esc_html__( 'Saved books', '3d-corporate-book' ) . '</h3>' . ( $rows ? '<ul class="cb-wishlist">' . $rows . '</ul>' : '<p>' . esc_html__( 'Books you save with "Save for later" show here.', '3d-corporate-book' ) . '</p>' ) . '</div>';
   }
 
+  // ---- Reading history (per signed-in reader) -------------------------------------------------
+
+  const READ = 'cb_read';
+
+  /**
+   * Books this reader opened: book ID => array( 'page' => furthest page, 'time' => last read ), newest first.
+   */
+  public static function history( $user_id ) {
+    $read = get_user_meta( $user_id, self::READ, true );
+    $read = is_array( $read ) ? $read : array();
+    uasort( $read, function ( $a, $b ) {
+      return $b['time'] <=> $a['time'];
+    } );
+    return $read;
+  }
+
+  public static function remember( $user_id, $book, $page ) {
+    $read          = self::history( $user_id );
+    $old           = isset( $read[ $book ] ) ? (int) $read[ $book ]['page'] : 0;
+    $read[ $book ] = array( 'page' => max( $old, (int) $page ), 'time' => time() );
+    update_user_meta( $user_id, self::READ, array_slice( $read, 0, 200, true ) );
+  }
+
+  /**
+   * "Books you've read" card for My account.
+   */
+  public static function history_card( $user ) {
+    $rows = '';
+    foreach ( self::history( $user->ID ) as $book => $info ) {
+      if ( 'publish' !== get_post_status( $book ) ) {
+        continue;
+      }
+      $thumb = get_the_post_thumbnail_url( $book, 'medium' );
+      $link  = get_permalink( $book );
+      $rows .= '<li class="cb-read-item"><a href="' . esc_url( $link ) . '">' . ( $thumb ? '<img src="' . esc_url( $thumb ) . '" alt="">' : '' ) . '<strong>' . esc_html( get_the_title( $book ) ) . '</strong></a><span>'
+        /* translators: 1: page number, 2: date */
+        . esc_html( sprintf( __( 'Reached page %1$d · %2$s', '3d-corporate-book' ), max( 1, $info['page'] ), wp_date( get_option( 'date_format' ), $info['time'] ) ) )
+        . '</span><a class="cb-read-go" href="' . esc_url( $link ) . '">' . esc_html__( 'Continue reading', '3d-corporate-book' ) . '</a></li>';
+    }
+    return '<div class="cb-account cb-profile-card cb-profile-wide" id="cb-sec-read"><h3>' . esc_html__( "Books you've read", '3d-corporate-book' ) . '</h3>' . ( $rows ? '<ul class="cb-read-list">' . $rows . '</ul>' : '<p>' . esc_html__( 'Books you open show here, so you can pick up where you left off.', '3d-corporate-book' ) . '</p>' ) . '</div>';
+  }
+
   // ---- Reading statistics --------------------------------------------------------------------
 
   /**
@@ -160,6 +202,9 @@ class Corporate_Book_Reader {
       $stats['locked']++;
     }
     update_post_meta( $book, self::STATS, $stats );
+    if ( get_current_user_id() && 'locked' !== $event ) {
+      self::remember( get_current_user_id(), $book, $page );
+    }
     wp_send_json_success();
   }
 

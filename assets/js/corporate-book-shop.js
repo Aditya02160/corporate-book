@@ -23,6 +23,7 @@
       localStorage.setItem(KEY, JSON.stringify(items));
     } catch (e) { /* private window: the cart lasts for this page only */ }
     pill();
+    badges();
   }
   function count() {
     return read().reduce(function (sum, i) { return sum + i.qty; }, 0);
@@ -55,7 +56,12 @@
 
   // Floating "Cart (n)" link on every page except the cart itself.
   function pill() {
-    if (document.querySelector('.cb-cart')) {
+    var head = document.querySelector('.cb-head-count');
+    if (head) {
+      head.textContent = count();
+      head.hidden = !count();
+    }
+    if (head || document.querySelector('.cb-cart')) {
       return;
     }
     var link = document.querySelector('.cb-cart-pill');
@@ -70,6 +76,25 @@
       link.hidden = !n;
     }
   }
+
+  // "2 in your cart" under every Add to cart button for a book already in the cart.
+  function badges() {
+    var items = read();
+    document.querySelectorAll('.cb-add-cart').forEach(function (button) {
+      var id = parseInt(button.getAttribute('data-book'), 10);
+      var line = items.filter(function (i) { return i.id === id; })[0];
+      var badge = button.nextElementSibling;
+      if (!badge || !badge.classList.contains('cb-in-cart')) {
+        badge = el('a', 'cb-in-cart');
+        badge.href = cfg.cart;
+        button.parentNode.insertBefore(badge, button.nextSibling);
+      }
+      badge.textContent = line ? cfg.inCart.replace('%d', line.qty) + ' · ' + cfg.view : '';
+      badge.hidden = !line;
+    });
+  }
+  badges();
+  pill();
 
   function toast(text) {
     var t = document.querySelector('.cb-toast') || document.body.appendChild(el('div', 'cb-toast'));

@@ -53,6 +53,7 @@ class Corporate_Book_Account {
     add_action( 'wp_ajax_corporate_book_verify', array( $this, 'verify' ) );
     add_shortcode( 'corporate_book_account', array( $this, 'shortcode' ) );
     add_shortcode( 'corporate_book_subscription', array( $this, 'subscription_page' ) );
+    add_action( 'wp_body_open', array( $this, 'site_header' ) );
     add_action( 'admin_init', array( $this, 'create_subscription_page' ) );
     add_filter( 'manage_users_columns', array( $this, 'users_column' ) );
     add_filter( 'manage_users_custom_column', array( $this, 'users_column_value' ), 10, 3 );
@@ -247,14 +248,17 @@ class Corporate_Book_Account {
     foreach ( self::plans() as $index => $plan ) {
       /* translators: %d: days of access */
       $days = sprintf( _n( '%d day of access', '%d days of access', $plan['days'], '3d-corporate-book' ), $plan['days'] );
-      if ( $active ) {
-        $action = '';
-      } elseif ( is_user_logged_in() && self::razorpay_ready() ) {
-        $action = '<button type="button" class="cb-plan" data-plan="' . (int) $index . '">' . esc_html( $base->get_translate( 'text_subscribe_button' ) ) . '</button>';
-      } elseif ( ! is_user_logged_in() ) {
+      $external = self::config( 'subscription_url' );
+      if ( ! is_user_logged_in() ) {
         $action = '<a class="cb-plan-signin" href="#cb-plans-account">' . esc_html__( 'Sign in to subscribe', '3d-corporate-book' ) . '</a>';
+      } elseif ( self::razorpay_ready() ) {
+        // Subscribers can buy more days; they are added after the current end date.
+        $action = '<button type="button" class="cb-plan" data-plan="' . (int) $index . '">' . esc_html( $active ? __( 'Extend', '3d-corporate-book' ) : $base->get_translate( 'text_subscribe_button' ) ) . '</button>';
+      } elseif ( '' !== $external && false === strpos( $external, (string) get_permalink() ) ) {
+        $action = '<a class="cb-plan-signin" href="' . esc_url( $external ) . '">' . esc_html( $base->get_translate( 'text_subscribe_button' ) ) . '</a>';
       } else {
-        $action = '';
+        $action = '<button type="button" class="cb-plan" disabled>' . esc_html( $base->get_translate( 'text_subscribe_button' ) ) . '</button><p class="cb-plan-note">'
+          . esc_html( current_user_can( 'manage_options' ) ? __( 'Admin: add your Razorpay keys in Global Settings > Subscription to sell plans.', '3d-corporate-book' ) : __( 'Online payment opens soon.', '3d-corporate-book' ) ) . '</p>';
       }
       $cards .= '<div class="cb-plan-card"><h3>' . esc_html( $plan['name'] ) . '</h3><div class="cb-plan-price">' . esc_html( self::price( $plan['price'] ) ) . '</div><div class="cb-plan-days">' . esc_html( $days ) . '</div>' . $action . '</div>';
     }
@@ -293,6 +297,33 @@ class Corporate_Book_Account {
    *
    * @return string
    */
+  /**
+   * Bar at the top of every front page: All Books, Subscription, Cart, My Account and a book search.
+   */
+  public function site_header() {
+    if ( 'true' !== self::config( 'site_header' ) || is_admin() ) {
+      return;
+    }
+    $books = (string) get_post_type_archive_link( 'corporate_book' );
+    $sub   = (int) get_option( 'corporate_book_subscription_page' );
+    $links = array(
+      'books'   => array( $books, __( 'All Books', '3d-corporate-book' ) ),
+      'sub'     => array( $sub ? (string) get_permalink( $sub ) : '', __( 'Subscription', '3d-corporate-book' ) ),
+      'cart'    => array( 'true' === self::config( 'print_enable' ) && get_option( 'corporate_book_cart_page' ) ? Corporate_Book_Shop::cart_url() : '', __( 'Cart', '3d-corporate-book' ) ),
+      'account' => array( self::profile_url(), is_user_logged_in() ? __( 'My Account', '3d-corporate-book' ) : __( 'Sign in', '3d-corporate-book' ) ),
+    );
+    $nav = '';
+    foreach ( $links as $key => $link ) {
+      if ( '' !== $link[0] ) {
+        $nav .= '<a class="cb-head-' . $key . '" href="' . esc_url( $link[0] ) . '">' . esc_html( $link[1] ) . ( 'cart' === $key ? ' <span class="cb-head-count" hidden></span>' : '' ) . '</a>';
+      }
+    }
+    $query = isset( $_GET['cb_q'] ) ? sanitize_text_field( wp_unslash( $_GET['cb_q'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- public search.
+    echo '<div class="cb-site-head"><div class="cb-site-head-in"><a class="cb-site-name" href="' . esc_url( home_url( '/' ) ) . '">' . esc_html( get_bloginfo( 'name' ) ) . '</a>'
+      . ( $books ? '<form class="cb-head-search" role="search" method="get" action="' . esc_url( $books ) . '"><input type="search" name="cb_q" value="' . esc_attr( $query ) . '" placeholder="' . esc_attr__( 'Search books…', '3d-corporate-book' ) . '" aria-label="' . esc_attr__( 'Search books', '3d-corporate-book' ) . '"><button type="submit">' . esc_html__( 'Search', '3d-corporate-book' ) . '</button></form>' : '' )
+      . '<nav class="cb-head-nav" aria-label="' . esc_attr__( 'Corporate Book', '3d-corporate-book' ) . '">' . $nav . '</nav></div></div>'; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- built from escaped parts.
+  }
+
   public static function profile_url() {
     $page = (int) get_option( 'corporate_book_profile_page' );
     $url  = $page > 0 ? get_permalink( $page ) : '';
@@ -459,6 +490,7 @@ class Corporate_Book_Account {
       'subscription' => __( 'Subscription', '3d-corporate-book' ),
       'details'      => __( 'My details', '3d-corporate-book' ),
       'security'     => __( 'Password', '3d-corporate-book' ),
+      'read'         => __( 'Books read', '3d-corporate-book' ),
       'saved'        => __( 'Saved books', '3d-corporate-book' ),
       'orders'       => __( 'Print orders', '3d-corporate-book' ),
       'address'      => __( 'Delivery address', '3d-corporate-book' ),

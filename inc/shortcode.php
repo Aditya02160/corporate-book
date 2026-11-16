@@ -170,7 +170,10 @@ class Corporate_Book_ShortCode {
     wp_enqueue_script( 'corporate-book-library', plugins_url( 'assets/js/corporate-book-library.js', $this->base->file ), array(), $this->base->version, true );
     $years = array();
     $terms = array();
-    foreach ( get_posts( array( 'post_type' => 'corporate_book', 'post_status' => 'publish', 'numberposts' => -1 ) ) as $book ) {
+    $query = isset( $_GET['cb_q'] ) ? sanitize_text_field( wp_unslash( $_GET['cb_q'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- public search.
+    $found = get_posts( array( 'post_type' => 'corporate_book', 'post_status' => 'publish', 'numberposts' => -1, 's' => $query ) );
+    $note  = '' === $query ? '' : '<p class="cb-library-note">' . esc_html( sprintf( /* translators: 1: number of books, 2: search words */ _n( '%1$d book found for "%2$s"', '%1$d books found for "%2$s"', count( $found ), '3d-corporate-book' ), count( $found ), $query ) ) . ' · <a href="' . esc_url( remove_query_arg( 'cb_q' ) ) . '">' . esc_html__( 'Show all books', '3d-corporate-book' ) . '</a></p>';
+    foreach ( $found as $book ) {
       $filters = array( get_the_date( 'Y', $book ) );
       $cats    = get_the_terms( $book, 'corporate_book_category' );
       foreach ( is_array( $cats ) ? $cats : array() as $cat ) {
@@ -196,7 +199,7 @@ class Corporate_Book_ShortCode {
       $side .= $button( 'cat-' . $slug, $name );
     }
     return '<div class="cb-library"><aside class="cb-library-filter"><div class="cb-library-filter-title">' . esc_html__( 'Filter', '3d-corporate-book' ) . '</div>' . $side . '</aside>'
-      . '<div class="cb-library-main"><div class="cb-library-years">' . $top . '</div>' . $main . '</div></div>';
+      . '<div class="cb-library-main">' . $note . '<div class="cb-library-years">' . $top . '</div>' . $main . '</div></div>';
   }
 
   public function lock_box() {

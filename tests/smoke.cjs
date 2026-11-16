@@ -582,6 +582,7 @@ async function waitFor(ready, ms) {
     const addBook = (title) => s.click(`.cb-print-card:has(h3:text-is("${title}")) .cb-add-cart`);
     for (const t of ['Test Book', 'Test Book', 'Bulk Book']) { await addBook(t); await s.waitForTimeout(200); }
     check(await s.$eval('.cb-toast', (e) => /Added to cart/.test(e.textContent)).catch(() => false), 'adding a book shows "Added to cart"');
+    check(/^2 in your cart/.test(await s.$eval('.cb-print-card:has(h3:text-is("Test Book")) .cb-in-cart', (e) => e.textContent).catch(() => '')), 'the book card shows how many copies are in the cart');
     await s.goto(`${BASE}/?pagename=cart`);
     await s.waitForSelector('.cb-cart-table tr', { timeout: 30000 }).catch(() => {});
     const quoteFor = async (pin) => {
@@ -762,6 +763,12 @@ async function waitFor(ready, ms) {
     check(/Reader accounts/.test(readersPage) && /member@example.com/.test(readersPage) && /Active subscribers/.test(readersPage), 'Readers page lists reader accounts with their details');
     const myAccount = await (await m.goto(`${BASE}/?pagename=my-account`)).text();
     check(/cb-dash-head/.test(myAccount) && /corporate-book-pages\.css/.test(myAccount), 'My account uses the dashboard layout and its stylesheet');
+    check(/id="cb-sec-read"[\s\S]*cb-read-item[\s\S]*Continue reading/.test(myAccount), 'My account lists the books the reader opened');
+    check(/Books read/.test(readersPage) && /<strong>\d+<\/strong><br><small><a /.test(readersPage), 'Readers page shows which books each reader read');
+    check(/cb-site-head[\s\S]*All Books[\s\S]*Subscription[\s\S]*Cart[\s\S]*My Account/.test(myAccount) && /name="cb_q"/.test(myAccount), 'every page has the header with All Books, Subscription, Cart, My Account and search');
+    await m.goto(`${BASE}/?post_type=corporate_book&cb_q=Bulk`);
+    const searched = await m.$$eval('.cb-library-item', (e) => e.length).catch(() => -1);
+    check(searched === 1 && /1 book found for "Bulk"/.test(await m.content()), `header search finds books by title (${searched})`);
     check(fxErrors.length === 0, `new feature pages have no JavaScript errors ${fxErrors.join(' | ')}`);
     await fx.close();
     }

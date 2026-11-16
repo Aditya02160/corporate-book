@@ -46,7 +46,7 @@ class Corporate_Book_Settings {
    * @var array
    */
   public $tab_keys = array(
-      'general' => array( 'viewerType', 'webgl', 'realistic', 'hard', 'desk_scene', 'bg_color', 'bg_image', 'height', 'duration', 'texture_size', 'page_mode', 'single_page_mode', 'controls_position', 'auto_sound', 'autoplay', 'autoplay_duration', 'autoplay_start', 'shelf_image', 'post_urls' ),
+      'general' => array( 'site_header', 'viewerType', 'webgl', 'realistic', 'hard', 'desk_scene', 'bg_color', 'bg_image', 'height', 'duration', 'texture_size', 'page_mode', 'single_page_mode', 'controls_position', 'auto_sound', 'autoplay', 'autoplay_duration', 'autoplay_start', 'shelf_image', 'post_urls' ),
       'layout' => array( 'padding_left', 'padding_right', 'zoom_ratio', 'scroll_wheel', 'stiffness', 'tilt_up', 'tilt_left', 'page_rotation', 'spiral', 'calendar_mode' ),
       'controls' => array( 'more_controls', 'hide_controls', 'enable_search', 'share_prefix' ),
       'pdf' => array( 'enable_annotation', 'link_target', 'range_size', 'attachment_lightbox' ),

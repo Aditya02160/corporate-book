@@ -501,6 +501,8 @@ class Corporate_Book_Shop {
         'failed'   => __( 'Something went wrong. Try again.', '3d-corporate-book' ),
         'added'    => __( 'Added to cart', '3d-corporate-book' ),
         'view'     => __( 'View cart', '3d-corporate-book' ),
+        /* translators: %d: number of copies */
+        'inCart'   => __( '%d in your cart', '3d-corporate-book' ),
         'empty'    => __( 'Your cart is empty.', '3d-corporate-book' ),
         'remove'   => __( 'Remove', '3d-corporate-book' ),
         'cartName' => __( 'Cart', '3d-corporate-book' ),
@@ -1146,7 +1148,7 @@ class Corporate_Book_Shop {
     }
     $orders = '<table class="cb-profile-orders cb-print-orders"><thead><tr><th>' . esc_html__( 'Order', '3d-corporate-book' ) . '</th><th>' . esc_html__( 'Books', '3d-corporate-book' ) . '</th><th>' . esc_html__( 'Total', '3d-corporate-book' ) . '</th><th>' . esc_html__( 'Status', '3d-corporate-book' ) . '</th></tr></thead><tbody>'
       . ( '' !== $rows ? $rows : '<tr><td colspan="4">' . esc_html__( 'No print orders yet.', '3d-corporate-book' ) . ' <a href="' . esc_url( self::cart_url() ) . '">' . esc_html__( 'Go to cart', '3d-corporate-book' ) . '</a></td></tr>' ) . '</tbody></table>';
-    return Corporate_Book_Reader::wishlist_card( $user ) . '<div class="cb-account cb-profile-card cb-profile-wide" id="cb-sec-orders"><h3>' . esc_html__( 'My print orders', '3d-corporate-book' ) . '</h3>' . $orders . '</div>'
+    return Corporate_Book_Reader::history_card( $user ) . Corporate_Book_Reader::wishlist_card( $user ) . '<div class="cb-account cb-profile-card cb-profile-wide" id="cb-sec-orders"><h3>' . esc_html__( 'My print orders', '3d-corporate-book' ) . '</h3>' . $orders . '</div>'
       . '<div class="cb-account cb-profile-card cb-profile-wide" id="cb-sec-address"><h3>' . esc_html__( 'Delivery address', '3d-corporate-book' ) . '</h3><form class="cb-address-form cb-address" novalidate>' . self::address_fields( self::saved_address( $user ) ) . '<button type="submit">' . esc_html__( 'Save address', '3d-corporate-book' ) . '</button></form><p class="cb-account-message" role="alert"></p></div>';
   }
 }
