@@ -94,6 +94,20 @@ class Corporate_Book_Post_Type {
       flush_rewrite_rules();
     }
     
+    // Region (India, Asia...) and Year groups; the All Books page filters by both.
+    foreach ( array(
+        'corporate_book_region' => array( __( 'Regions', '3d-corporate-book' ), __( 'Region', '3d-corporate-book' ) ),
+        'corporate_book_year'   => array( __( 'Years', '3d-corporate-book' ), __( 'Year', '3d-corporate-book' ) ),
+    ) as $tax => $names ) {
+      register_taxonomy( $tax, 'corporate_book', array(
+          'labels'            => array( 'name' => $names[0], 'singular_name' => $names[1], 'menu_name' => $names[0], 'add_new_item' => $names[1] ),
+          'hierarchical'      => true,
+          'public'            => false,
+          'show_ui'           => true,
+          'show_admin_column' => true,
+          'show_in_rest'      => true,
+      ) );
+    }
     register_taxonomy( 'corporate_book_category', 'corporate_book', array(
         'hierarchical'       => true,
         'public'             => false,

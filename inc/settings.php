@@ -47,7 +47,7 @@ class Corporate_Book_Settings {
    */
   public $tab_keys = array(
       'general' => array( 'site_header', 'viewerType', 'webgl', 'realistic', 'hard', 'desk_scene', 'bg_color', 'bg_image', 'height', 'duration', 'texture_size', 'page_mode', 'single_page_mode', 'controls_position', 'auto_sound', 'autoplay', 'autoplay_duration', 'autoplay_start', 'shelf_image', 'post_urls' ),
-      'layout' => array( 'padding_left', 'padding_right', 'zoom_ratio', 'scroll_wheel', 'stiffness', 'tilt_up', 'tilt_left', 'page_rotation', 'spiral', 'calendar_mode' ),
+      'layout' => array( 'paper_curl', 'paper_curl_amount', 'desk_tilt', 'desk_tilt_back', 'desk_tilt_side', 'padding_left', 'padding_right', 'zoom_ratio', 'scroll_wheel', 'stiffness', 'tilt_up', 'tilt_left', 'page_rotation', 'spiral', 'calendar_mode' ),
       'controls' => array( 'more_controls', 'hide_controls', 'enable_search', 'share_prefix' ),
       'pdf' => array( 'enable_annotation', 'link_target', 'range_size', 'attachment_lightbox' ),
       'translate' => array( 'external_translate', 'text_toggle_sound', 'text_toggle_thumbnails', 'text_toggle_outline', 'text_previous_page', 'text_next_page', 'text_toggle_fullscreen', 'text_zoom_in', 'text_zoom_out', 'text_toggle_help', 'text_single_page_mode', 'text_double_page_mode', 'text_goto_first_page', 'text_goto_last_page', 'text_share', 'text_mail_subject', 'text_mail_body', 'text_loading', 'text_sign_in', 'text_subscribe', 'text_locked', 'text_subscribe_button', 'text_preview' ),
@@ -123,7 +123,12 @@ class Corporate_Book_Settings {
     return array(
       'viewerType'                   => __( 'How the book looks: Flipbook (pages turn like a real book), Vertical Reader (scroll down like a PDF) or Slider.', '3d-corporate-book' ),
       'webgl'                        => __( '3D looks most realistic. 2D is lighter for old phones and computers.', '3d-corporate-book' ),
-      'realistic'                    => __( 'On: hard cover, page thickness, curling paper, a slight tilt, the cover opens by itself and page corners lift under the mouse (3D only).', '3d-corporate-book' ),
+      'realistic'                    => __( 'On: hard cover, page thickness, the cover opens by itself and page corners lift under the mouse (3D only).', '3d-corporate-book' ),
+      'paper_curl'                   => __( 'Pages bow at the spine and curl as they turn, the strongest "real paper" effect (3D only).', '3d-corporate-book' ),
+      'paper_curl_amount'            => __( '5 is almost flat, 60 is very soft paper.', '3d-corporate-book' ),
+      'desk_tilt'                    => __( 'The book leans back and to the side in perspective, like it is lying on a table (3D only). Off: straight on.', '3d-corporate-book' ),
+      'desk_tilt_back'               => __( 'How far the book leans back, 0 to 30 degrees.', '3d-corporate-book' ),
+      'desk_tilt_side'               => __( 'How far it turns sideways, -20 (left) to 20 (right) degrees.', '3d-corporate-book' ),
       'desk_scene'                   => __( 'On: the book lies on a wooden desk with a lamp, coffee, pen and glasses. Readers can switch the lamp on and off. Off: the colour or image below is used.', '3d-corporate-book' ),
       'bg_color'                     => __( 'Colour behind the book (when Reading Desk is off).', '3d-corporate-book' ),
       'bg_image'                     => __( 'Optional picture behind the book. It replaces the colour.', '3d-corporate-book' ),
@@ -163,6 +168,8 @@ class Corporate_Book_Settings {
       'controls_position'            => __( 'Controls and sound', '3d-corporate-book' ),
       'autoplay'                     => __( 'Autoplay', '3d-corporate-book' ),
       'shelf_image'                  => __( 'Book shelf and book pages', '3d-corporate-book' ),
+      'paper_curl'                   => __( 'Book look', '3d-corporate-book' ),
+      'padding_left'                 => __( 'Spacing, zoom and turning', '3d-corporate-book' ),
       'external_translate'           => __( 'Translation plugin', '3d-corporate-book' ),
       'text_toggle_sound'            => __( 'Toolbar buttons', '3d-corporate-book' ),
       'text_share'                   => __( 'Sharing', '3d-corporate-book' ),

@@ -104,3 +104,13 @@ add_filter(
 	10,
 	2
 );
+
+// Region and Year groups for the library test (after the plugin registers its taxonomies).
+add_action( 'init', function () {
+	$found = get_posts( array( 'post_type' => 'corporate_book', 'title' => 'Test Book', 'numberposts' => 1 ) );
+	$book  = $found ? $found[0] : null;
+	if ( $book && taxonomy_exists( 'corporate_book_region' ) && ! has_term( '', 'corporate_book_region', $book ) ) {
+		wp_set_object_terms( $book->ID, 'Asia', 'corporate_book_region' );
+		wp_set_object_terms( $book->ID, '2019', 'corporate_book_year' );
+	}
+}, 99 );

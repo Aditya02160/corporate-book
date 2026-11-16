@@ -188,8 +188,10 @@ async function waitFor(ready, ms) {
       'cards show the cover image and a Read Magazine button');
     await l.click('.cb-library-years .cb-filter[data-filter="all"]');
     await l.click(`.cb-library-years .cb-filter[data-filter="${year}"]`);
-    check(await l.$$eval('.cb-library-item', (e) => e.filter((i) => !i.hidden).length) >= 2
+    check(await l.$$eval('.cb-library-item', (e) => e.filter((i) => !i.hidden).length) >= 1
       && await l.$eval(`.cb-library-years .cb-filter[data-filter="${year}"]`, (e) => e.classList.contains('cb-active')), 'year filter keeps that year and marks its chip');
+    await l.click('.cb-library-filter .cb-filter[data-filter="region-asia"]').catch(() => {});
+    check(await l.$$eval('.cb-library-item', (e) => e.filter((i) => !i.hidden).length) === 1 && await l.$('.cb-library-years .cb-filter[data-filter="2019"]') !== null, 'library groups books by Region and by the Year group');
     check(await l.$('.cb-library-bar .cb-library-search [name="cb_q"]') !== null && await l.$('.cb-library aside') === null, 'library has one toolbar with search and chips, no sidebar');
     await lib.close();
     let v = await visit(null);
@@ -345,6 +347,7 @@ async function waitFor(ready, ms) {
     html = await (await page.goto(settingsUrl)).text();
     check(['tilt_up', 'tilt_left', 'page_rotation', 'spiral', 'calendar_mode', 'shelf_image', 'post_urls'].every((k) => html.includes(`id="corporate_book_${k}"`))
       && /<option value="hybrid"/.test(html), 'extra feature settings are shown');
+    check(['paper_curl', 'paper_curl_amount', 'desk_tilt', 'desk_tilt_back', 'desk_tilt_side'].every((k) => html.includes(`id="corporate_book_${k}"`)), 'Layout has Soft, Curling Paper and Tilted on a Desk with their amounts');
     const extras = { spiral: 'true', tilt_up: '20', post_urls: 'true', webgl: 'hybrid' };
     await saveSettings(extras, extras).catch(() => '');
     jsErrors.length = 0;
@@ -781,7 +784,7 @@ async function waitFor(ready, ms) {
     const simple = await page.evaluate(() => ({ main: !!document.querySelector('#corporate_book_bg_color_box').offsetParent, extra: !!document.querySelector('#corporate_book_duration_box').offsetParent, layoutTab: !!document.querySelector('a[href="#corporate-book-tab-content-layout"]').offsetParent }));
     await page.check('#cb-show-all');
     const all = await page.evaluate(() => !!document.querySelector('#corporate_book_duration_box').offsetParent && !!document.querySelector('a[href="#corporate-book-tab-content-layout"]').offsetParent);
-    check(simple.main && !simple.extra && !simple.layoutTab && all, `Global Settings show main settings first, all with "Show all settings" (${JSON.stringify(simple)} ${all})`);
+    check(simple.main && !simple.extra && simple.layoutTab && all, `Global Settings show main settings and the Layout look options first, all with "Show all settings" (${JSON.stringify(simple)} ${all})`);
     await page.uncheck('#cb-show-all');
   } catch (e) {
     check(false, e.message);

@@ -471,7 +471,12 @@ if ( !class_exists( 'Corporate_Book' ) ) {
       $this->defaults['razorpay_key_id']       = array( 'std' => '', 'title' => __( 'Razorpay Key ID', '3d-corporate-book' ), 'desc' => __( 'From Razorpay Dashboard, Account and Settings, API Keys. Start with a Test Mode key.', '3d-corporate-book' ), 'type' => 'text' );
       $this->defaults['razorpay_key_secret']   = array( 'std' => '', 'title' => __( 'Razorpay Key Secret', '3d-corporate-book' ), 'desc' => __( 'Kept on the server; never sent to readers.', '3d-corporate-book' ), 'type' => 'password' );
       $this->defaults['subscription_currency'] = array( 'std' => 'INR', 'title' => __( 'Currency', '3d-corporate-book' ), 'choices' => array( 'INR' => 'INR (₹)', 'USD' => 'USD ($)', 'EUR' => 'EUR (€)', 'GBP' => 'GBP (£)', 'AED' => 'AED', 'SGD' => 'SGD', 'AUD' => 'AUD', 'CAD' => 'CAD' ) );
-      $this->defaults['realistic']  = array( 'std' => 'false', 'title' => __( 'Realistic Book', '3d-corporate-book' ), 'desc' => __( '3D only: hard cover, visible page thickness, soft curling paper, a slight tilt, a slower page turn, the cover opening by itself and page corners that lift when the mouse comes near.', '3d-corporate-book' ), 'choices' => $bool );
+      $this->defaults['realistic']  = array( 'std' => 'false', 'title' => __( 'Realistic Book', '3d-corporate-book' ), 'desc' => __( '3D only: hard cover, visible page thickness, a slower page turn, the cover opening by itself and page corners that lift when the mouse comes near.', '3d-corporate-book' ), 'choices' => $bool );
+      $this->defaults['paper_curl']        = array( 'std' => 'false', 'title' => __( 'Soft, Curling Paper', '3d-corporate-book' ), 'desc' => __( '3D only. Pages bow at the spine and curl as they turn, the strongest "real paper" effect.', '3d-corporate-book' ), 'choices' => $bool );
+      $this->defaults['paper_curl_amount'] = array( 'std' => 25, 'title' => __( 'Curl Amount', '3d-corporate-book' ), 'desc' => __( '5 (almost flat) to 60 (very soft paper). Used when Soft, Curling Paper is on.', '3d-corporate-book' ) );
+      $this->defaults['desk_tilt']         = array( 'std' => 'false', 'title' => __( 'Tilted on a Desk', '3d-corporate-book' ), 'desc' => __( '3D only. The book leans back and to the side in perspective, like it is lying on a table. Off: the book faces the reader straight on.', '3d-corporate-book' ), 'choices' => $bool );
+      $this->defaults['desk_tilt_back']    = array( 'std' => 10, 'title' => __( 'Lean Back (degrees)', '3d-corporate-book' ), 'desc' => __( '0 to 30. Used when Tilted on a Desk is on.', '3d-corporate-book' ) );
+      $this->defaults['desk_tilt_side']    = array( 'std' => -6, 'title' => __( 'Turn to the Side (degrees)', '3d-corporate-book' ), 'desc' => __( '-20 to 20. Negative turns left, positive turns right.', '3d-corporate-book' ) );
       $this->defaults['site_header'] = array( 'std' => 'true', 'title' => __( 'Site Header Bar', '3d-corporate-book' ), 'desc' => __( 'A bar at the top of every page with All Books, Subscription, Cart, My Account and a book search. Turn off if your theme menu already has these links.', '3d-corporate-book' ), 'choices' => $bool );
       $this->defaults['delete_data'] = array( 'std' => 'false', 'title' => __( 'Delete Settings on Uninstall', '3d-corporate-book' ), 'desc' => __( 'Off (recommended): settings, pages and the reader role stay when you delete the plugin, so uploading a new version keeps everything. On: deleting the plugin removes them.', '3d-corporate-book' ), 'choices' => $bool );
       $this->defaults['desk_scene'] = array( 'std' => 'false', 'title' => __( 'Reading Desk', '3d-corporate-book' ), 'desc' => __( 'Shows embedded books on a wooden desk with a lamp, a cup of coffee, a pen and glasses. Readers can switch the lamp on and off.', '3d-corporate-book' ), 'choices' => $bool );
@@ -689,11 +694,15 @@ if ( !class_exists( 'Corporate_Book' ) ) {
       if ( $data['realistic'] ) {
         $data['cover3DType'] = 'ridge';
         $data['sheetDepth']  = 2.5;
-        $data['flexibility'] = 25;
-        $data['stiffness']   = 0.5;
-        $data['flipbook3DTiltAngleUp']   = $data['flipbook3DTiltAngleUp'] ? $data['flipbook3DTiltAngleUp'] : 10;
-        $data['flipbook3DTiltAngleLeft'] = $data['flipbook3DTiltAngleLeft'] ? $data['flipbook3DTiltAngleLeft'] : -6;
         $data['duration']    = 800 === (int) $data['duration'] ? 1200 : $data['duration'];
+      }
+      if ( 'true' === $this->get_config( 'paper_curl' ) ) {
+        $data['flexibility'] = min( 60, max( 5, (int) $this->get_config( 'paper_curl_amount' ) ) );
+        $data['stiffness']   = 0.5;
+      }
+      if ( 'true' === $this->get_config( 'desk_tilt' ) ) {
+        $data['flipbook3DTiltAngleUp']   = min( 30, max( 0, (int) $this->get_config( 'desk_tilt_back' ) ) );
+        $data['flipbook3DTiltAngleLeft'] = min( 20, max( -20, (int) $this->get_config( 'desk_tilt_side' ) ) );
       }
       $data['deskScene'] = 'true' === $this->get_config( 'desk_scene' );
       $data['deskText']  = array( 'lightOff' => __( 'Turn the lamp off', '3d-corporate-book' ), 'lightOn' => __( 'Turn the lamp on', '3d-corporate-book' ) );
