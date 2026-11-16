@@ -103,7 +103,8 @@ class Corporate_Book_Account {
   }
 
   public static function price( $amount ) {
-    $number = rtrim( rtrim( number_format( $amount, 2, '.', ',' ), '0' ), '.' );
+    // Whole amounts without decimals (₹3,999); paise always as two digits (₹99.80, not ₹99.8).
+    $number = preg_replace( '/\.00$/', '', number_format( $amount, 2, '.', ',' ) );
     $symbols = array( 'INR' => "\u{20B9}", 'USD' => '$', 'EUR' => "\u{20AC}", 'GBP' => "\u{00A3}" );
     $code    = self::config( 'subscription_currency' );
     return isset( $symbols[ $code ] ) ? $symbols[ $code ] . $number : $code . ' ' . $number;

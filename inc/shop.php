@@ -353,6 +353,7 @@ class Corporate_Book_Shop {
     $shipping = null;
     $courier  = null;
     $cost     = null;
+    $waived   = 0;
     $days     = '';
     if ( null !== $zone ) {
       $days    = self::zones()[ $zone ][2];
@@ -362,6 +363,7 @@ class Corporate_Book_Shop {
       $shipping = 'free' === $mode ? 0 : ( 'flat' === $mode && $lines ? self::paise( self::config( 'print_flat_rate' ) ) * self::slabs( $grams ) : $courier );
       $free     = self::config( 'print_free_above' );
       if ( is_numeric( $free ) && $free > 0 && $subtotal - $discount >= self::paise( $free ) ) {
+        $waived   = $shipping;
         $shipping = 0;
       }
       // The seller's cost of this order: copies, the box and the courier.
@@ -380,6 +382,7 @@ class Corporate_Book_Shop {
       'zone'     => $zone,
       'grams'    => $grams,
       'courier'  => $courier,
+      'waived'   => $waived,
       'cost'     => $cost,
       'days'     => $days,
       'errors'   => $errors,
@@ -535,7 +538,16 @@ class Corporate_Book_Shop {
         'books'         => __( 'Books', '3d-corporate-book' ),
         'shippingLabel' => __( 'Shipping', '3d-corporate-book' ),
         'enterPin'      => __( 'Enter your PIN code', '3d-corporate-book' ),
-        'totalLabel'    => __( 'Total', '3d-corporate-book' ),
+        'totalLabel'    => __( 'Total Amount', '3d-corporate-book' ),
+        'priceDetails'  => __( 'Price Details', '3d-corporate-book' ),
+        'priceOne'      => __( 'Price (1 copy)', '3d-corporate-book' ),
+        /* translators: %d: number of copies */
+        'priceMany'     => __( 'Price (%d copies)', '3d-corporate-book' ),
+        'couponLabel'   => __( 'Coupon discount', '3d-corporate-book' ),
+        'freeLabel'     => __( 'FREE', '3d-corporate-book' ),
+        /* translators: %s: amount */
+        'youSave'       => __( 'You\'ll save %s on this order', '3d-corporate-book' ),
+        'trust'         => __( 'Safe and secure payments. Cancel any time before shipping for a full refund.', '3d-corporate-book' ),
         'myAccount'     => __( 'See my orders', '3d-corporate-book' ),
         'account'       => Corporate_Book_Account::profile_url(),
       )
@@ -713,6 +725,10 @@ class Corporate_Book_Shop {
       'shipping' => null === $quote['shipping'] ? null : ( 0 === $quote['shipping'] ? __( 'Free', '3d-corporate-book' ) : self::money( $quote['shipping'] ) ),
       'total'    => self::money( $quote['total'] ),
       'distance' => $distance,
+      // Price Details box: the shipping the reader did not pay, and everything they saved.
+      'shippingWas' => $quote['waived'] ? self::money( $quote['waived'] ) : '',
+      'saved'       => $quote['discount'] + $quote['waived'] > 0 ? self::money( $quote['discount'] + $quote['waived'] ) : '',
+      'copies'      => (int) array_sum( wp_list_pluck( $quote['lines'], 'qty' ) ),
       'errors'   => $quote['errors'],
     );
   }

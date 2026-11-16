@@ -171,3 +171,25 @@
 .cb-read-item img{aspect-ratio:auto;max-height:220px;object-fit:contain;background:none}
 
 @media (max-width:640px){.cb-site-head-in{gap:8px;padding:8px 12px}.cb-site-name{font-size:16px}.cb-head-nav{width:100%;flex-wrap:nowrap;overflow-x:auto;gap:2px}.cb-head-nav a{padding:6px 9px;font-size:14px;white-space:nowrap}.cb-head-search input,.cb-head-search button{padding:7px 10px}}
+
+/* Cart: Price Details */
+.cb-ui .cb-cart-totals{margin:18px 0;padding:0;background:none;border-radius:0}
+.cb-ui .cb-price-title{margin:0 0 10px;font-size:18px;font-weight:800;color:#0b1f5c}
+.cb-ui .cb-price-box{border:1px solid #e6e9f2;border-radius:14px;background:#fff;overflow:hidden;box-shadow:0 4px 14px rgba(13,31,92,.05)}
+.cb-ui .cb-price-rows{padding:12px 18px 14px}
+.cb-ui .cb-total-row{display:flex;justify-content:space-between;align-items:baseline;gap:14px;margin:0;padding:8px 0;font-size:15px;color:#1f2937;border:0}
+.cb-ui .cb-total-row span{border-bottom:1px dotted #9aa3b5;line-height:1.35}
+.cb-ui .cb-total-row strong{font-weight:600;white-space:nowrap;color:#1f2937}
+.cb-ui .cb-total-row s{margin-right:6px;color:#9aa3b5;font-weight:400}
+.cb-ui .cb-total-row.cb-discount strong,.cb-ui .cb-total-row.cb-free strong{color:#0a7a3d}
+.cb-ui .cb-price-sep{margin:6px 0;border-top:1px dashed #d5dbe8}
+.cb-ui .cb-price-sep.cb-solid{border-top-style:solid}
+.cb-ui .cb-total-row.cb-grand-total{padding-top:10px;font-size:18px}
+.cb-ui .cb-total-row.cb-grand-total span{border:0;font-weight:800;color:#0b1f5c}
+.cb-ui .cb-total-row.cb-grand-total strong{font-weight:800;color:#0b1f5c}
+.cb-ui .cb-save-banner{display:flex;align-items:center;justify-content:center;gap:10px;padding:12px 16px;background:#e7f6ec;color:#0a7a3d;font-weight:600;font-size:15px}
+.cb-ui .cb-save-banner b{font-weight:800}
+.cb-ui .cb-save-badge{display:inline-flex;flex:0 0 24px;width:24px;height:24px;align-items:center;justify-content:center;border-radius:50%;background:#0a7a3d;color:#fff;font-size:12px;font-weight:800}
+.cb-ui .cb-cart-totals .cb-delivery-days{margin:12px 2px 0;color:#0a7a3d;font-weight:700}
+.cb-ui .cb-trust{display:flex;align-items:center;justify-content:center;gap:12px;margin:16px 0 0;font-size:13px;line-height:1.45;color:#6b7280}
+.cb-ui .cb-trust svg{flex:0 0 26px}

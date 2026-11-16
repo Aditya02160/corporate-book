@@ -634,8 +634,8 @@ async function waitFor(ready, ms) {
     const rows = (await s.$$('.cb-cart-table tr')).length;
     const local = await quoteFor('201301');
     const far = await quoteFor('560001');
-    check(rows === 2 && /Shipping \(Delhi NCR · 650 g\)₹70/.test(local) && /Total₹1,318/.test(local), `cart prices books plus the Delhi NCR courier rate for 650 g (${local})`);
-    check(/Metro city · 650 g\)₹115/.test(far) && /Total₹1,363/.test(far), `a metro PIN uses the metro courier rate (${far})`);
+    check(rows === 2 && /^Price Details/.test(local) && /Price \(3 copies\)₹1,248/.test(local) && /Shipping \(Delhi NCR · 650 g\)₹70/.test(local) && /Total Amount₹1,318/.test(local), `Price Details: books plus the Delhi NCR courier rate for 650 g (${local})`);
+    check(/Metro city · 650 g\)₹115/.test(far) && /Total Amount₹1,363/.test(far), `a metro PIN uses the metro courier rate (${far})`);
     const address = { name: 'Asha Rao', phone: '12345', email: 'asha@example.test', line1: 'Flat 4B, Lotus Tower', line2: 'Sector 62', city: 'Noida', pin: '201309' };
     for (const [k, v] of Object.entries(address)) await s.fill(`.cb-checkout [name="${k}"]`, v);
     await s.selectOption('.cb-checkout [name="state"]', 'Uttar Pradesh');
@@ -730,7 +730,7 @@ async function waitFor(ready, ms) {
     await m.click('.cb-apply-coupon');
     await m.waitForFunction(() => /WELCOME10/.test(document.querySelector('.cb-cart-totals').textContent), null, { timeout: 20000 }).catch(() => {});
     const totals = await m.$eval('.cb-cart-totals', (e) => e.textContent.replace(/\s+/g, ' ')).catch(() => '');
-    check(/Coupon WELCOME10− ₹25/.test(totals) && /Delivery in about 1-2 days/.test(totals), `coupon and delivery estimate in the cart (${totals})`);
+    check(/Coupon discount \(WELCOME10\)− ₹25/.test(totals) && /You'll save ₹25 on this order/.test(totals) && /Delivery in about 1-2 days/.test(totals), `coupon, savings and delivery estimate in Price Details (${totals})`);
     await m.check('.cb-checkout [name="gift"]');
     await m.fill('.cb-checkout [name="gift_message"]', 'Happy birthday, Ravi!');
     await m.check('.cb-pay [value="cod"]').catch(() => {});

@@ -26,7 +26,7 @@ class AccountTest extends CB_Unit_Test {
   public static function prices() {
     return array(
       'rupees with comma' => array( 'INR', 3999, "\u{20B9}3,999" ),
-      'dollars, decimals' => array( 'USD', 9.5, '$9.5' ),
+      'dollars, decimals' => array( 'USD', 9.5, '$9.50' ),
       'euro trims zeros'  => array( 'EUR', 10.00, "\u{20AC}10" ),
       'no symbol'         => array( 'AED', 25, 'AED 25' ),
     );

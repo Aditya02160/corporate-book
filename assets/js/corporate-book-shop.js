@@ -188,23 +188,46 @@
     });
     box.appendChild(table);
     if (form) {
+      // Price Details: price, shipping, discount, total, what the reader saves, delivery time, trust line.
       var totals = form.querySelector('.cb-cart-totals');
       totals.textContent = '';
-      var add = function (label, value, cls) {
+      totals.appendChild(el('h3', 'cb-price-title', cfg.priceDetails));
+      var box = totals.appendChild(el('div', 'cb-price-box'));
+      var rows = box.appendChild(el('div', 'cb-price-rows'));
+      var add = function (label, value, cls, was) {
         var row = el('div', 'cb-total-row ' + (cls || ''));
         row.appendChild(el('span', '', label));
-        row.appendChild(el('strong', '', value));
-        totals.appendChild(row);
+        var amount = el('strong');
+        if (was) { amount.appendChild(el('s', '', was)); }
+        amount.appendChild(document.createTextNode(value));
+        row.appendChild(amount);
+        rows.appendChild(row);
       };
-      add(cfg.books || 'Books', q.subtotal);
+      var copies = q.copies || 0;
+      add(copies === 1 ? cfg.priceOne : cfg.priceMany.replace('%d', copies), q.subtotal);
+      var freeShip = q.shipping !== null && q.shippingWas !== undefined && !/\d/.test(q.shipping);
+      add((cfg.shippingLabel || 'Shipping') + (q.distance ? ' (' + q.distance + ')' : ''), q.shipping === null ? (cfg.enterPin || 'Enter your PIN code') : (freeShip ? cfg.freeLabel : q.shipping), freeShip ? 'cb-free' : '', freeShip ? q.shippingWas : '');
       if (q.discount) {
-        add((cfg.couponLabel || 'Coupon') + ' ' + q.coupon, q.discount, 'cb-discount');
+        rows.appendChild(el('div', 'cb-price-sep'));
+        add(cfg.couponLabel + (q.coupon ? ' (' + q.coupon + ')' : ''), q.discount, 'cb-discount');
       }
-      add((cfg.shippingLabel || 'Shipping') + (q.distance ? ' (' + q.distance + ')' : ''), q.shipping === null ? (cfg.enterPin || 'Enter your PIN code') : q.shipping);
+      rows.appendChild(el('div', 'cb-price-sep cb-solid'));
       add(cfg.totalLabel || 'Total', q.total, 'cb-grand-total');
+      if (q.saved) {
+        var save = box.appendChild(el('div', 'cb-save-banner'));
+        save.appendChild(el('span', 'cb-save-badge', '%'));
+        var parts = cfg.youSave.split('%s');
+        var text = save.appendChild(el('span'));
+        text.appendChild(document.createTextNode(parts[0]));
+        text.appendChild(el('b', '', q.saved));
+        text.appendChild(document.createTextNode(parts[1] || ''));
+      }
       if (q.days) {
         totals.appendChild(el('p', 'cb-delivery-days', q.days));
       }
+      var trust = totals.appendChild(el('p', 'cb-trust'));
+      trust.innerHTML = '<svg width="26" height="30" viewBox="0 0 26 30" aria-hidden="true"><path d="M13 1 2 5v8c0 7.2 4.7 13.6 11 16 6.3-2.4 11-8.8 11-16V5L13 1z" fill="#9aa3b5"/><path d="m8 15 3.5 3.5L18.5 11" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+      trust.appendChild(el('span', '', cfg.trust));
     }
   }
 
