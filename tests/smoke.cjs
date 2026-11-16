@@ -555,9 +555,9 @@ async function waitFor(ready, ms) {
     };
     const bulkEdit = `${BASE}/wp-admin/post.php?post=${bulkId}&action=edit`;
     // An earlier check made Test Book free; lock it again so the preview-ended panel shows.
-    const priced = await setPrint(editUrl, { subscription: 'required', print_sell: 'true', print_price: '499', print_shipping: '40', print_stock: '5' })
-      && await setPrint(bulkEdit, { print_sell: 'true', print_price: '250', print_shipping: '30', print_stock: '' });
-    check(priced, 'authors set print price, shipping charge and stock in the book editor');    const shopCtx = await browser.newContext();
+    const priced = await setPrint(editUrl, { subscription: 'required', print_sell: 'true', print_price: '499', print_weight: '200', print_stock: '5' })
+      && await setPrint(bulkEdit, { print_sell: 'true', print_price: '250', print_cost: '120', print_stock: '' });
+    check(priced, 'authors set print price, weight, cost and stock in the book editor');    const shopCtx = await browser.newContext();
     await shopCtx.exposeBinding('cbSign', (src, o, p) => require('crypto').createHmac('sha256', 'smokesecret').update(`${o}|${p}`).digest('hex'));
     // Razorpay Checkout stand-in: "pays" at once with a correctly signed payment.
     await shopCtx.addInitScript(() => {
@@ -607,8 +607,8 @@ async function waitFor(ready, ms) {
     const rows = (await s.$$('.cb-cart-table tr')).length;
     const local = await quoteFor('201301');
     const far = await quoteFor('560001');
-    check(rows === 2 && /Shipping \(About \d+ km from Noida\)₹110/.test(local) && /Total₹1,358/.test(local), `cart prices books plus local shipping (${local})`);
-    check(/₹470/.test(far) && /Total₹1,718/.test(far), `shipping grows with distance from Noida (${far})`);
+    check(rows === 2 && /Shipping \(Delhi NCR · 650 g\)₹70/.test(local) && /Total₹1,318/.test(local), `cart prices books plus the Delhi NCR courier rate for 650 g (${local})`);
+    check(/Metro city · 650 g\)₹115/.test(far) && /Total₹1,363/.test(far), `a metro PIN uses the metro courier rate (${far})`);
     const address = { name: 'Asha Rao', phone: '12345', email: 'asha@example.test', line1: 'Flat 4B, Lotus Tower', line2: 'Sector 62', city: 'Noida', pin: '201309' };
     for (const [k, v] of Object.entries(address)) await s.fill(`.cb-checkout [name="${k}"]`, v);
     await s.selectOption('.cb-checkout [name="state"]', 'Uttar Pradesh');
@@ -745,11 +745,11 @@ async function waitFor(ready, ms) {
     const csv = csvUrl ? await (await page.request.get(csvUrl)).text() : '';
     check(/Order,Date,Status/.test(csv) && /Asha Rao/.test(csv), 'orders export as CSV');
     // Back in stock.
-    await setPrint(bulkEdit, { print_sell: 'true', print_price: '250', print_shipping: '30', print_stock: '0' });
+    await setPrint(bulkEdit, { print_sell: 'true', print_price: '250', print_cost: '120', print_stock: '0' });
     await m.goto(`${BASE}/?pagename=subscription`);
     await m.click('.cb-print-card:has(h3:text-is("Bulk Book")) .cb-notify').catch(() => {});
     await m.waitForFunction(() => /email you/i.test((document.querySelector('.cb-notify') || {}).textContent || ''), null, { timeout: 20000 }).catch(() => {});
-    await setPrint(bulkEdit, { print_sell: 'true', print_price: '250', print_shipping: '30', print_stock: '5' });
+    await setPrint(bulkEdit, { print_sell: 'true', print_price: '250', print_cost: '120', print_stock: '5' });
     check(/back in stock/i.test(lastMail()), `readers who asked are emailed when a book is back in stock (${lastMail().slice(0, 50)})`);
     // Gift a digital subscription.
     const giftOrder = await m.evaluate(async () => {
@@ -786,6 +786,8 @@ async function waitFor(ready, ms) {
     await fx.close();
     }
     await page.goto(settingsUrl);
+    const calc = await page.evaluate(() => ({ rates: document.querySelectorAll('.cb-zone-table input').length, profit: ((document.querySelector('.cb-calc .cb-calc-total') || {}).textContent || '').replace(/\s+/g, ' ') }));
+    check(calc.rates === 12 && /Your profit/.test(calc.profit) && /₹239/.test(calc.profit), `Shipping & Selling shows the courier-rate table and the profit calculator (${calc.rates} ${calc.profit})`);
     const simple = await page.evaluate(() => ({ main: !!document.querySelector('#corporate_book_bg_color_box').offsetParent, extra: !!document.querySelector('#corporate_book_duration_box').offsetParent, layoutTab: !!document.querySelector('a[href="#corporate-book-tab-content-layout"]').offsetParent }));
     await page.check('#cb-show-all');
     const all = await page.evaluate(() => !!document.querySelector('#corporate_book_duration_box').offsetParent && !!document.querySelector('a[href="#corporate-book-tab-content-layout"]').offsetParent);

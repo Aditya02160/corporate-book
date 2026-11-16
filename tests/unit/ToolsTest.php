@@ -38,6 +38,8 @@ class ToolsTest extends CB_Unit_Test {
     $this->assertSame( 499, $o['order_items'][0]['selling_price'] );
     $this->assertSame( 998, $o['sub_total'] );
     $this->assertSame( 80, $o['shipping_charges'] );
-    $this->assertEqualsWithDelta( 0.8, $o['weight'], 0.001 );
+    $this->assertEqualsWithDelta( 0.5, $o['weight'], 0.001, 'orders from before weights were saved: 250 g a copy' );
+    $GLOBALS['wp']['post_meta'][9]['_cb_totals']['grams'] = 450;
+    $this->assertEqualsWithDelta( 0.45, Corporate_Book_Tools::shiprocket_order( 9 )['weight'], 0.001, 'saved parcel weight in kg' );
   }
 }

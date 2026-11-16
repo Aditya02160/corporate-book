@@ -1,7 +1,7 @@
 <?php
 /**
  * Print copies shop: readers buy printed books with a cart, a delivery address in India and Razorpay
- * (or cash on delivery). Shipping grows with the distance of the delivery PIN code from Noida.
+ * (or cash on delivery). Shipping is the courier rate from Noida for the PIN code's zone and the parcel's 500 g slabs.
  * Orders are private "cb_order" posts that administrators manage under Corporate Books > Print Orders.
  *
  * Prices, shipping, stock and totals are always worked out here; the browser only sends book IDs and quantities.
@@ -19,14 +19,11 @@ class Corporate_Book_Shop {
   const NONCE    = 'corporate_book_shop';
   const ADDRESS  = 'corporate_book_address';
   const MAX_QTY  = 10;
-  // Noida, Uttar Pradesh: where the books ship from.
-  const ORIGIN_LAT = 28.5355;
-  const ORIGIN_LNG = 77.3910;
 
   /**
    * Reference points of Indian PIN code regions: two-digit prefixes, plus three-digit prefixes where a
    * region is large or the place matters (Delhi NCR, Uttarakhand, Goa, Sikkim, islands, north-east).
-   * Accurate to the region, which is what the distance bands need.
+   * Used to tell real PIN code regions from unused ones.
    */
   private static $points = array(
     '11' => array( 28.6139, 77.2090 ), '12' => array( 28.8955, 76.6066 ), '13' => array( 29.6857, 76.9905 ),
@@ -158,70 +155,86 @@ class Corporate_Book_Shop {
     return isset( self::$points[ substr( $pin, 0, 2 ) ] ) ? self::$points[ substr( $pin, 0, 2 ) ] : null;
   }
 
+  /** Indian couriers charge per 500 g slab. */
+  const SLAB = 500;
+
   /**
-   * Straight-line distance in km from Noida to the PIN code's region; 9999 for army post (90-99); null when invalid.
+   * Courier zone from Noida for a PIN code: ncr, metro, india or remote; null when the PIN is not valid.
    *
    * @param string $pin PIN code.
    *
-   * @return int|null
+   * @return string|null
    */
-  public static function distance_km( $pin ) {
+  public static function zone( $pin ) {
     $pin = self::clean_pin( $pin );
-    if ( ! preg_match( '/^[1-9][0-9]{5}$/', $pin ) ) {
+    if ( ! self::valid_pin( $pin ) ) {
       return null;
     }
-    if ( '9' === $pin[0] ) {
-      return 9999;
+    $p3 = substr( $pin, 0, 3 );
+    // Delhi, Noida and Ghaziabad, Faridabad, Gurugram.
+    if ( in_array( $p3, array( '110', '201', '121', '122' ), true ) ) {
+      return 'ncr';
     }
-    $point = self::pin_point( $pin );
-    if ( ! $point ) {
-      return null;
+    // Mumbai, Bengaluru, Chennai, Kolkata, Hyderabad, Pune, Ahmedabad.
+    if ( in_array( $p3, array( '400', '560', '600', '700', '500', '411', '380' ), true ) ) {
+      return 'metro';
     }
-    $rad  = M_PI / 180;
-    $dlat = ( $point[0] - self::ORIGIN_LAT ) * $rad;
-    $dlng = ( $point[1] - self::ORIGIN_LNG ) * $rad;
-    $a    = sin( $dlat / 2 ) ** 2 + cos( self::ORIGIN_LAT * $rad ) * cos( $point[0] * $rad ) * sin( $dlng / 2 ) ** 2;
-    return (int) round( 6371 * 2 * atan2( sqrt( $a ), sqrt( 1 - $a ) ) );
+    // North-East, Jammu & Kashmir and Ladakh, Andaman & Nicobar, Lakshadweep, army post.
+    if ( in_array( substr( $pin, 0, 2 ), array( '78', '79', '18', '19' ), true ) || '744' === $p3 || '6825' === substr( $pin, 0, 4 ) || '9' === $pin[0] ) {
+      return 'remote';
+    }
+    return 'india';
   }
 
   /**
-   * Distance bands from Global Settings: "Up to km | Extra per book", sorted by distance.
+   * Courier rates from Global Settings > Shipping & Selling: zone => array( first 500 g, each extra 500 g, delivery days ).
    *
-   * @return array[] Each array( km, extra ).
+   * @return array[]
    */
-  public static function bands() {
-    $bands = array();
-    foreach ( preg_split( '/\r\n|\r|\n/', self::config( 'print_bands' ) ) as $line ) {
+  public static function zones() {
+    $rates = array( 'ncr' => array( 40, 30, '1-2' ), 'metro' => array( 65, 50, '2-4' ), 'india' => array( 75, 60, '3-6' ), 'remote' => array( 95, 80, '5-9' ) );
+    foreach ( preg_split( '/\r\n|\r|\n/', (string) self::config( 'print_zones' ) ) as $line ) {
       $parts = array_map( 'trim', explode( '|', $line ) );
-      if ( in_array( count( $parts ), array( 2, 3 ), true ) && is_numeric( $parts[0] ) && is_numeric( $parts[1] ) && $parts[0] >= 0 && $parts[1] >= 0 ) {
-        $bands[] = array( 0 + $parts[0], 0 + $parts[1], isset( $parts[2] ) ? sanitize_text_field( $parts[2] ) : '' );
+      if ( count( $parts ) >= 3 && isset( $rates[ $parts[0] ] ) && is_numeric( $parts[1] ) && is_numeric( $parts[2] ) && $parts[1] >= 0 && $parts[2] >= 0 ) {
+        $rates[ $parts[0] ] = array( 0 + $parts[1], 0 + $parts[2], isset( $parts[3] ) ? sanitize_text_field( $parts[3] ) : '' );
       }
     }
-    usort( $bands, function ( $a, $b ) {
-      return $a[0] <=> $b[0];
-    } );
-    return $bands ? $bands : array( array( 99999, 0, '' ) );
+    return $rates;
+  }
+
+  public static function zone_label( $zone ) {
+    $labels = array(
+      'ncr'    => __( 'Delhi NCR', '3d-corporate-book' ),
+      'metro'  => __( 'Metro city', '3d-corporate-book' ),
+      'india'  => __( 'Rest of India', '3d-corporate-book' ),
+      'remote' => __( 'Remote area', '3d-corporate-book' ),
+    );
+    return isset( $labels[ $zone ] ) ? $labels[ $zone ] : '';
   }
 
   /**
-   * The distance band for a distance: array( km, extra per book, delivery days ). The last band covers anything farther.
+   * Parcel weight in grams: every copy (its own weight or the default) plus the box or mailer; 0 for no books.
    *
-   * @param int $km Distance.
+   * @param array[] $lines Quote lines.
    *
-   * @return array
+   * @return int
    */
-  public static function band( $km ) {
-    $bands = self::bands();
-    foreach ( $bands as $band ) {
-      if ( $km <= $band[0] ) {
-        return $band;
-      }
+  public static function grams( $lines ) {
+    $grams = 0;
+    foreach ( $lines as $line ) {
+      $grams += $line['qty'] * ( null !== $line['weight'] ? $line['weight'] : max( 0, (int) self::config( 'print_copy_weight' ) ) );
     }
-    return $bands[ count( $bands ) - 1 ];
+    return $grams ? $grams + max( 0, (int) self::config( 'print_pack_weight' ) ) : 0;
   }
 
-  public static function band_extra( $km ) {
-    return self::band( $km )[1];
+  public static function slabs( $grams ) {
+    return max( 1, (int) ceil( $grams / self::SLAB ) );
+  }
+
+  /** What the courier charges for a parcel, in paise: the first slab, then each extra 500 g. */
+  public static function courier( $zone, $grams ) {
+    $rate = self::zones()[ $zone ];
+    return self::paise( $rate[0] ) + ( self::slabs( $grams ) - 1 ) * self::paise( $rate[1] );
   }
 
   /**
@@ -275,7 +288,8 @@ class Corporate_Book_Shop {
       'id'       => $book_id,
       'title'    => get_the_title( $book_id ),
       'price'    => self::paise( $data['print_price'] ),
-      'shipping' => isset( $data['print_shipping'] ) && is_numeric( $data['print_shipping'] ) ? max( 0, self::paise( $data['print_shipping'] ) ) : 0,
+      'weight'   => isset( $data['print_weight'] ) && is_numeric( $data['print_weight'] ) && $data['print_weight'] > 0 ? (int) $data['print_weight'] : null,
+      'cost'     => isset( $data['print_cost'] ) && is_numeric( $data['print_cost'] ) ? max( 0, self::paise( $data['print_cost'] ) ) : null,
       'stock'    => $stock,
       'thumb'    => isset( $data['pdf_thumb'] ) ? (string) $data['pdf_thumb'] : '',
     );
@@ -334,19 +348,26 @@ class Corporate_Book_Shop {
         $errors[] = __( 'This coupon code is not valid or has expired.', '3d-corporate-book' );
       }
     }
-    $distance = '' === self::clean_pin( $pin ) ? null : self::distance_km( $pin );
+    $zone     = '' === self::clean_pin( $pin ) ? null : self::zone( $pin );
+    $grams    = self::grams( $lines );
     $shipping = null;
+    $courier  = null;
+    $cost     = null;
     $days     = '';
-    if ( null !== $distance ) {
-      $band     = self::band( $distance );
-      $days     = $band[2];
-      $shipping = 0;
-      foreach ( $lines as $line ) {
-        $shipping += ( $line['shipping'] + self::paise( $band[1] ) ) * $line['qty'];
-      }
-      $free = self::config( 'print_free_above' );
+    if ( null !== $zone ) {
+      $days    = self::zones()[ $zone ][2];
+      $courier = $lines ? self::courier( $zone, $grams ) : 0;
+      // What the reader pays: the courier rate, a flat average per 500 g, or nothing (built into the price).
+      $mode     = self::config( 'print_ship_mode' );
+      $shipping = 'free' === $mode ? 0 : ( 'flat' === $mode && $lines ? self::paise( self::config( 'print_flat_rate' ) ) * self::slabs( $grams ) : $courier );
+      $free     = self::config( 'print_free_above' );
       if ( is_numeric( $free ) && $free > 0 && $subtotal - $discount >= self::paise( $free ) ) {
         $shipping = 0;
+      }
+      // The seller's cost of this order: copies, the box and the courier.
+      $cost = $courier + ( $lines ? self::paise( self::config( 'print_pack_cost' ) ) : 0 );
+      foreach ( $lines as $line ) {
+        $cost += $line['qty'] * ( null !== $line['cost'] ? $line['cost'] : self::paise( self::config( 'print_unit_cost' ) ) );
       }
     }
     return array(
@@ -356,7 +377,10 @@ class Corporate_Book_Shop {
       'coupon'   => $code,
       'shipping' => $shipping,
       'total'    => $subtotal - $discount + (int) $shipping,
-      'distance' => $distance,
+      'zone'     => $zone,
+      'grams'    => $grams,
+      'courier'  => $courier,
+      'cost'     => $cost,
       'days'     => $days,
       'errors'   => $errors,
     );
@@ -678,7 +702,7 @@ class Corporate_Book_Shop {
         'total' => self::money( $line['price'] * $line['qty'] ),
       );
     }
-    $distance = null === $quote['distance'] ? '' : ( 9999 === $quote['distance'] ? __( 'Army post delivery', '3d-corporate-book' ) : sprintf( /* translators: %s: kilometres */ __( 'About %s km from Noida', '3d-corporate-book' ), number_format( $quote['distance'] ) ) );
+    $distance = null === $quote['zone'] ? '' : self::zone_label( $quote['zone'] ) . ( $quote['grams'] ? ' · ' . number_format_i18n( $quote['grams'] ) . ' g' : '' );
     return array(
       'lines'    => $lines,
       'discount' => $quote['discount'] ? '− ' . self::money( $quote['discount'] ) : null,
@@ -758,7 +782,7 @@ class Corporate_Book_Shop {
       $items[] = array( 'id' => $line['id'], 'title' => $line['title'], 'qty' => $line['qty'], 'price' => $line['price'] );
     }
     update_post_meta( $order, '_cb_items', $items );
-    update_post_meta( $order, '_cb_totals', array( 'subtotal' => $quote['subtotal'], 'discount' => $quote['discount'], 'coupon' => $quote['coupon'], 'shipping' => (int) $quote['shipping'], 'total' => $quote['total'], 'distance' => $quote['distance'], 'days' => $quote['days'] ) );
+    update_post_meta( $order, '_cb_totals', array( 'subtotal' => $quote['subtotal'], 'discount' => $quote['discount'], 'coupon' => $quote['coupon'], 'shipping' => (int) $quote['shipping'], 'total' => $quote['total'], 'zone' => $quote['zone'], 'grams' => $quote['grams'], 'cost' => (int) $quote['cost'], 'days' => $quote['days'] ) );
     update_post_meta( $order, '_cb_address', $address );
     update_post_meta( $order, '_cb_payment', $method );
     // phpcs:disable WordPress.Security.NonceVerification.Missing -- checked above.
@@ -1060,14 +1084,16 @@ class Corporate_Book_Shop {
   public function details_box( $post ) {
     $order   = $post->ID;
     $address = (array) get_post_meta( $order, '_cb_address', true ) + array( 'name' => '', 'phone' => '', 'email' => '', 'line1' => '', 'line2' => '', 'landmark' => '', 'city' => '', 'state' => '', 'pin' => '' );
-    $totals  = (array) get_post_meta( $order, '_cb_totals', true ) + array( 'subtotal' => 0, 'shipping' => 0, 'total' => 0, 'distance' => null );
+    $totals  = (array) get_post_meta( $order, '_cb_totals', true ) + array( 'subtotal' => 0, 'shipping' => 0, 'total' => 0, 'zone' => '', 'grams' => 0, 'cost' => null );
     echo '<table class="widefat striped"><thead><tr><th>' . esc_html__( 'Book', '3d-corporate-book' ) . '</th><th>' . esc_html__( 'Copies', '3d-corporate-book' ) . '</th><th>' . esc_html__( 'Price', '3d-corporate-book' ) . '</th><th>' . esc_html__( 'Amount', '3d-corporate-book' ) . '</th></tr></thead><tbody>';
     foreach ( (array) get_post_meta( $order, '_cb_items', true ) as $item ) {
       echo '<tr><td><a href="' . esc_url( get_edit_post_link( $item['id'] ) ) . '">' . esc_html( $item['title'] ) . '</a></td><td>' . (int) $item['qty'] . '</td><td>' . esc_html( self::money( $item['price'] ) ) . '</td><td>' . esc_html( self::money( $item['price'] * $item['qty'] ) ) . '</td></tr>';
     }
     echo '</tbody><tfoot><tr><th colspan="3">' . esc_html__( 'Books', '3d-corporate-book' ) . '</th><th>' . esc_html( self::money( $totals['subtotal'] ) ) . '</th></tr>'
-      . '<tr><th colspan="3">' . esc_html__( 'Shipping', '3d-corporate-book' ) . ( null !== $totals['distance'] ? ' (' . esc_html( number_format( (int) $totals['distance'] ) ) . ' km)' : '' ) . '</th><th>' . esc_html( self::money( $totals['shipping'] ) ) . '</th></tr>'
-      . '<tr><th colspan="3">' . esc_html__( 'Total', '3d-corporate-book' ) . '</th><th>' . esc_html( self::money( $totals['total'] ) ) . '</th></tr></tfoot></table>';
+      . '<tr><th colspan="3">' . esc_html__( 'Shipping', '3d-corporate-book' ) . ( '' !== (string) $totals['zone'] ? ' (' . esc_html( self::zone_label( $totals['zone'] ) . ( $totals['grams'] ? ', ' . number_format_i18n( $totals['grams'] ) . ' g' : '' ) ) . ')' : '' ) . '</th><th>' . esc_html( self::money( $totals['shipping'] ) ) . '</th></tr>'
+      . '<tr><th colspan="3">' . esc_html__( 'Total', '3d-corporate-book' ) . '</th><th>' . esc_html( self::money( $totals['total'] ) ) . '</th></tr>'
+      . ( null !== $totals['cost'] ? '<tr><td colspan="3">' . esc_html__( 'Estimated profit (after copies, box and courier)', '3d-corporate-book' ) . '</td><td>' . esc_html( self::money( $totals['total'] - $totals['cost'] ) ) . '</td></tr>' : '' )
+      . '</tfoot></table>';
     $user = get_userdata( $post->post_author );
     echo '<h3>' . esc_html__( 'Deliver to', '3d-corporate-book' ) . '</h3><p class="cb-order-address">' . esc_html( $address['name'] ) . '<br>' . esc_html( $address['line1'] ) . ( $address['line2'] ? '<br>' . esc_html( $address['line2'] ) : '' ) . ( $address['landmark'] ? '<br>' . esc_html__( 'Near', '3d-corporate-book' ) . ' ' . esc_html( $address['landmark'] ) : '' )
       . '<br>' . esc_html( $address['city'] . ', ' . $address['state'] . ' ' . $address['pin'] ) . '<br>' . esc_html__( 'Mobile', '3d-corporate-book' ) . ': <a href="tel:+91' . esc_attr( $address['phone'] ) . '">+91 ' . esc_html( $address['phone'] ) . '</a><br>' . esc_html__( 'Email', '3d-corporate-book' ) . ': <a href="mailto:' . esc_attr( $address['email'] ) . '">' . esc_html( $address['email'] ) . '</a></p>';

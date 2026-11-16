@@ -51,7 +51,7 @@ class Corporate_Book_Settings {
       'controls' => array( 'more_controls', 'hide_controls', 'enable_search', 'share_prefix' ),
       'pdf' => array( 'enable_annotation', 'link_target', 'range_size', 'attachment_lightbox' ),
       'translate' => array( 'external_translate', 'text_toggle_sound', 'text_toggle_thumbnails', 'text_toggle_outline', 'text_previous_page', 'text_next_page', 'text_toggle_fullscreen', 'text_zoom_in', 'text_zoom_out', 'text_toggle_help', 'text_single_page_mode', 'text_double_page_mode', 'text_goto_first_page', 'text_goto_last_page', 'text_share', 'text_mail_subject', 'text_mail_body', 'text_loading', 'text_sign_in', 'text_subscribe', 'text_locked', 'text_subscribe_button', 'text_preview' ),
-      'print' => array( 'print_enable', 'print_bands', 'print_free_above', 'print_coupons', 'print_bundle_days', 'print_cod', 'print_email', 'print_low_stock', 'invoice_business', 'invoice_gstin', 'invoice_address', 'invoice_prefix', 'shiprocket_email', 'shiprocket_password', 'shiprocket_pickup' ),
+      'print' => array( 'print_enable', 'print_unit_cost', 'print_pack_cost', 'print_copy_weight', 'print_pack_weight', 'print_ship_mode', 'print_zones', 'print_flat_rate', 'print_free_above', 'print_cod', 'print_coupons', 'print_bundle_days', 'print_email', 'print_low_stock', 'invoice_business', 'invoice_gstin', 'invoice_address', 'invoice_prefix', 'shiprocket_email', 'shiprocket_password', 'shiprocket_pickup' ),
       'subscription' => array( 'subscription_enable', 'subscription_url', 'subscription_preview_percent', 'subscription_roles', 'subscription_login_shortcode', 'google_client_id', 'subscription_signup', 'razorpay_key_id', 'razorpay_key_secret', 'razorpay_webhook_secret', 'subscription_currency', 'subscription_plans' ),
       'advanced' => array( 'selectiveScriptLoading', 'enable_analytics', 'delete_data' ),
   );
@@ -143,7 +143,13 @@ class Corporate_Book_Settings {
       'razorpay_webhook_secret'      => __( 'Recommended. Makes payments count even if the reader closes the page. See the setup steps in the readme.', '3d-corporate-book' ),
       'subscription_currency'        => __( 'Currency of your prices.', '3d-corporate-book' ),
       'print_enable'                 => __( 'On: readers can buy printed copies of books that have a print price.', '3d-corporate-book' ),
-      'print_bands'                  => __( 'How shipping grows with distance from Noida. One band per line: Up to km | Extra per book. Example: 300 | 30 adds 30 per book up to 300 km.', '3d-corporate-book' ),
+      'print_unit_cost'              => __( 'What one copy costs you to print or buy (for example 250). Used only for the profit figures.', '3d-corporate-book' ),
+      'print_pack_cost'              => __( 'Box or mailer, bubble wrap and tape for one order (for example 10). Used only for the profit figures.', '3d-corporate-book' ),
+      'print_copy_weight'            => __( 'Weight of one copy in grams (for example 200).', '3d-corporate-book' ),
+      'print_pack_weight'            => __( 'Weight of the box or mailer in grams (for example 50). Couriers charge per 500 g slab.', '3d-corporate-book' ),
+      'print_ship_mode'              => __( 'By zone: readers pay the courier rate for their area. Flat: one average rate. Free: you pay the courier.', '3d-corporate-book' ),
+      'print_zones'                  => __( 'Courier rates from Noida, including GST. Edit them in the table.', '3d-corporate-book' ),
+      'print_flat_rate'              => __( 'Average courier cost per 500 g, used for the flat rate (for example 55).', '3d-corporate-book' ),
       'print_free_above'             => __( 'Optional. Orders with books worth at least this amount ship free.', '3d-corporate-book' ),
       'print_cod'                    => __( 'On: readers may pay the courier in cash instead of paying online.', '3d-corporate-book' ),
       'print_email'                  => __( 'Where new order emails go. Empty = site admin email.', '3d-corporate-book' ),
@@ -180,6 +186,8 @@ class Corporate_Book_Settings {
       'razorpay_key_id'              => __( 'Razorpay', '3d-corporate-book' ),
       'subscription_currency'        => __( 'Plans', '3d-corporate-book' ),
       'print_enable'                 => __( 'Selling', '3d-corporate-book' ),
+      'print_copy_weight'            => __( 'Parcel', '3d-corporate-book' ),
+      'print_ship_mode'              => __( 'Shipping charge', '3d-corporate-book' ),
       'print_cod'                    => __( 'Orders', '3d-corporate-book' ),
       'invoice_business'             => __( 'Invoices', '3d-corporate-book' ),
       'shiprocket_email'             => __( 'Shiprocket (optional)', '3d-corporate-book' ),
@@ -205,7 +213,7 @@ class Corporate_Book_Settings {
         'pdf' => __( 'PDF', '3d-corporate-book' ),
         'translate' => __( 'Translate', '3d-corporate-book' ),
         'subscription' => __( 'Subscription', '3d-corporate-book' ),
-        'print' => __( 'Print', '3d-corporate-book' ),
+        'print' => __( 'Shipping & Selling', '3d-corporate-book' ),
         'advanced' => __( 'Advanced', '3d-corporate-book' )
     );
     
@@ -279,6 +287,7 @@ class Corporate_Book_Settings {
       </form>
     <?php
     self::simple_mode_script();
+    self::shipping_script();
     
   }
   
@@ -351,6 +360,60 @@ class Corporate_Book_Settings {
   /**
    * "Show all settings" / "Show more options" switch; the choice is remembered in this browser.
    */
+  /**
+   * Shipping & Selling tab: the courier-rate table (it writes the rates text field) and a live profit calculator.
+   */
+  public static function shipping_script() {
+    $labels = array(
+      'ncr'    => __( 'Delhi NCR (Delhi, Noida, Ghaziabad, Gurugram, Faridabad)', '3d-corporate-book' ),
+      'metro'  => __( 'Metro cities (Mumbai, Bengaluru, Chennai, Kolkata, Hyderabad, Pune, Ahmedabad)', '3d-corporate-book' ),
+      'india'  => __( 'Rest of India', '3d-corporate-book' ),
+      'remote' => __( 'North-East, J&K, Ladakh, islands, army post', '3d-corporate-book' ),
+    );
+    $text = array(
+      'zone'   => __( 'Zone', '3d-corporate-book' ),
+      'first'  => __( 'First 500 g (₹)', '3d-corporate-book' ),
+      'extra'  => __( 'Each extra 500 g (₹)', '3d-corporate-book' ),
+      'days'   => __( 'Delivery days', '3d-corporate-book' ),
+      'calc'   => __( 'Profit per order', '3d-corporate-book' ),
+      'price'  => __( 'Sale price per copy (₹)', '3d-corporate-book' ),
+      'copies' => __( 'Copies', '3d-corporate-book' ),
+      'to'     => __( 'Delivered to', '3d-corporate-book' ),
+      'sale'   => __( 'Reader pays', '3d-corporate-book' ),
+      'books'  => __( 'Books', '3d-corporate-book' ),
+      'ship'   => __( 'Shipping charged', '3d-corporate-book' ),
+      'cost'   => __( 'Product cost', '3d-corporate-book' ),
+      'pack'   => __( 'Packaging', '3d-corporate-book' ),
+      'courier'=> __( 'Courier (paid by you)', '3d-corporate-book' ),
+      'profit' => __( 'Your profit', '3d-corporate-book' ),
+      'margin' => __( 'margin', '3d-corporate-book' ),
+      'even'   => __( 'Lowest price without a loss:', '3d-corporate-book' ),
+      'weight' => __( 'Parcel weight', '3d-corporate-book' ),
+      'slabs'  => __( 'slab(s) of 500 g', '3d-corporate-book' ),
+    );
+    echo '<style>.cb-zone-table{border-collapse:collapse;margin:6px 0 4px;max-width:760px;width:100%}.cb-zone-table th,.cb-zone-table td{padding:6px 8px;border-bottom:1px solid #e2e4e7;text-align:left;font-size:13px}.cb-zone-table input{width:90px}.cb-calc{max-width:760px;margin:18px 0;padding:16px 18px;border:1px solid #c5d9ed;border-radius:10px;background:#f6fbff}.cb-calc h4{margin:0 0 10px;font-size:15px;color:#0b1f5c}.cb-calc-in{display:flex;flex-wrap:wrap;gap:14px;margin-bottom:12px}.cb-calc-in label{display:flex;flex-direction:column;font-size:12px;font-weight:600;gap:4px}.cb-calc-in input,.cb-calc-in select{min-width:120px}.cb-calc table{width:100%;max-width:460px;border-collapse:collapse}.cb-calc td{padding:4px 0;font-size:13px}.cb-calc td:last-child{text-align:right;font-variant-numeric:tabular-nums}.cb-calc .cb-calc-total td{border-top:2px solid #0b1f5c;font-weight:700;font-size:15px;padding-top:8px}.cb-calc .cb-loss td{color:#b32d2e}.cb-calc-note{margin:8px 0 0;font-size:12px;color:#50575e}</style>';
+    echo '<script>(function(){var L=' . wp_json_encode( $labels ) . ',T=' . wp_json_encode( $text ) . ';var area=document.getElementById("corporate_book_print_zones");if(!area){return;}'
+      . 'function num(id,d){var e=document.getElementById("corporate_book_"+id);var v=e?parseFloat(e.value):NaN;return isNaN(v)?d:v;}'
+      . 'function rates(){var r={ncr:[40,30,"1-2"],metro:[65,50,"2-4"],india:[75,60,"3-6"],remote:[95,80,"5-9"]};area.value.split(/\r?\n/).forEach(function(l){var p=l.split("|").map(function(x){return x.trim();});if(p.length>=3&&r[p[0]]&&!isNaN(parseFloat(p[1]))&&!isNaN(parseFloat(p[2]))){r[p[0]]=[parseFloat(p[1]),parseFloat(p[2]),p[3]||""];}});return r;}'
+      . 'var t=document.createElement("table");t.className="cb-zone-table";var h=t.insertRow();[T.zone,T.first,T.extra,T.days].forEach(function(x){var th=document.createElement("th");th.textContent=x;h.appendChild(th);});var r=rates();'
+      . 'Object.keys(L).forEach(function(k){var row=t.insertRow();row.insertCell().textContent=L[k];[0,1,2].forEach(function(i){var c=row.insertCell(),inp=document.createElement("input");inp.type=i<2?"number":"text";if(i<2){inp.min="0";inp.step="any";}inp.value=r[k][i];inp.setAttribute("data-zone",k);inp.setAttribute("data-i",i);inp.setAttribute("aria-label",L[k]+" "+[T.first,T.extra,T.days][i]);c.appendChild(inp);});});'
+      . 'function save(){var r=rates();t.querySelectorAll("input").forEach(function(i){r[i.getAttribute("data-zone")][+i.getAttribute("data-i")]=i.value.trim();});area.value=Object.keys(L).map(function(k){return k+" | "+r[k][0]+" | "+r[k][1]+" | "+r[k][2];}).join("\n");calc();}'
+      . 't.addEventListener("input",save);area.style.display="none";area.parentNode.insertBefore(t,area);'
+      . 'var box=document.createElement("div");box.className="cb-calc";box.innerHTML="<h4></h4><div class=\"cb-calc-in\"><label><span></span><input type=\"number\" min=\"0\" step=\"any\" value=\"499\" data-k=\"price\"></label><label><span></span><input type=\"number\" min=\"1\" max=\"10\" value=\"1\" data-k=\"copies\"></label><label><span></span><select data-k=\"zone\"></select></label></div><table></table><p class=\"cb-calc-note\"></p>";'
+      . 'box.querySelector("h4").textContent=T.calc;var sp=box.querySelectorAll(".cb-calc-in span");sp[0].textContent=T.price;sp[1].textContent=T.copies;sp[2].textContent=T.to;var sel=box.querySelector("select");Object.keys(L).forEach(function(k){var o=document.createElement("option");o.value=k;o.textContent=L[k];sel.appendChild(o);});sel.value="metro";'
+      . 't.parentNode.insertBefore(box,t.nextSibling);'
+      . 'function rs(v){return "\u20b9"+(Math.round(v*100)/100).toLocaleString("en-IN");}'
+      . 'function calc(){var q=function(k){return box.querySelector("[data-k="+k+"]");};var price=parseFloat(q("price").value)||0,n=Math.max(1,parseInt(q("copies").value,10)||1),z=q("zone").value,r=rates()[z];'
+      . 'var g=n*num("print_copy_weight",200)+num("print_pack_weight",50),sl=Math.max(1,Math.ceil(g/500)),courier=r[0]+(sl-1)*r[1];var mode=(document.getElementById("corporate_book_print_ship_mode")||{}).value||"zone";'
+      . 'var ship=mode==="free"?0:(mode==="flat"?num("print_flat_rate",55)*sl:courier);var free=num("print_free_above",0);if(free>0&&price*n>=free){ship=0;}'
+      . 'var cost=num("print_unit_cost",250)*n,pack=num("print_pack_cost",10),profit=price*n+ship-cost-pack-courier;'
+      . 'var rows=[[T.books+" ("+n+" \u00d7 "+rs(price)+")",price*n],[T.ship,ship],["\u2212 "+T.cost,-cost],["\u2212 "+T.pack,-pack],["\u2212 "+T.courier,-courier]];var tb=box.querySelector("table");tb.textContent="";'
+      . 'rows.forEach(function(x){var row=tb.insertRow();row.insertCell().textContent=x[0];row.insertCell().textContent=(x[1]<0?"\u2212 ":"")+rs(Math.abs(x[1]));});'
+      . 'var tr=tb.insertRow();tr.className="cb-calc-total"+(profit<0?" cb-loss":"");tr.insertCell().textContent=T.profit+(price>0?" ("+Math.round(100*profit/(price*n+ship))+"% "+T.margin+")":"");tr.insertCell().textContent=(profit<0?"\u2212 ":"")+rs(Math.abs(profit));'
+      . 'var even=Math.max(0,(cost+pack+courier-ship)/n);box.querySelector(".cb-calc-note").textContent=T.weight+": "+g+" g, "+sl+" "+T.slabs+". "+T.even+" "+rs(Math.ceil(even))+".";}'
+      . 'box.addEventListener("input",calc);document.addEventListener("input",function(e){if(e.target&&/^corporate_book_print_/.test(e.target.id||"")){calc();}});document.addEventListener("change",function(e){if(e.target&&e.target.id==="corporate_book_print_ship_mode"){calc();}});calc();})();</script>'; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- fixed script; labels are JSON-encoded.
+  }
+
   public static function simple_mode_script() {
     echo '<script>(function(){var box=document.getElementById(\'cb-show-all\');if(!box)return;var root=box.closest(\'.cb-simple-root\');function apply(){root.classList.toggle(\'cb-show-all\',box.checked);try{localStorage.setItem(\'cbShowAll\',box.checked?\'1\':\'\');}catch(e){}var active=root.querySelector(\'.corporate-book-tabs-list li.corporate-book-active\');if(active&&getComputedStyle(active).display===\'none\'){root.querySelector(\'.corporate-book-tabs-list li a\').click();}}try{box.checked=localStorage.getItem(\'cbShowAll\')===\'1\';}catch(e){}box.addEventListener(\'change\',apply);apply();})();</script>'; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- fixed script.
   }

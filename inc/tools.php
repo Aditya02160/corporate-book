@@ -237,7 +237,7 @@ class Corporate_Book_Tools {
         'length'                 => 25,
         'breadth'                => 18,
         'height'                 => max( 2, 2 * $copies ),
-        'weight'                 => 0.4 * max( 1, $copies ),
+        'weight'                 => ! empty( $t['grams'] ) ? round( $t['grams'] / 1000, 3 ) : 0.25 * max( 1, $copies ),
       ),
       $order
     );
@@ -302,6 +302,8 @@ class Corporate_Book_Tools {
     $revenue = 0;
     $count   = 0;
     $copies  = 0;
+    $profit  = 0;
+    $costed  = 0;
     foreach ( get_posts( array( 'post_type' => Corporate_Book_Shop::ORDER, 'post_status' => array( 'cb-paid', 'cb-cod', 'cb-shipped', 'cb-delivered' ), 'numberposts' => 5000 ) ) as $post ) {
       $t     = (array) get_post_meta( $post->ID, '_cb_totals', true ) + array( 'total' => 0 );
       $month = substr( $post->post_date, 0, 7 );
@@ -311,6 +313,10 @@ class Corporate_Book_Tools {
       }
       $revenue += $t['total'];
       $count++;
+      if ( isset( $t['cost'] ) ) {
+        $profit += $t['total'] - (int) $t['cost'];
+        $costed++;
+      }
       foreach ( (array) get_post_meta( $post->ID, '_cb_items', true ) as $item ) {
         $books[ $item['title'] ] = ( isset( $books[ $item['title'] ] ) ? $books[ $item['title'] ] : 0 ) + (int) $item['qty'];
         $copies                 += (int) $item['qty'];
@@ -336,6 +342,8 @@ class Corporate_Book_Tools {
       'print'   => $revenue,
       'orders'  => $count,
       'copies'  => $copies,
+      'profit'  => $profit,
+      'costed'  => $costed,
       'subs'    => $subs,
       'active'  => $active,
       'readers' => count( get_users( array( 'role' => 'cb_reader', 'fields' => 'ID', 'number' => 100000 ) ) ),
@@ -367,6 +375,7 @@ class Corporate_Book_Tools {
       . $card( __( 'Print sales', '3d-corporate-book' ), $money( $s['print'] ) )
       . $card( __( 'Print orders', '3d-corporate-book' ), (int) $s['orders'] )
       . $card( __( 'Copies sold', '3d-corporate-book' ), (int) $s['copies'] )
+      . $card( sprintf( /* translators: %d: number of orders */ _n( 'Estimated print profit (%d order)', 'Estimated print profit (%d orders)', $s['costed'], '3d-corporate-book' ), $s['costed'] ), $money( $s['profit'] ) )
       . $card( __( 'Subscription sales', '3d-corporate-book' ), $money( $s['subs'] ) )
       . $card( __( 'Active subscribers', '3d-corporate-book' ), (int) $s['active'] )
       . $card( __( 'Reader accounts', '3d-corporate-book' ), (int) $s['readers'] )
