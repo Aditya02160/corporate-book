@@ -53,7 +53,7 @@ class Corporate_Book_Settings {
       'translate' => array( 'external_translate', 'text_toggle_sound', 'text_toggle_thumbnails', 'text_toggle_outline', 'text_previous_page', 'text_next_page', 'text_toggle_fullscreen', 'text_zoom_in', 'text_zoom_out', 'text_toggle_help', 'text_single_page_mode', 'text_double_page_mode', 'text_goto_first_page', 'text_goto_last_page', 'text_share', 'text_mail_subject', 'text_mail_body', 'text_loading', 'text_sign_in', 'text_subscribe', 'text_locked', 'text_subscribe_button', 'text_preview' ),
       'print' => array( 'print_enable', 'print_bands', 'print_free_above', 'print_coupons', 'print_bundle_days', 'print_cod', 'print_email', 'print_low_stock', 'invoice_business', 'invoice_gstin', 'invoice_address', 'invoice_prefix', 'shiprocket_email', 'shiprocket_password', 'shiprocket_pickup' ),
       'subscription' => array( 'subscription_enable', 'subscription_url', 'subscription_preview_percent', 'subscription_roles', 'subscription_login_shortcode', 'google_client_id', 'subscription_signup', 'razorpay_key_id', 'razorpay_key_secret', 'razorpay_webhook_secret', 'subscription_currency', 'subscription_plans' ),
-      'advanced' => array( 'selectiveScriptLoading', 'enable_analytics' ),
+      'advanced' => array( 'selectiveScriptLoading', 'enable_analytics', 'delete_data' ),
   );
 
   

@@ -11,6 +11,11 @@
 if ( ! defined( 'WP_UNINSTALL_PLUGIN' ) ) {
   exit;
 }
+// Deleting the plugin to upload a new version must not lose the settings: clean up only when asked.
+$cb_settings = get_option( '_corporate_book_settings', array() );
+if ( ! is_array( $cb_settings ) || empty( $cb_settings['delete_data'] ) || 'true' !== $cb_settings['delete_data'] ) {
+  return;
+}
 
 foreach ( array( 'corporate_book_subscription_page', 'corporate_book_profile_page', 'corporate_book_cart_page' ) as $option ) {
   $page = (int) get_option( $option );
