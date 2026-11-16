@@ -54,7 +54,11 @@
 
     // Resume reading.
     var last = store.get(lastKey, 0);
-    if (last > 2 && app.currentPageNumber <= 3 && !/#/.test(window.location.hash)) {
+    var opt = window['option_' + node.id] || {};
+    var win = opt.cbLock && opt.cbLock.window;
+    // Readers on a free preview are only offered pages inside it.
+    var free = !opt.cbLock || (win && last >= win.start && last < win.start + win.count);
+    if (free && last > 2 && app.currentPageNumber <= 3 && !/#/.test(window.location.hash)) {
       var ask = el('div', 'cb-resume');
       ask.appendChild(el('span', '', cfg.resume.replace('%d', last)));
       var yes = el('button', 'cb-resume-yes', cfg.yes);
@@ -104,6 +108,12 @@
     track(book, 'open', 0);
     var furthest = 0;
     setInterval(function () {
+      var lock = node.querySelector('.cb-lock');
+      if (lock && lock.offsetParent) {
+        // Pages behind the "preview ended" panel are not read: not saved, counted or added to history.
+        track(book, 'locked', 0);
+        return;
+      }
       var p = app.currentPageNumber;
       if (p > 1) {
         store.set(lastKey, p);
@@ -111,10 +121,6 @@
       if (p > furthest) {
         for (var i = furthest + 1; i <= p; i++) { track(book, 'page', i); }
         furthest = p;
-      }
-      var lock = node.querySelector('.cb-lock');
-      if (lock && lock.offsetParent) {
-        track(book, 'locked', 0);
       }
     }, 1500);
   }

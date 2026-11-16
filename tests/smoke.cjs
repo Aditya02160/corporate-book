@@ -213,6 +213,10 @@ async function waitFor(ready, ms) {
     await v.ctx.close();
     v = await visit('reader');
     check(hasFile(v.body, 'start=1') && !hasFile(v.body, 'cb-test/sample.pdf'), 'reader gets preview only');
+    // Signing in does not open a second free window: the account shares the window this browser already used.
+    const readerBook = (v.body.match(/corporate_book_pdf=(\d+)/) || [])[1];
+    const second = readerBook ? Buffer.from(await (await v.p.request.get(`${BASE}/?corporate_book_pdf=${readerBook}&start=3`)).body()).toString('latin1') : '';
+    check(/\(Page 1\)/.test(second) && !/\(Page 3\)/.test(second), 'a signed-in reader gets the same single free window, not a new one');
     await pastEnd(v.p);
     await v.p.waitForSelector(`.cb-lock a[href="${SUBSCRIBE_URL}"]`, { state: 'visible', timeout: 30000 }).catch(() => {});
     check(await v.p.isVisible(`.cb-lock a[href="${SUBSCRIBE_URL}"]`), 'reader sees lock after preview');
@@ -588,7 +592,8 @@ async function waitFor(ready, ms) {
     for (const t of ['Test Book', 'Test Book', 'Bulk Book']) { await addBook(t); await s.waitForTimeout(200); }
     check(await s.$eval('.cb-toast', (e) => /Added to cart/.test(e.textContent)).catch(() => false), 'adding a book shows "Added to cart"');
     await s.goto(`${BASE}/?post_type=corporate_book`);
-    check(/Add to cart · ₹/.test(await s.$eval('.cb-thumb-card .cb-thumb-actions .cb-add-cart', (e) => e.textContent).catch(() => '')), 'library cards have Add to cart next to Read Magazine');
+    const cardCart = await s.$eval('.cb-thumb-card .cb-thumb-actions .cb-add-cart', (e) => `${e.textContent.trim()}|${e.getAttribute('aria-label')}`).catch(() => '');
+    check(/^Add to cart\|Buy print copy · ₹/.test(cardCart) && await s.$('.cb-thumb-card .cb-thumb-price') !== null, `library cards have Add to cart next to Read Magazine, with the price (${cardCart})`);
     await s.goto(`${BASE}/?pagename=subscription`);
     check(/^2 in your cart/.test(await s.$eval('.cb-print-card:has(h3:text-is("Test Book")) .cb-in-cart', (e) => e.textContent).catch(() => '')), 'the book card shows how many copies are in the cart');
     await s.goto(`${BASE}/?pagename=cart`);

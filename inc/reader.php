@@ -169,7 +169,8 @@ class Corporate_Book_Reader {
       if ( 'publish' !== get_post_status( $book ) ) {
         continue;
       }
-      $thumb = get_the_post_thumbnail_url( $book, 'medium' );
+      $data  = get_post_meta( $book, '_corporate_book_data', true );
+      $thumb = is_array( $data ) && ! empty( $data['pdf_thumb'] ) ? $data['pdf_thumb'] : get_the_post_thumbnail_url( $book, 'medium' );
       $link  = get_permalink( $book );
       $rows .= '<li class="cb-read-item"><a href="' . esc_url( $link ) . '">' . ( $thumb ? '<img src="' . esc_url( $thumb ) . '" alt="">' : '' ) . '<strong>' . esc_html( get_the_title( $book ) ) . '</strong></a><span>'
         /* translators: 1: page number, 2: date */

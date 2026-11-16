@@ -89,6 +89,15 @@ class Corporate_Book_Post_Type {
       update_option( 'corporate_book_db_version', 2 );
       update_option( 'corporate_book_flush_rules', 1 ); // book URLs are on by default now
     }
+    if ( (int) get_option( 'corporate_book_db_version' ) < 3 ) {
+      $settings = get_option( '_corporate_book_settings', array() );
+      if ( is_array( $settings ) && $settings ) {
+        $settings['realistic']  = 'false';
+        $settings['desk_scene'] = 'false';
+        update_option( '_corporate_book_settings', $settings );
+      }
+      update_option( 'corporate_book_db_version', 3 );
+    }
     if ( get_option( 'corporate_book_flush_rules' ) ) {
       delete_option( 'corporate_book_flush_rules' );
       flush_rewrite_rules();

@@ -165,3 +165,9 @@
 .cb-head-count[hidden]{display:none}
 .cb-library-note{margin:0 0 14px;color:#4b5563}
 @media (max-width:640px){.cb-site-name{margin-right:0;width:100%}.cb-head-search{max-width:none;order:3;flex-basis:100%}}
+
+/* My account: details beside subscription and password, no empty gap; covers in Books you've read */
+.cb-ui .cb-profile #cb-sec-details{grid-row:span 2}
+.cb-read-item img{aspect-ratio:auto;max-height:220px;object-fit:contain;background:none}
+
+@media (max-width:640px){.cb-site-head-in{gap:8px;padding:8px 12px}.cb-site-name{font-size:16px}.cb-head-nav{width:100%;flex-wrap:nowrap;overflow-x:auto;gap:2px}.cb-head-nav a{padding:6px 9px;font-size:14px;white-space:nowrap}.cb-head-search input,.cb-head-search button{padding:7px 10px}}

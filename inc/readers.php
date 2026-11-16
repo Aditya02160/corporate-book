@@ -224,7 +224,7 @@ class Corporate_Book_Readers {
     fputcsv( $out, array( 'Name', 'Email', 'Phone', 'Company', 'City', 'Joined', 'Last sign-in', 'Subscription', 'Until', 'Plans paid', 'Subscriptions amount', 'Print orders', 'Print amount', 'Saved books', 'Books read' ) );
     foreach ( self::query( array( 'number' => 10000 ) )->get_results() as $user ) {
       $r   = self::row( $user );
-      $row = array( $r['name'], $r['email'], $r['phone'], $r['company'], $r['city'], gmdate( 'Y-m-d', $r['joined'] ), $r['login'] ? gmdate( 'Y-m-d H:i', $r['login'] ) : '', $r['status'], $r['until'] ? gmdate( 'Y-m-d', $r['until'] ) : '', $r['plans'], $r['subs'] / 100, $r['orders'], $r['print'] / 100, $r['saved'], implode( '; ', array_map( 'get_the_title', $r['read'] ) ) );
+      $row = array( $r['name'], $r['email'], $r['phone'], $r['company'], $r['city'], gmdate( 'Y-m-d', $r['joined'] ), $r['login'] ? gmdate( 'Y-m-d H:i', $r['login'] ) : '', $r['status'], $r['until'] ? gmdate( 'Y-m-d', $r['until'] ) : '', $r['plans'], $r['subs'] / 100, $r['orders'], $r['print'] / 100, $r['saved'], implode( '; ', array_filter( array_map( 'get_the_title', $r['read'] ) ) ) );
       // Cells starting with = + - @ would run as spreadsheet formulas.
       fputcsv( $out, array_map( function ( $c ) {
         $c = (string) $c;

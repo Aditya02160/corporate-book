@@ -494,25 +494,26 @@ class Corporate_Book_Window {
    */
   public static function reader_start( $book_id, $requested = null ) {
     $user = get_current_user_id();
-    if ( $user ) {
-      $saved = get_user_meta( $user, 'cb_window', true );
-      $saved = is_array( $saved ) ? $saved : array();
-      if ( ! empty( $saved[ $book_id ] ) || null === $requested ) {
-        return isset( $saved[ $book_id ] ) ? (int) $saved[ $book_id ] : 0;
-      }
-      $saved[ $book_id ] = (int) $requested;
-      update_user_meta( $user, 'cb_window', $saved );
-      return (int) $requested;
-    }
     // shortcut: guests are told apart by IP address, so readers behind one office IP share a preview.
-    $ip    = isset( $_SERVER['REMOTE_ADDR'] ) ? sanitize_text_field( wp_unslash( $_SERVER['REMOTE_ADDR'] ) ) : '';
-    $key   = 'cb_win_' . md5( $ip . '|' . $book_id );
-    $saved = (int) get_transient( $key );
-    if ( $saved || null === $requested ) {
-      return $saved;
+    $ip   = isset( $_SERVER['REMOTE_ADDR'] ) ? sanitize_text_field( wp_unslash( $_SERVER['REMOTE_ADDR'] ) ) : '';
+    $key  = 'cb_win_' . md5( $ip . '|' . $book_id );
+    $meta = $user ? get_user_meta( $user, 'cb_window', true ) : array();
+    $meta = is_array( $meta ) ? $meta : array();
+    $mine = isset( $meta[ $book_id ] ) ? (int) $meta[ $book_id ] : 0;
+    // Signing up or signing out does not open a second free window: the account and the IP share one.
+    $saved = $mine ? $mine : (int) get_transient( $key );
+    if ( ! $saved && null !== $requested ) {
+      $saved = max( 1, (int) $requested );
+      set_transient( $key, $saved, 30 * DAY_IN_SECONDS );
     }
-    set_transient( $key, (int) $requested, 30 * DAY_IN_SECONDS );
-    return (int) $requested;
+    if ( $saved && $user && $mine !== $saved ) {
+      $meta[ $book_id ] = $saved;
+      update_user_meta( $user, 'cb_window', $meta );
+    }
+    if ( $saved && $mine && null !== $requested && (int) get_transient( $key ) !== $saved ) {
+      set_transient( $key, $saved, 30 * DAY_IN_SECONDS );
+    }
+    return $saved;
   }
 
   public static function count_pages( $path ) {

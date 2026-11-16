@@ -320,8 +320,22 @@ class Corporate_Book_Account {
     }
     $query = isset( $_GET['cb_q'] ) ? sanitize_text_field( wp_unslash( $_GET['cb_q'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- public search.
     echo '<div class="cb-site-head"><div class="cb-site-head-in"><a class="cb-site-name" href="' . esc_url( home_url( '/' ) ) . '">' . esc_html( get_bloginfo( 'name' ) ) . '</a>'
-      . ( $books ? '<form class="cb-head-search" role="search" method="get" action="' . esc_url( $books ) . '"><input type="search" name="cb_q" value="' . esc_attr( $query ) . '" placeholder="' . esc_attr__( 'Search books…', '3d-corporate-book' ) . '" aria-label="' . esc_attr__( 'Search books', '3d-corporate-book' ) . '"><button type="submit">' . esc_html__( 'Search', '3d-corporate-book' ) . '</button></form>' : '' )
+      . ( $books ? '<form class="cb-head-search" role="search" method="get" action="' . esc_url( $books ) . '">' . self::query_fields( $books ) . '<input type="search" name="cb_q" value="' . esc_attr( $query ) . '" placeholder="' . esc_attr__( 'Search books…', '3d-corporate-book' ) . '" aria-label="' . esc_attr__( 'Search books', '3d-corporate-book' ) . '"><button type="submit">' . esc_html__( 'Search', '3d-corporate-book' ) . '</button></form>' : '' )
       . '<nav class="cb-head-nav" aria-label="' . esc_attr__( 'Corporate Book', '3d-corporate-book' ) . '">' . $nav . '</nav></div></div>'; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- built from escaped parts.
+  }
+
+  /**
+   * Hidden fields for a GET form's action URL: browsers drop the action's own query (?post_type=...) on submit.
+   */
+  public static function query_fields( $url ) {
+    parse_str( (string) wp_parse_url( $url, PHP_URL_QUERY ), $args );
+    $html = '';
+    foreach ( $args as $key => $value ) {
+      if ( 'cb_q' !== $key && is_string( $value ) ) {
+        $html .= '<input type="hidden" name="' . esc_attr( $key ) . '" value="' . esc_attr( $value ) . '">';
+      }
+    }
+    return $html;
   }
 
   public static function profile_url() {

@@ -544,8 +544,9 @@ class Corporate_Book_Shop {
     }
     self::enqueue();
     /* translators: %s: price */
-    $label = '' !== $label ? $label . ' · ' . self::money( $book['price'] ) : sprintf( __( 'Buy print copy · %s', '3d-corporate-book' ), self::money( $book['price'] ) );
-    return '<button type="button" class="cb-add-cart" data-book="' . (int) $book['id'] . '">' . esc_html( $label ) . '</button>';
+    $full  = sprintf( __( 'Buy print copy · %s', '3d-corporate-book' ), self::money( $book['price'] ) );
+    // A short label (cover cards) keeps the full text for screen readers.
+    return '<button type="button" class="cb-add-cart" data-book="' . (int) $book['id'] . '"' . ( '' !== $label ? ' aria-label="' . esc_attr( $full ) . '"' : '' ) . '>' . esc_html( '' !== $label ? $label : $full ) . '</button>';
   }
 
   /**

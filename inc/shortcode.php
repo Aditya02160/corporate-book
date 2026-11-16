@@ -176,7 +176,9 @@ class Corporate_Book_ShortCode {
     foreach ( $found as $book ) {
       // The Year group wins over the publish date, so an issue can be filed under its edition year.
       $year_terms = get_the_terms( $book, 'corporate_book_year' );
-      $filters    = array( is_array( $year_terms ) ? $year_terms[0]->name : get_the_date( 'Y', $book ) );
+      $year_name  = is_array( $year_terms ) ? $year_terms[0]->name : get_the_date( 'Y', $book );
+      // Filter tokens are space-separated, so "FY 2025-26" becomes "fy-2025-26"; the heading keeps the name.
+      $filters    = array( sanitize_title( $year_name ) );
       foreach ( array( 'corporate_book_region' => 'region', 'corporate_book_category' => 'cat' ) as $tax => $prefix ) {
         $found_terms = get_the_terms( $book, $tax );
         foreach ( is_array( $found_terms ) ? $found_terms : array() as $t ) {
@@ -184,7 +186,7 @@ class Corporate_Book_ShortCode {
           $groups[ $prefix ][ $t->slug ] = $t->name;
         }
       }
-      $years[ $filters[0] ][] = '<div class="cb-library-item" data-filters="' . esc_attr( implode( ' ', $filters ) ) . '">' . $this->book( array( 'id' => $book->ID, 'type' => 'thumb' ) ) . '</div>';
+      $years[ $year_name ][] = '<div class="cb-library-item" data-filters="' . esc_attr( implode( ' ', $filters ) ) . '">' . $this->book( array( 'id' => $book->ID, 'type' => 'thumb' ) ) . '</div>';
     }
     krsort( $years );
     $button = function ( $filter, $label, $active = false ) {
@@ -193,7 +195,7 @@ class Corporate_Book_ShortCode {
     $top  = $button( 'all', __( 'All', '3d-corporate-book' ), true );
     $main = '';
     foreach ( $years as $year => $cards ) {
-      $top  .= $button( $year, $year );
+      $top  .= $button( sanitize_title( $year ), $year );
       $main .= '<section class="cb-library-year"><h2>' . esc_html( $year ) . '</h2><div class="cb-library-grid">' . implode( '', $cards ) . '</div></section>';
     }
     $rows = '';
@@ -207,12 +209,23 @@ class Corporate_Book_ShortCode {
       }
     }
     $search = '<form class="cb-library-search" role="search" method="get" action="' . esc_url( remove_query_arg( 'cb_q' ) ) . '">'
-      . ( isset( $_GET['post_type'] ) ? '<input type="hidden" name="post_type" value="corporate_book">' : '' ) // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+      . Corporate_Book_Account::query_fields( remove_query_arg( 'cb_q' ) )
       . '<input type="search" name="cb_q" value="' . esc_attr( $query ) . '" placeholder="' . esc_attr__( 'Search magazines…', '3d-corporate-book' ) . '" aria-label="' . esc_attr__( 'Search magazines', '3d-corporate-book' ) . '"><button type="submit">' . esc_html__( 'Search', '3d-corporate-book' ) . '</button></form>';
     return '<div class="cb-library"><div class="cb-library-bar">' . $search
       . '<div class="cb-chip-row"><span class="cb-chip-label">' . esc_html__( 'Year', '3d-corporate-book' ) . '</span><div class="cb-library-years">' . $top . '</div></div>'
       . $rows
       . '</div><div class="cb-library-main">' . $note . $main . '</div></div>';
+  }
+
+  /** "Print copy · ₹499" line on a cover card, when the book is sold in print. */
+  private function card_price( $post_id ) {
+    $info = is_numeric( $post_id ) && class_exists( 'Corporate_Book_Shop' ) ? Corporate_Book_Shop::book_info( (int) $post_id ) : null;
+    return $info ? '<div class="cb-thumb-price">' . esc_html( sprintf( /* translators: %s: price */ __( 'Print copy · %s', '3d-corporate-book' ), Corporate_Book_Shop::money( $info['price'] ) ) ) . '</div>' : '';
+  }
+
+  /** Short "Add to cart" button for a cover card ('' when the book is not for sale). */
+  private function card_cart( $post_id ) {
+    return is_numeric( $post_id ) && class_exists( 'Corporate_Book_Shop' ) ? Corporate_Book_Shop::buy_button( (int) $post_id, __( 'Add to cart', '3d-corporate-book' ) ) : '';
   }
 
   public function lock_box() {
@@ -397,7 +410,7 @@ class Corporate_Book_ShortCode {
           if ( '' === $preview_url ) {
             if ( 'thumb' === $atts['type'] && ! ( isset( $attr['shelf'] ) && 'true' === trim( $attr['shelf'] ) ) ) {
               $cover = empty( $thumb_url ) ? '' : '<div class="cb-cover"><img src="' . esc_url( $thumb_url ) . '" alt="' . esc_attr( $title ) . '" loading="lazy"/></div>';
-              return '<div class="cb-thumb-card">' . $cover . '<div class="cb-thumb-title">' . esc_html( $title ) . '</div><details class="cb-card-lock"><summary class="cb-preview-button">' . esc_html( $base->get_translate( 'text_preview' ) ) . '</summary>' . $this->lock_box() . '</details></div>';
+              return '<div class="cb-thumb-card">' . $cover . '<div class="cb-thumb-title">' . esc_html( $title ) . '</div>' . $this->card_price( $post_id ) . '<details class="cb-card-lock"><summary class="cb-preview-button">' . esc_html( $base->get_translate( 'text_preview' ) ) . '</summary>' . $this->lock_box() . '</details>' . $this->card_cart( $post_id ) . '</div>';
             }
             return $this->lock_box();
           }
@@ -498,8 +511,9 @@ class Corporate_Book_ShortCode {
           $html = '<div class="_df_button cb-trigger-custom cb-cover" id="' . esc_attr( $id ) . '_cover" data-option="option_' . esc_attr( $id ) . '" ' . $attrHTML . '><img src="' . esc_url( $thumb_url ) . '" alt="' . esc_attr( $title ) . '" loading="lazy"/></div>';
         }
         $html = '<div class="cb-thumb-card">' . $html . '<div class="cb-thumb-title">' . esc_html( $title ) . '</div>'
+            . $this->card_price( $post_id )
             . '<div class="cb-thumb-actions"><div class="_df_button cb-preview-button" id="' . esc_attr( $id ) . '_preview" data-option="option_' . esc_attr( $id ) . '" ' . $attrHTML . '>' . esc_html( $base->get_translate( 'text_preview' ) ) . '</div>'
-            . ( is_numeric( $post_id ) && class_exists( 'Corporate_Book_Shop' ) ? Corporate_Book_Shop::buy_button( (int) $post_id, __( 'Add to cart', '3d-corporate-book' ) ) : '' ) . '</div></div>';
+            . $this->card_cart( $post_id ) . '</div></div>';
       }
     }
     else {
