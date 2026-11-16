@@ -51,7 +51,7 @@ class Corporate_Book_Settings {
       'controls' => array( 'more_controls', 'hide_controls', 'enable_search', 'share_prefix' ),
       'pdf' => array( 'enable_annotation', 'link_target', 'range_size', 'attachment_lightbox' ),
       'translate' => array( 'external_translate', 'text_toggle_sound', 'text_toggle_thumbnails', 'text_toggle_outline', 'text_previous_page', 'text_next_page', 'text_toggle_fullscreen', 'text_zoom_in', 'text_zoom_out', 'text_toggle_help', 'text_single_page_mode', 'text_double_page_mode', 'text_goto_first_page', 'text_goto_last_page', 'text_share', 'text_mail_subject', 'text_mail_body', 'text_loading', 'text_sign_in', 'text_subscribe', 'text_locked', 'text_subscribe_button', 'text_preview' ),
-      'print' => array( 'print_enable', 'print_unit_cost', 'print_pack_cost', 'print_copy_weight', 'print_pack_weight', 'print_ship_mode', 'print_zones', 'print_flat_rate', 'print_free_above', 'print_cod', 'print_coupons', 'print_bundle_days', 'print_email', 'print_low_stock', 'invoice_business', 'invoice_gstin', 'invoice_address', 'invoice_prefix', 'shiprocket_email', 'shiprocket_password', 'shiprocket_pickup' ),
+      'print' => array( 'print_enable', 'print_unit_cost', 'print_pack_cost', 'print_copy_weight', 'print_pack_weight', 'print_ship_mode', 'print_zones', 'print_flat_rate', 'print_free_above', 'print_cod', 'print_terms_url', 'print_coupons', 'print_bundle_days', 'print_email', 'print_low_stock', 'invoice_business', 'invoice_gstin', 'invoice_address', 'invoice_prefix', 'shiprocket_email', 'shiprocket_password', 'shiprocket_pickup' ),
       'subscription' => array( 'subscription_enable', 'subscription_free_until', 'subscription_url', 'subscription_preview_percent', 'subscription_roles', 'subscription_login_shortcode', 'google_client_id', 'subscription_signup', 'razorpay_key_id', 'razorpay_key_secret', 'razorpay_webhook_secret', 'subscription_currency', 'subscription_plans' ),
       'advanced' => array( 'selectiveScriptLoading', 'enable_analytics', 'delete_data' ),
   );
@@ -152,6 +152,7 @@ class Corporate_Book_Settings {
       'print_zones'                  => __( 'Courier rates from Noida, including GST. Edit them in the table.', '3d-corporate-book' ),
       'print_flat_rate'              => __( 'Average courier cost per 500 g, used for the flat rate (for example 55).', '3d-corporate-book' ),
       'print_free_above'             => __( 'Optional. Orders with books worth at least this amount ship free.', '3d-corporate-book' ),
+      'print_terms_url'              => __( 'Your Terms of Use page address, linked under the cart total next to the Privacy Policy.', '3d-corporate-book' ),
       'print_cod'                    => __( 'On: readers may pay the courier in cash instead of paying online.', '3d-corporate-book' ),
       'print_email'                  => __( 'Where new order emails go. Empty = site admin email.', '3d-corporate-book' ),
       'print_coupons'                => __( 'Optional discount codes, one per line: CODE | 10% or CODE | 100, optionally | last day (YYYY-MM-DD).', '3d-corporate-book' ),

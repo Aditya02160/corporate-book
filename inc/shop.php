@@ -507,6 +507,40 @@ class Corporate_Book_Shop {
     return add_query_arg( array( 'cb_doc' => $type, 'cb_order' => (int) $order ), home_url( '/' ) );
   }
 
+  /**
+   * Terms of Use page: the address in Global Settings > Shipping & Selling, or a published page called
+   * terms-of-use, terms-and-conditions or terms; '' when there is none.
+   */
+  public static function terms_url() {
+    $url = (string) self::config( 'print_terms_url' );
+    if ( '' !== $url ) {
+      return $url;
+    }
+    foreach ( array( 'terms-of-use', 'terms-and-conditions', 'terms' ) as $slug ) {
+      $page = get_page_by_path( $slug );
+      if ( $page && 'publish' === $page->post_status ) {
+        return (string) get_permalink( $page );
+      }
+    }
+    return '';
+  }
+
+  /** "By placing the order, you agree to our Terms of Use and Privacy Policy." with links; '' without either page. */
+  public static function agree_html() {
+    $links = array();
+    if ( '' !== self::terms_url() ) {
+      $links[] = '<a href="' . esc_url( self::terms_url() ) . '" target="_blank" rel="noopener">' . esc_html__( 'Terms of Use', '3d-corporate-book' ) . '</a>';
+    }
+    if ( function_exists( 'get_privacy_policy_url' ) && '' !== get_privacy_policy_url() ) {
+      $links[] = '<a href="' . esc_url( get_privacy_policy_url() ) . '" target="_blank" rel="noopener">' . esc_html__( 'Privacy Policy', '3d-corporate-book' ) . '</a>';
+    }
+    if ( ! $links ) {
+      return '';
+    }
+    /* translators: %s: "Terms of Use and Privacy Policy" links */
+    return sprintf( esc_html__( 'By placing the order, you agree to our %s.', '3d-corporate-book' ), implode( ' ' . esc_html__( 'and', '3d-corporate-book' ) . ' ', $links ) );
+  }
+
   public static function cart_url() {
     $page = (int) get_option( 'corporate_book_cart_page' );
     $url  = $page > 0 ? get_permalink( $page ) : '';
@@ -548,6 +582,7 @@ class Corporate_Book_Shop {
         /* translators: %s: amount */
         'youSave'       => __( 'You\'ll save %s on this order', '3d-corporate-book' ),
         'trust'         => __( 'Safe and secure payments. Cancel any time before shipping for a full refund.', '3d-corporate-book' ),
+        'agree'         => self::agree_html(),
         'myAccount'     => __( 'See my orders', '3d-corporate-book' ),
         'account'       => Corporate_Book_Account::profile_url(),
       )

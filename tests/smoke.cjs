@@ -634,8 +634,8 @@ async function waitFor(ready, ms) {
     const rows = (await s.$$('.cb-cart-table tr')).length;
     const local = await quoteFor('201301');
     const far = await quoteFor('560001');
-    check(rows === 2 && /^Price Details/.test(local) && /Price \(3 copies\)₹1,248/.test(local) && /Shipping \(Delhi NCR · 650 g\)₹70/.test(local) && /Total Amount₹1,318/.test(local), `Price Details: books plus the Delhi NCR courier rate for 650 g (${local})`);
-    check(/Metro city · 650 g\)₹115/.test(far) && /Total Amount₹1,363/.test(far), `a metro PIN uses the metro courier rate (${far})`);
+    check(rows === 2 && /^Price Details/.test(local) && /Price \(3 copies\)₹1,248/.test(local) && /Shipping₹70/.test(local) && /Total Amount₹1,318/.test(local), `Price Details: books plus the Delhi NCR courier rate for 650 g (${local})`);
+    check(/Shipping₹115/.test(far) && /Total Amount₹1,363/.test(far), `a metro PIN uses the metro courier rate (${far})`);
     const address = { name: 'Asha Rao', phone: '12345', email: 'asha@example.test', line1: 'Flat 4B, Lotus Tower', line2: 'Sector 62', city: 'Noida', pin: '201309' };
     for (const [k, v] of Object.entries(address)) await s.fill(`.cb-checkout [name="${k}"]`, v);
     await s.selectOption('.cb-checkout [name="state"]', 'Uttar Pradesh');
@@ -700,7 +700,7 @@ async function waitFor(ready, ms) {
     {
     // ---- New features: coupons, gifts, invoices, cancel, CSV, Shiprocket, dashboard, wishlist, stock alerts, bookmarks, gift subscription. ----
     const lastMail = () => { try { return fs.readFileSync(path.join(fixtures, 'mail.txt'), 'utf8'); } catch (e) { return ''; } };
-    await saveSettings({ print_coupons: 'WELCOME10 | 10%', shiprocket_email: 'api@example.test', shiprocket_password: 'secret', invoice_gstin: '09ABCDE1234F1Z5' }, { print_coupons: 'WELCOME10 | 10%' }).catch(() => '');
+    await saveSettings({ print_terms_url: 'https://example.com/terms', print_coupons: 'WELCOME10 | 10%', shiprocket_email: 'api@example.test', shiprocket_password: 'secret', invoice_gstin: '09ABCDE1234F1Z5' }, { print_coupons: 'WELCOME10 | 10%' }).catch(() => '');
     const fx = await browser.newContext();
     await fx.exposeBinding('cbSign', (src, o, p) => require('crypto').createHmac('sha256', 'smokesecret').update(`${o}|${p}`).digest('hex'));
     const m = await fx.newPage();
@@ -730,7 +730,7 @@ async function waitFor(ready, ms) {
     await m.click('.cb-apply-coupon');
     await m.waitForFunction(() => /WELCOME10/.test(document.querySelector('.cb-cart-totals').textContent), null, { timeout: 20000 }).catch(() => {});
     const totals = await m.$eval('.cb-cart-totals', (e) => e.textContent.replace(/\s+/g, ' ')).catch(() => '');
-    check(/Coupon discount \(WELCOME10\)− ₹25/.test(totals) && /You'll save ₹25 on this order/.test(totals) && /Delivery in about 1-2 days/.test(totals), `coupon, savings and delivery estimate in Price Details (${totals})`);
+    check(/Coupon discount \(WELCOME10\)− ₹25/.test(totals) && /You'll save ₹25 on this order/.test(totals) && /By placing the order, you agree to our Terms of Use/.test(totals) && /Delivery in about 1-2 days/.test(totals), `coupon, savings and delivery estimate in Price Details (${totals})`);
     await m.check('.cb-checkout [name="gift"]');
     await m.fill('.cb-checkout [name="gift_message"]', 'Happy birthday, Ravi!');
     await m.check('.cb-pay [value="cod"]').catch(() => {});

@@ -193,3 +193,7 @@
 .cb-ui .cb-cart-totals .cb-delivery-days{margin:12px 2px 0;color:#0a7a3d;font-weight:700}
 .cb-ui .cb-trust{display:flex;align-items:center;justify-content:center;gap:12px;margin:16px 0 0;font-size:13px;line-height:1.45;color:#6b7280}
 .cb-ui .cb-trust svg{flex:0 0 26px}
+
+.cb-ui .cb-agree{margin:12px 0 0;font-size:13px;line-height:1.5;color:#6b7280;text-align:center}
+.cb-ui .cb-agree a{color:#2563eb;text-decoration:none;font-weight:600}
+.cb-ui .cb-agree a:hover{text-decoration:underline}

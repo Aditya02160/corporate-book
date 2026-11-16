@@ -206,7 +206,7 @@
       var copies = q.copies || 0;
       add(copies === 1 ? cfg.priceOne : cfg.priceMany.replace('%d', copies), q.subtotal);
       var freeShip = q.shipping !== null && q.shippingWas !== undefined && !/\d/.test(q.shipping);
-      add((cfg.shippingLabel || 'Shipping') + (q.distance ? ' (' + q.distance + ')' : ''), q.shipping === null ? (cfg.enterPin || 'Enter your PIN code') : (freeShip ? cfg.freeLabel : q.shipping), freeShip ? 'cb-free' : '', freeShip ? q.shippingWas : '');
+      add(cfg.shippingLabel || 'Shipping', q.shipping === null ? (cfg.enterPin || 'Enter your PIN code') : (freeShip ? cfg.freeLabel : q.shipping), freeShip ? 'cb-free' : '', freeShip ? q.shippingWas : '');
       if (q.discount) {
         rows.appendChild(el('div', 'cb-price-sep'));
         add(cfg.couponLabel + (q.coupon ? ' (' + q.coupon + ')' : ''), q.discount, 'cb-discount');
@@ -228,6 +228,10 @@
       var trust = totals.appendChild(el('p', 'cb-trust'));
       trust.innerHTML = '<svg width="26" height="30" viewBox="0 0 26 30" aria-hidden="true"><path d="M13 1 2 5v8c0 7.2 4.7 13.6 11 16 6.3-2.4 11-8.8 11-16V5L13 1z" fill="#9aa3b5"/><path d="m8 15 3.5 3.5L18.5 11" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>';
       trust.appendChild(el('span', '', cfg.trust));
+      if (cfg.agree) {
+        // Built and escaped on the server: links to the Terms of Use and Privacy Policy pages.
+        totals.appendChild(el('p', 'cb-agree')).innerHTML = cfg.agree;
+      }
     }
   }
 
