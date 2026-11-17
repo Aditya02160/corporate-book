@@ -4,7 +4,7 @@
  * Plugin Name: Corporate Book
  * Description: Realistic 3D Corporate Books, PDF viewer and PDF embed for WordPress.
  *
- * Version: 1.0.0
+ * Version: 1.1.0
  * Text Domain: 3d-corporate-book
  * Author: aditya
  * License: GPLv2 or later
@@ -47,7 +47,7 @@ if ( !class_exists( 'Corporate_Book' ) ) {
      *
      * @var string
      */
-    public $version = '1.0.0';
+    public $version = '1.1.0';
 
     /**
      * The name of the plugin.
@@ -93,6 +93,9 @@ if ( !class_exists( 'Corporate_Book' ) ) {
     public $external_translate;
     public $selective_script_loading;
     public function __construct() {
+      // Asset URLs end in ?ver=1.1.0.<release time>: every uploaded release busts browser and page caches,
+      // so readers never get new PHP with old scripts and styles.
+      $this->version .= '.' . (int) filemtime( __FILE__ );
 
       $this->settings_text = array();
       $this->external_translate = false;

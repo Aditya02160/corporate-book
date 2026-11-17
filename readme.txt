@@ -4,7 +4,7 @@ Tags: corporate book, 3d book, pdf viewer, pdf embed, pdf
 Requires at least: 4.6
 Tested up to: 7.1
 Requires PHP: 7.4
-Stable tag: 1.0.0
+Stable tag: 1.1.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -81,15 +81,15 @@ Readers can buy printed books as well as the digital subscription.
 
 **Set up**
 
-1. **Global Settings > Print:** keep **Sell Print Copies** on, check **Shipping by Distance** (one band per line, `Up to km from Noida | Extra per book`), and optionally set **Free Shipping Above**, **Cash on Delivery** and **Order Email**.
-2. **Each book > Book tab > Print copy:** turn on **Sell Print Copy**, enter the **Print Price**, the **Shipping Charge** for one copy near Noida, and **Copies in Stock** (empty = print on demand).
+1. **Global Settings > Shipping & Selling:** keep **Sell Print Copies** on; enter your **Product Cost per Copy** and **Packaging Cost per Order** (used only for profit figures), the **Weight of One Copy** and **Box or Mailer Weight**, how readers pay for shipping (**by zone**, a **flat** average per 500 g, or **free**), and check the **Courier Rates from Noida** table (Delhi NCR, metro cities, rest of India, remote areas: first 500 g, each extra 500 g, delivery days). The **Profit per order** calculator under the table shows price minus copy, box and courier for any price, number of copies and zone. Optionally set **Free Shipping Above**, **Cash on Delivery**, **Terms of Use Page** and **Order Email**.
+2. **Each book > Book tab > Print copy:** turn on **Sell Print Copy**, enter the **Print Price** and **Copies in Stock** (empty = print on demand), and optionally the book's own **Weight** and **Product Cost**.
 3. Razorpay keys from the Subscription tab are used for print orders too.
 
 **How readers buy**
 
 * The "preview has ended" panel shows **Buy print copy**; the Subscription page lists every book for sale under **Print copies**; a floating **Cart (n)** link follows them around the site.
 * The **Cart** page (created automatically, `[corporate_book_cart]`) has quantities (1-10, within stock), the delivery address (name, 10-digit mobile, email, house and building, street, landmark, city, state, 6-digit PIN), a live shipping quote and payment by Razorpay or cash on delivery. Guests sign in or sign up first; their cart is kept.
-* Shipping per copy = the book's shipping charge + the extra for the distance band. The distance is the straight-line distance from Noida to the region of the PIN code (accurate to the region, not to the kilometre). Army post PIN codes use the farthest band.
+* Shipping is the courier rate for the zone of the delivery PIN code (Delhi NCR, metro city, rest of India, or North-East / J&K / Ladakh / islands / army post) for the parcel's weight: every copy plus the box, charged per 500 g slab. The cart shows it in a **Price Details** box with any coupon, the total, what the reader saves and the delivery time, and links your Terms of Use and Privacy Policy.
 * **My account** shows **My print orders** (status, courier and tracking) and the saved **Delivery address**.
 
 **How you fulfil orders**
@@ -101,19 +101,21 @@ Readers can buy printed books as well as the digital subscription.
 * Printed books are GST-exempt in India (HSN 4901), so no tax lines are added; prices are final.
 
 ### More for readers
-* **Coupons:** Global Settings > Print > Coupon Codes, one per line (`WELCOME10 | 10%`, `FLAT100 | 100`, optionally `| 2026-12-31` as the last day).
-* **Delivery estimate:** the third column of Shipping by Distance (`300 | 30 | 2-3`) shows "Delivery in about 2-3 days" in the cart.
+* **Coupons:** Global Settings > Shipping & Selling > Coupon Codes, one per line (`WELCOME10 | 10%`, `FLAT100 | 100`, optionally `| 2026-12-31` as the last day).
+* **Delivery estimate:** the Delivery days column of the courier-rate table shows "Delivery in about 1-2 days" in the cart.
+* **Free for limited days:** set a book's Subscription to **Free until a date**, or Global Settings > Subscription > **Everyone Reads Free Until** for every book; a "Free to read until" badge shows meanwhile.
+* **Preview links:** editors click **Copy preview link from this page** under a book (or use **Preview link from page** in the book editor); whoever opens the link gets the free preview starting at that page. Links are signed, so changing the page number does not work.
 * **Gifts:** tick "This is a gift" at checkout to add a message (printed on the packing slip, no prices). On the Subscription page, "Buy it as a gift" sends the days to another email; an account is made for them if needed.
 * **Cancel:** readers cancel orders that have not shipped from My account; online payments are refunded through Razorpay automatically (you are emailed if the refund fails).
 * **Invoice:** each paid order has an invoice page (Print / Save as PDF) with a running number, your business name, address and GSTIN.
 * **Saved books** ("Save for later") on My account, and **Email me when back in stock** on sold-out books.
 * **Continue reading** from the last page and **bookmarks** under each book, kept in the reader's browser.
-* **Online reading with print:** Global Settings > Print > Online Reading With Print gives free days with each print order.
+* **Online reading with print:** Global Settings > Shipping & Selling > Online Reading With Print gives free days with each print order.
 
 ### More for you
 * **Corporate Books > Sales:** print and subscription sales for 12 months, best sellers, active subscribers, readers, and anonymous reading statistics per book (opened, average pages read, how many reached the end of the free preview).
 * **Export CSV** on Print Orders; **Packing slip** and **Invoice** buttons on each order.
-* **Shiprocket:** add an API user's email and password in Global Settings > Print and the pickup location name; each order gets **Send to Shiprocket**, and the tracking number is filled in when Shiprocket returns one.
+* **Shiprocket:** add an API user's email and password in Global Settings > Shipping & Selling and the pickup location name; each order gets **Send to Shiprocket**, and the tracking number is filled in when Shiprocket returns one.
 * **Low stock alert** email at the number you choose; **Make them all now** on the book list creates every missing preview and thumbnail.
 
 ### Realistic book and reading desk
