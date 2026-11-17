@@ -726,9 +726,12 @@ async function waitFor(ready, ms) {
     await m.goto(`${BASE}/?pagename=cart`);
     await m.waitForSelector('.cb-cart-table tr', { timeout: 30000 }).catch(() => {});
     await m.fill('.cb-checkout [name="pin"]', '201301');
-    await m.fill('.cb-checkout [name="coupon"]', 'welcome10');
-    await m.click('.cb-apply-coupon');
-    await m.waitForFunction(() => /WELCOME10/.test(document.querySelector('.cb-cart-totals').textContent), null, { timeout: 20000 }).catch(() => {});
+    // The test server can serve the settings from before the coupon was saved for a moment, so apply again until it counts.
+    for (let i = 0; i < 4; i++) {
+      await m.fill('.cb-checkout [name="coupon"]', 'welcome10');
+      await m.click('.cb-apply-coupon');
+      if (await m.waitForFunction(() => /WELCOME10/.test(document.querySelector('.cb-cart-totals').textContent), null, { timeout: 8000 }).then(() => true).catch(() => false)) break;
+    }
     const totals = await m.$eval('.cb-cart-totals', (e) => e.textContent.replace(/\s+/g, ' ')).catch(() => '');
     check(/Coupon discount \(WELCOME10\)− ₹25/.test(totals) && /You'll save ₹25 on this order/.test(totals) && /By placing the order, you agree to our Terms of Use/.test(totals) && /Delivery in about 1-2 days/.test(totals), `coupon, savings and delivery estimate in Price Details (${totals})`);
     await m.check('.cb-checkout [name="gift"]');

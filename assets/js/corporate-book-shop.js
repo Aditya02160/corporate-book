@@ -235,10 +235,15 @@
     }
   }
 
+  var asked = 0;
   function refresh() {
     var coupon = form && form.querySelector('[name="coupon"]');
-    return post({ action: 'corporate_book_cart_quote', items: JSON.stringify(read()), pin: pin(), coupon: coupon ? coupon.value : '' }).then(render, function (e) {
-      cart.querySelector('.cb-cart-items').textContent = e.message;
+    // Only the newest answer counts: an older one arriving late must not undo a new PIN or coupon.
+    var mine = ++asked;
+    return post({ action: 'corporate_book_cart_quote', items: JSON.stringify(read()), pin: pin(), coupon: coupon ? coupon.value : '' }).then(function (q) {
+      if (mine === asked) { render(q); }
+    }, function (e) {
+      if (mine === asked) { cart.querySelector('.cb-cart-items').textContent = e.message; }
     });
   }
 

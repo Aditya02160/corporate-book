@@ -364,7 +364,7 @@ class Corporate_Book_Window {
   // ---- Writing -------------------------------------------------------------------------------
 
   /**
-   * The preview copy: pages $start to $start + $count - 1 are real, every other page is a placeholder.
+   * The preview copy: the cover and pages $start to $start + $count - 1 are real, every other page is a placeholder.
    *
    * @param int    $start First real page (1-based).
    * @param int    $count Number of real pages.
@@ -380,7 +380,8 @@ class Corporate_Book_Window {
     }
     $window = array();
     foreach ( $pages as $i => $p ) {
-      if ( $i + 1 >= $start && $i + 1 < $start + $count ) {
+      // The cover stays real too, so cover cards and thumbnails never show a placeholder.
+      if ( 0 === $i || ( $i + 1 >= $start && $i + 1 < $start + $count ) ) {
         $window[ $p[0] ] = true;
       }
     }

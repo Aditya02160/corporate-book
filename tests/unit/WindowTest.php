@@ -109,11 +109,12 @@ class WindowTest extends CB_Unit_Test {
     $this->assertCount( 10, $texts, 'same number of pages as the book' );
     $this->assertStringContainsString( '(Page 4)', $texts[3] );
     $this->assertStringContainsString( '(Page 5)', $texts[4] );
-    foreach ( array( 0, 2, 5, 9 ) as $i ) {
+    $this->assertStringContainsString( '(Page 1)', $texts[0], 'the cover always stays real' );
+    foreach ( array( 2, 5, 9 ) as $i ) {
       $this->assertStringContainsString( 'Subscribe to read this page', $texts[ $i ] );
     }
     $this->assertStringNotContainsString( '(Page 9)', $copy, 'a link to a page outside the window does not bring that page along' );
-    $this->assertStringNotContainsString( '(Page 1)', $copy );
+    $this->assertStringNotContainsString( '(Page 3)', $copy );
     $this->assertMatchesRegularExpression( '/MediaBox\s*\[0 0 400 600\]/', $copy, 'inherited page size is kept' );
   }
 
