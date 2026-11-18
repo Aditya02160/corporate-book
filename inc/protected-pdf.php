@@ -197,7 +197,7 @@ class Corporate_Book_Protected_PDF {
    */
   public function protect( $post_id ) {
     if ( wp_is_post_revision( $post_id ) || 'corporate_book' !== get_post_type( $post_id )
-         || ! Corporate_Book::get_instance()->book_is_locked( $post_id ) ) {
+         || ! Corporate_Book::get_instance()->book_is_locked( $post_id, true ) ) { // free days end, so protect the file anyway
       return;
     }
     $path    = self::local_path( $post_id );

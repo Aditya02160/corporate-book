@@ -27,6 +27,7 @@ class AccessTest extends CB_Unit_Test {
     $GLOBALS['wp']['post_meta'][ $open ]['_corporate_book_data']['free_until'] = $tomorrow;
     $this->assertFalse( $cb->book_is_locked( $open ) );
     $this->assertSame( $tomorrow, $cb->free_until( $open ) );
+    $this->assertTrue( $cb->book_is_locked( $open, true ), 'the PDF is still protected during the free days' );
     $GLOBALS['wp']['post_meta'][ $open ]['_corporate_book_data']['free_until'] = $today;
     $this->assertFalse( $cb->book_is_locked( $open ), 'free through the whole last day' );
     $GLOBALS['wp']['post_meta'][ $open ]['_corporate_book_data']['free_until'] = $yesterday;

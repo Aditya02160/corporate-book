@@ -764,10 +764,10 @@ if ( !class_exists( 'Corporate_Book' ) ) {
      *
      * @return bool
      */
-    public function book_is_locked( $book_id ) {
+    public function book_is_locked( $book_id, $ignore_free_days = false ) {
       $data = get_post_meta( $book_id, '_corporate_book_data', true );
       $mode = is_array( $data ) && isset( $data['subscription'] ) ? $data['subscription'] : 'global';
-      if ( 'free' === $mode || '' !== $this->free_until( $book_id ) ) {
+      if ( 'free' === $mode || ( ! $ignore_free_days && '' !== $this->free_until( $book_id ) ) ) {
         return false;
       }
       return 'required' === $mode || 'true' === $this->get_config( 'subscription_enable' );
