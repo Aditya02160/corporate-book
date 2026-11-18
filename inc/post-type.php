@@ -50,7 +50,7 @@ class Corporate_Book_Post_Type {
         'new_item'           => __( 'New Corporate Book', '3d-corporate-book' ),
         'edit_item'          => __( 'Edit Corporate Book', '3d-corporate-book' ),
         'view_item'          => __( 'View Corporate Book', '3d-corporate-book' ),
-        'all_items'          => __( 'All Books', '3d-corporate-book' ),
+        'all_items'          => __( 'All Magazines', '3d-corporate-book' ),
         'search_items'       => __( 'Search Corporate Books', '3d-corporate-book' ),
         'parent_item_colon'  => __( 'Parent Corporate Books:', '3d-corporate-book' ),
         'not_found'          => __( 'No Corporate Books found.', '3d-corporate-book' ),
@@ -67,7 +67,7 @@ class Corporate_Book_Post_Type {
         'show_ui'            => true,
         'show_in_menu'       => true,
         'query_var'          => true,
-        'rewrite'            => $post_urls ? array( 'slug' => 'corporate-book' ) : false,
+        'rewrite'            => $post_urls ? array( 'slug' => 'business-magazine' ) : false,
         'capability_type'    => 'post',
         'has_archive'        => true,
         'hierarchical'       => false,
@@ -97,6 +97,10 @@ class Corporate_Book_Post_Type {
         update_option( '_corporate_book_settings', $settings );
       }
       update_option( 'corporate_book_db_version', 3 );
+    }
+    if ( (int) get_option( 'corporate_book_db_version' ) < 5 ) {
+      update_option( 'corporate_book_db_version', 5 );
+      update_option( 'corporate_book_flush_rules', 1 ); // new address: /business-magazine/
     }
     if ( get_option( 'corporate_book_flush_rules' ) ) {
       delete_option( 'corporate_book_flush_rules' );
@@ -175,6 +179,15 @@ class Corporate_Book_Post_Type {
     add_filter( 'the_content', array( $this, 'filter_the_pdf_attachment_content' ) );
     add_filter( 'the_content', array( $this, 'book_page_content' ) );
     add_filter( 'template_include', array( $this, 'library_template' ) );
+    // Old links (/corporate-book/...) keep working: they move to /business-magazine/....
+    add_action( 'template_redirect', function () {
+      $path = isset( $_SERVER['REQUEST_URI'] ) ? (string) wp_unslash( $_SERVER['REQUEST_URI'] ) : ''; // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- only compared and rewritten below.
+      $home = (string) wp_parse_url( home_url( '/' ), PHP_URL_PATH );
+      if ( is_404() && 0 === strpos( $path, $home . 'corporate-book' ) && ( strlen( $path ) === strlen( $home . 'corporate-book' ) || in_array( $path[ strlen( $home . 'corporate-book' ) ], array( '/', '?' ), true ) ) ) {
+        wp_safe_redirect( home_url( '/business-magazine' . substr( $path, strlen( $home . 'corporate-book' ) ) ), 301 );
+        exit;
+      }
+    } );
     // In post lists (latest posts, archives, search) a book shows its cover card.
     add_filter( 'get_the_excerpt', array( $this, 'book_list_card' ), 20, 2 );
     add_filter( 'has_post_thumbnail', array( $this, 'book_has_thumbnail' ), 10, 2 );

@@ -155,3 +155,16 @@
 .cb-ed-trust span:first-line{font-weight:700;color:#0b1f5c}
 .cb-ed-custom{margin-top:36px}
 @media(max-width:800px){.cb-edition{padding:20px;gap:28px;border-radius:16px}.cb-ed-cover{position:static}.cb-ed-cover .cb-cover{transform:none}.cb-ed-title{font-size:28px}.cb-ed-trust>div{justify-content:flex-start}}
+
+/* All Magazines: filters on the right; hidden cards really hidden */
+.cb-library .cb-library-item[hidden],.cb-library .cb-library-year[hidden]{display:none!important}
+.cb-library{display:grid;grid-template-columns:minmax(0,1fr) 270px;gap:36px;align-items:start}
+.cb-library-main{order:1;min-width:0}
+.cb-library-bar{order:2;position:sticky;top:24px;margin:0;gap:18px}
+.cb-library-search{max-width:none}
+.cb-chip-row{flex-direction:column;align-items:flex-start;gap:8px}
+.cb-chip-label{flex:none}
+.cb-library .cb-library-years,.cb-library .cb-library-filter{flex:none;width:100%}
+.cb-thumb-title a{color:inherit;text-decoration:none}
+.cb-thumb-actions a.cb-preview-button{text-decoration:none;display:inline-block}
+@media(max-width:900px){.cb-library{grid-template-columns:1fr}.cb-library-bar{order:0;position:static}.cb-chip-row{flex-direction:row;align-items:center}}

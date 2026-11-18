@@ -191,7 +191,7 @@ async function waitFor(ready, ms) {
     check(await l.$$eval('.cb-library-item', (e) => e.filter((i) => !i.hidden).length) >= 1
       && await l.$eval(`.cb-library-years .cb-filter[data-filter="${year}"]`, (e) => e.classList.contains('cb-active')), 'year filter keeps that year and marks its chip');
     await l.click('.cb-library-filter .cb-filter[data-filter="cat-asia"]').catch(() => {});
-    check(await l.$$eval('.cb-library-item', (e) => e.filter((i) => !i.hidden).length) === 1 && await l.$('.cb-library-years .cb-filter[data-filter="2019"]') !== null, 'library filters by category (Asia) and files books under a year category (2019)');
+    check(await l.$$eval('.cb-library-item', (e) => e.filter((i) => i.offsetParent).length) === 1 && await l.$('.cb-library-years .cb-filter[data-filter="2019"]') !== null, 'library filters by category (Asia) and files books under a year category (2019)');
     check(await l.$('.cb-library-bar .cb-library-search [name="cb_q"]') !== null && await l.$('.cb-library aside') === null, 'library has one toolbar with search and chips, no sidebar');
     await lib.close();
     let v = await visit(null);
@@ -620,7 +620,7 @@ async function waitFor(ready, ms) {
     check(await s.$eval('.cb-toast', (e) => /Added to cart/.test(e.textContent)).catch(() => false), 'adding a book shows "Added to cart"');
     await s.goto(`${BASE}/?post_type=corporate_book`);
     const cardCart = await s.$eval('.cb-thumb-card .cb-thumb-actions .cb-add-cart', (e) => `${e.textContent.trim()}|${e.getAttribute('aria-label')}`).catch(() => '');
-    check(/^Add to cart\|Buy print copy · ₹/.test(cardCart) && await s.$('.cb-thumb-card .cb-thumb-price') !== null, `library cards have Add to cart next to Read Magazine, with the price (${cardCart})`);
+    check(cardCart === '' && await s.$('.cb-library .cb-thumb-price') === null && /business-magazine\/|corporate_book=/.test(await s.$eval('.cb-library .cb-thumb-actions a.cb-preview-button', (e) => e.href).catch(() => '')), `All Magazines cards open the magazine page, without price or cart (${cardCart})`);
     await s.goto(`${BASE}/?pagename=subscription`);
     check(/^2 in your cart/.test(await s.$eval('.cb-print-card:has(h3:text-is("Test Book")) .cb-in-cart', (e) => e.textContent).catch(() => '')), 'the book card shows how many copies are in the cart');
     await s.goto(`${BASE}/?pagename=cart`);
@@ -808,7 +808,7 @@ async function waitFor(ready, ms) {
     check(/cb-dash-head/.test(myAccount) && /corporate-book-pages\.css/.test(myAccount), 'My account uses the dashboard layout and its stylesheet');
     check(/id="cb-sec-read"[\s\S]*cb-read-item[\s\S]*Continue reading/.test(myAccount), 'My account lists the books the reader opened');
     check(/Books read/.test(readersPage) && /<strong>\d+<\/strong><br><small><a /.test(readersPage), 'Readers page shows which books each reader read');
-    check(/cb-site-head[\s\S]*All Books[\s\S]*Subscription[\s\S]*Cart[\s\S]*My Account/.test(myAccount) && /name="cb_q"/.test(myAccount), 'every page has the header with All Books, Subscription, Cart, My Account and search');
+    check(/cb-site-head[\s\S]*All Magazines[\s\S]*Subscription[\s\S]*Cart[\s\S]*My Account/.test(myAccount) && /name="cb_q"/.test(myAccount), 'every page has the header with All Books, Subscription, Cart, My Account and search');
     await m.goto(`${BASE}/?post_type=corporate_book&cb_q=Bulk`);
     const searched = await m.$$eval('.cb-library-item', (e) => e.length).catch(() => -1);
     check(searched === 1 && /1 book found for "Bulk"/.test(await m.content()), `header search finds books by title (${searched})`);

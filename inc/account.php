@@ -308,7 +308,7 @@ class Corporate_Book_Account {
     $books = (string) get_post_type_archive_link( 'corporate_book' );
     $sub   = (int) get_option( 'corporate_book_subscription_page' );
     $links = array(
-      'books'   => array( $books, __( 'All Books', '3d-corporate-book' ) ),
+      'books'   => array( $books, __( 'All Magazines', '3d-corporate-book' ) ),
       'sub'     => array( $sub ? (string) get_permalink( $sub ) : '', __( 'Subscription', '3d-corporate-book' ) ),
       'cart'    => array( 'true' === self::config( 'print_enable' ) && get_option( 'corporate_book_cart_page' ) ? Corporate_Book_Shop::cart_url() : '', __( 'Cart', '3d-corporate-book' ) ),
       'account' => array( self::profile_url(), is_user_logged_in() ? __( 'My Account', '3d-corporate-book' ) : __( 'Sign in', '3d-corporate-book' ) ),

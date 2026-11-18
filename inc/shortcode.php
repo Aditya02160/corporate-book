@@ -190,7 +190,7 @@ class Corporate_Book_ShortCode {
           $groups['cat'][ $t->slug ] = $t->name;
         }
       }
-      $years[ $year_name ][] = '<div class="cb-library-item" data-filters="' . esc_attr( implode( ' ', $filters ) ) . '">' . $this->book( array( 'id' => $book->ID, 'type' => 'thumb' ) ) . '</div>';
+      $years[ $year_name ][] = '<div class="cb-library-item" data-filters="' . esc_attr( implode( ' ', $filters ) ) . '">' . $this->book( array( 'id' => $book->ID, 'type' => 'thumb', 'link' => 'page' ) ) . '</div>';
     }
     krsort( $years );
     $button = function ( $filter, $label, $active = false ) {
@@ -519,6 +519,13 @@ class Corporate_Book_ShortCode {
       // Thumbnails show the book title and a Preview button below the cover (not on a shelf, which lays books out itself).
       if ( 'thumb' === $type && ! ( isset( $attr['shelf'] ) && 'true' === trim( $attr['shelf'] ) ) ) {
         // With a thumbnail the cover is the image itself; it opens the book like the button does.
+        $page_link = isset( $attr['link'] ) && 'page' === $attr['link'] && is_numeric( $post_id ) && is_post_type_viewable( 'corporate_book' ) ? get_permalink( (int) $post_id ) : '';
+        if ( $page_link ) {
+          // All Magazines: the cover and button lead to the magazine's own page, which has the reader and the prices.
+          $cover = empty( $thumb_url ) ? '' : '<a class="cb-cover" href="' . esc_url( $page_link ) . '"><img src="' . esc_url( $thumb_url ) . '" alt="' . esc_attr( $title ) . '" loading="lazy"/></a>';
+          return '<div class="cb-thumb-card">' . $cover . '<div class="cb-thumb-title"><a href="' . esc_url( $page_link ) . '">' . esc_html( $title ) . '</a></div>' . $this->free_note( $post_id, 'cb-free-badge' )
+            . '<div class="cb-thumb-actions"><a class="cb-preview-button" href="' . esc_url( $page_link ) . '">' . esc_html( $base->get_translate( 'text_preview' ) ) . '</a></div></div>';
+        }
         if ( ! empty( $thumb_url ) ) {
           $html = '<div class="_df_button cb-trigger-custom cb-cover" id="' . esc_attr( $id ) . '_cover" data-option="option_' . esc_attr( $id ) . '" ' . $attrHTML . '><img src="' . esc_url( $thumb_url ) . '" alt="' . esc_attr( $title ) . '" loading="lazy"/></div>';
         }
