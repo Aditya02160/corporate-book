@@ -51,6 +51,7 @@ class Corporate_Book_Account {
     add_filter( 'wp_privacy_personal_data_erasers', array( $this, 'register_eraser' ) );
     add_action( 'wp_ajax_corporate_book_order', array( $this, 'order' ) );
     add_action( 'wp_ajax_corporate_book_verify', array( $this, 'verify' ) );
+    add_action( 'wp_ajax_corporate_book_autopay_cancel', array( $this, 'autopay_cancel' ) );
     add_shortcode( 'corporate_book_account', array( $this, 'shortcode' ) );
     add_shortcode( 'corporate_book_subscription', array( $this, 'subscription_page' ) );
     add_action( 'wp_body_open', array( $this, 'site_header' ) );
@@ -142,6 +143,7 @@ class Corporate_Book_Account {
           'nonce'     => wp_create_nonce( self::NONCE ),
           'failed'    => __( 'Something went wrong. Try again.', '3d-corporate-book' ),
           'cancelled' => __( 'Payment cancelled.', '3d-corporate-book' ),
+          'autopayOff' => __( 'Turn off auto-renew? You keep reading until your paid period ends. No refund and no more charges.', '3d-corporate-book' ),
         )
       );
     }
@@ -191,6 +193,7 @@ class Corporate_Book_Account {
           $label = sprintf( __( '%1$s: %2$s for %3$d days', '3d-corporate-book' ), $plan['name'], self::price( $plan['price'] ), $plan['days'] );
           $html .= '<button type="button" class="cb-plan" data-plan="' . (int) $index . '">' . esc_html( $label ) . '</button>';
         }
+        $html .= self::autopay_tick();
       } elseif ( ! self::razorpay_ready() ) {
         $html .= $link;
       }
@@ -264,7 +267,8 @@ class Corporate_Book_Account {
       $cards .= '<div class="cb-plan-card"><h3>' . esc_html( $plan['name'] ) . '</h3><div class="cb-plan-price">' . esc_html( self::price( $plan['price'] ) ) . '</div><div class="cb-plan-days">' . esc_html( $days ) . '</div>' . $action . '</div>';
     }
     $gift = is_user_logged_in() && self::razorpay_ready() && ! $active ? '<p class="cb-gift-sub"><label><input type="checkbox" class="cb-gift-check"/> ' . esc_html__( 'Buy it as a gift for someone else', '3d-corporate-book' ) . '</label> <input type="email" id="cb-gift-email" placeholder="' . esc_attr__( "Their email address", '3d-corporate-book' ) . '" hidden/></p>' : '';
-    return '<div class="cb-ui cb-account cb-plans-page"><h2 class="cb-plans-heading">' . esc_html__( 'Digital access', '3d-corporate-book' ) . '</h2>' . $gift . '<div class="cb-plans">' . $cards . '</div>' . Corporate_Book_Shop::print_section() . '<div id="cb-plans-account" class="cb-lock cb-lock-static"><div class="cb-lock-box">' . $box . '</div></div></div>';
+    $tick = is_user_logged_in() && self::razorpay_ready() ? self::autopay_tick() : '';
+    return '<div class="cb-ui cb-account cb-plans-page"><h2 class="cb-plans-heading">' . esc_html__( 'Digital access', '3d-corporate-book' ) . '</h2>' . $gift . $tick . '<div class="cb-plans">' . $cards . '</div>' . Corporate_Book_Shop::print_section() . '<div id="cb-plans-account" class="cb-lock cb-lock-static"><div class="cb-lock-box">' . $box . '</div></div></div>';
   }
 
   /**
@@ -445,7 +449,18 @@ class Corporate_Book_Account {
         $label  = sprintf( __( '%1$s: %2$s for %3$d days', '3d-corporate-book' ), $plan['name'], self::price( $plan['price'] ), $plan['days'] );
         $plans .= '<button type="button" class="cb-plan" data-plan="' . (int) $index . '">' . esc_html( $label ) . '</button>';
       }
-      $plans = '<div class="cb-profile-plans"><p>' . esc_html( self::is_active( $user->ID ) ? __( 'Extend your subscription:', '3d-corporate-book' ) : __( 'Choose a plan:', '3d-corporate-book' ) ) . '</p>' . $plans . '</div>';
+      $auto  = self::autopay( $user->ID );
+      if ( $auto && 'active' === $auto['status'] && self::is_active( $user->ID ) ) {
+        /* translators: %s: date */
+        $status .= '<p class="cb-autopay-status">' . esc_html( sprintf( __( 'Auto-renew is on: your plan renews on %s.', '3d-corporate-book' ), self::date( self::until( $user->ID ) ) ) ) . ' <button type="button" class="cb-autopay-off">' . esc_html__( 'Turn off auto-renew', '3d-corporate-book' ) . '</button></p>';
+        $plans  = ''; // already renewing; buying again would charge twice
+      } else {
+        if ( $auto && self::is_active( $user->ID ) ) {
+          /* translators: %s: date */
+          $status .= '<p class="cb-autopay-status">' . esc_html( sprintf( __( 'Auto-renew is off. You keep reading until %s; nothing more will be charged.', '3d-corporate-book' ), self::date( self::until( $user->ID ) ) ) ) . '</p>';
+        }
+        $plans = '<div class="cb-profile-plans"><p>' . esc_html( self::is_active( $user->ID ) ? __( 'Extend your subscription:', '3d-corporate-book' ) : __( 'Choose a plan:', '3d-corporate-book' ) ) . '</p>' . self::autopay_tick() . $plans . '</div>';
+      }
     } else {
       $sub   = (int) get_option( 'corporate_book_subscription_page' );
       $link  = self::config( 'subscription_url' ) ? self::config( 'subscription_url' ) : ( $sub > 0 ? get_permalink( $sub ) : '' );
@@ -454,7 +469,7 @@ class Corporate_Book_Account {
     $rows = '';
     foreach ( array_reverse( self::orders( $user->ID ), true ) as $order ) {
       $rows .= '<tr><td>' . esc_html( self::date( (int) $order['time'] ) ) . '</td><td>' . esc_html( $order['plan'] ) . '</td><td>' . esc_html( self::price( $order['amount'] / 100 ) ) . '</td><td>'
-        . esc_html( $order['paid'] ? __( 'Paid', '3d-corporate-book' ) : __( 'Not paid', '3d-corporate-book' ) ) . '</td></tr>';
+        . esc_html( $order['paid'] ? ( empty( $order['autopay'] ) ? __( 'Paid', '3d-corporate-book' ) : __( 'Paid · auto-renew', '3d-corporate-book' ) ) : __( 'Not paid', '3d-corporate-book' ) ) . '</td></tr>';
     }
     $orders = '<table class="cb-profile-orders"><thead><tr><th>' . esc_html__( 'Date', '3d-corporate-book' ) . '</th><th>' . esc_html__( 'Plan', '3d-corporate-book' ) . '</th><th>' . esc_html__( 'Amount', '3d-corporate-book' ) . '</th><th>' . esc_html__( 'Status', '3d-corporate-book' ) . '</th></tr></thead><tbody>'
       . ( '' !== $rows ? $rows : '<tr><td colspan="4">' . esc_html__( 'No payments yet.', '3d-corporate-book' ) . '</td></tr>' ) . '</tbody></table>';
@@ -865,6 +880,32 @@ class Corporate_Book_Account {
       wp_send_json_error( __( 'Enter the email address of the person you are giving it to.', '3d-corporate-book' ), 400 );
     }
     $amount = (int) round( $plan['price'] * 100 );
+    // Auto-renew: a Razorpay subscription (UPI AutoPay / card mandate) charges the plan every period.
+    if ( ! empty( $_POST['autopay'] ) && '' === $gift && $plan['days'] >= 7 ) {
+      $plan_id = self::razorpay_plan( $plan, $amount );
+      $sub     = is_wp_error( $plan_id ) ? $plan_id : self::api( 'POST', 'subscriptions', array(
+        'plan_id'         => $plan_id,
+        'total_count'     => $plan['days'] >= 365 ? 10 : 60,
+        'customer_notify' => 1,
+        'notes'           => array( 'user_id' => (string) $user->ID, 'email' => $user->user_email, 'plan' => $plan['name'] ),
+      ) );
+      if ( is_wp_error( $sub ) || empty( $sub['id'] ) || ! preg_match( '/^sub_[A-Za-z0-9]+$/', $sub['id'] ) ) {
+        $reason = is_wp_error( $sub ) && current_user_can( 'manage_options' ) ? ' ' . $sub->get_error_message() : '';
+        wp_send_json_error( __( 'Auto-renew could not be started. Untick "Renew automatically" to pay once, or try again.', '3d-corporate-book' ) . $reason, 502 );
+      }
+      $orders               = self::orders( $user->ID );
+      $orders[ $sub['id'] ] = array( 'amount' => $amount, 'days' => $plan['days'], 'plan' => $plan['name'], 'time' => time(), 'paid' => '', 'gift' => '', 'autopay' => 1 );
+      update_user_meta( $user->ID, self::ORDERS, array_slice( $orders, -20, null, true ) );
+      wp_send_json_success(
+        array(
+          'key'             => self::config( 'razorpay_key_id' ),
+          'subscription_id' => $sub['id'],
+          'name'            => get_bloginfo( 'name' ),
+          'description'     => $plan['name'] . ' · ' . __( 'renews automatically', '3d-corporate-book' ),
+          'prefill'         => array( 'name' => $user->display_name, 'email' => $user->user_email ),
+        )
+      );
+    }
     $order  = self::api(
       'POST',
       'orders',
@@ -897,12 +938,62 @@ class Corporate_Book_Account {
   }
 
   /**
+   * Razorpay plan for a site plan (created once, then reused): monthly, yearly, or every N days.
+   *
+   * @return string|WP_Error Plan ID.
+   */
+  private static function razorpay_plan( $plan, $amount ) {
+    $key   = md5( $plan['name'] . '|' . $amount . '|' . $plan['days'] . '|' . self::config( 'subscription_currency' ) . '|' . self::config( 'razorpay_key_id' ) );
+    $saved = get_option( 'corporate_book_rzp_plans', array() );
+    $saved = is_array( $saved ) ? $saved : array();
+    if ( ! empty( $saved[ $key ] ) ) {
+      return $saved[ $key ];
+    }
+    $period   = 0 === $plan['days'] % 365 ? array( 'yearly', $plan['days'] / 365 ) : ( 0 === $plan['days'] % 30 ? array( 'monthly', $plan['days'] / 30 ) : array( 'daily', $plan['days'] ) );
+    $created  = self::api( 'POST', 'plans', array( 'period' => $period[0], 'interval' => (int) $period[1], 'item' => array( 'name' => $plan['name'], 'amount' => $amount, 'currency' => self::config( 'subscription_currency' ) ) ) );
+    if ( is_wp_error( $created ) || empty( $created['id'] ) ) {
+      return is_wp_error( $created ) ? $created : new WP_Error( 'corporate_book_razorpay', 'No plan ID' );
+    }
+    $saved[ $key ] = $created['id'];
+    update_option( 'corporate_book_rzp_plans', $saved, false );
+    return $created['id'];
+  }
+
+  /** The reader's auto-renew: array( id, status: active | cancelled ) or null. */
+  public static function autopay( $user_id ) {
+    $a = get_user_meta( $user_id, 'cb_autopay', true );
+    return is_array( $a ) && ! empty( $a['id'] ) ? $a : null;
+  }
+
+  /**
+   * My account: turn auto-renew off. Razorpay stops at the end of the paid period; the reader keeps access until then, no refund.
+   */
+  public function autopay_cancel() {
+    check_ajax_referer( self::NONCE );
+    $user_id = get_current_user_id();
+    $auto    = $user_id ? self::autopay( $user_id ) : null;
+    if ( ! $auto || 'active' !== $auto['status'] ) {
+      wp_send_json_error( __( 'Auto-renew is already off.', '3d-corporate-book' ), 400 );
+    }
+    $result = self::api( 'POST', 'subscriptions/' . $auto['id'] . '/cancel', array( 'cancel_at_cycle_end' => 1 ) );
+    if ( is_wp_error( $result ) ) {
+      wp_send_json_error( __( 'Auto-renew could not be turned off. Try again in a minute.', '3d-corporate-book' ), 502 );
+    }
+    $auto['status'] = 'cancelled';
+    update_user_meta( $user_id, 'cb_autopay', $auto );
+    /* translators: %s: date */
+    wp_send_json_success( array( 'reload' => true, 'message' => sprintf( __( 'Auto-renew is off. You keep reading until %s; nothing more will be charged.', '3d-corporate-book' ), self::date( self::until( $user_id ) ) ) ) );
+  }
+
+  /**
    * Confirms a Razorpay Checkout payment and starts the subscription.
    */
   public function verify() {
     check_ajax_referer( self::NONCE );
     $user_id    = get_current_user_id();
     $order_id   = isset( $_POST['order_id'] ) ? sanitize_text_field( wp_unslash( $_POST['order_id'] ) ) : '';
+    $order_id   = '' === $order_id && isset( $_POST['subscription_id'] ) ? sanitize_text_field( wp_unslash( $_POST['subscription_id'] ) ) : $order_id;
+    $is_sub     = 0 === strpos( $order_id, 'sub_' );
     $payment_id = isset( $_POST['payment_id'] ) ? sanitize_text_field( wp_unslash( $_POST['payment_id'] ) ) : '';
     $signature  = isset( $_POST['signature'] ) ? sanitize_text_field( wp_unslash( $_POST['signature'] ) ) : '';
     $orders     = self::orders( $user_id );
@@ -914,18 +1005,22 @@ class Corporate_Book_Account {
     $order = $orders[ $order_id ];
     if ( '' === $order['paid'] ) {
       // Razorpay signs "order_id|payment_id" with the key secret; the order ID is the one stored here, not the browser's word.
-      if ( ! hash_equals( hash_hmac( 'sha256', $order_id . '|' . $payment_id, self::config( 'razorpay_key_secret' ) ), $signature ) ) {
+      $signed = $is_sub ? $payment_id . '|' . $order_id : $order_id . '|' . $payment_id;
+      if ( ! hash_equals( hash_hmac( 'sha256', $signed, self::config( 'razorpay_key_secret' ) ), $signature ) ) {
         wp_send_json_error( $failed, 400 );
       }
       // When Razorpay answers, the payment must also be for this order and amount, and captured.
       $payment = self::api( 'GET', 'payments/' . $payment_id );
       if ( ! is_wp_error( $payment ) ) {
-        $matches = isset( $payment['order_id'], $payment['amount'] ) && $payment['order_id'] === $order_id && (int) $payment['amount'] === (int) $order['amount'];
+        $matches = isset( $payment['amount'] ) && (int) $payment['amount'] === (int) $order['amount'] && ( $is_sub || ( isset( $payment['order_id'] ) && $payment['order_id'] === $order_id ) );
         if ( ! $matches || ! self::captured( $payment, $order['amount'] ) ) {
           wp_send_json_error( $failed, 400 );
         }
       }
       self::settle( $user_id, $order_id, $payment_id );
+      if ( $is_sub ) {
+        update_user_meta( $user_id, 'cb_autopay', array( 'id' => $order_id, 'status' => 'active', 'plan' => $order['plan'] ) );
+      }
     }
     /* translators: %s: date */
     wp_send_json_success( array( 'until' => self::until( $user_id ), 'reload' => true, 'message' => sprintf( __( 'Payment successful. Your subscription is active until %s. A receipt is on its way to your email.', '3d-corporate-book' ), self::date( self::until( $user_id ) ) ) ) );
@@ -976,6 +1071,10 @@ class Corporate_Book_Account {
     $event   = json_decode( $body, true );
     $payment = isset( $event['payload']['payment']['entity'] ) ? $event['payload']['payment']['entity'] : array();
     $type    = isset( $event['event'] ) ? $event['event'] : '';
+    if ( 0 === strpos( $type, 'subscription.' ) ) {
+      self::subscription_event( $type, isset( $event['payload']['subscription']['entity'] ) ? $event['payload']['subscription']['entity'] : array(), $payment );
+      wp_send_json_success( 'ok' );
+    }
     if ( isset( $payment['notes']['print_order'] ) ) {
       Corporate_Book_Shop::razorpay_event( $type, $payment );
       wp_send_json_success( 'ok' );
@@ -983,6 +1082,13 @@ class Corporate_Book_Account {
     $user_id = isset( $payment['notes']['user_id'] ) ? (int) $payment['notes']['user_id'] : 0;
     $orders  = $user_id ? self::orders( $user_id ) : array();
     $oid     = isset( $payment['order_id'] ) ? (string) $payment['order_id'] : '';
+    if ( ! isset( $orders[ $oid ] ) && isset( $payment['id'] ) ) {
+      foreach ( $orders as $key => $o ) { // auto-renew charges are stored under their subscription / renewal key
+        if ( (string) $payment['id'] === (string) $o['paid'] ) {
+          $oid = (string) $key;
+        }
+      }
+    }
     if ( ! isset( $orders[ $oid ] ) ) {
       wp_send_json_success( 'ignored' ); // not one of ours; 2xx so Razorpay stops retrying
     }
@@ -992,9 +1098,46 @@ class Corporate_Book_Account {
     } elseif ( in_array( $type, array( 'refund.processed', 'payment.refunded' ), true ) && '' !== $order['paid'] && empty( $order['refunded'] ) ) {
       $orders[ $oid ]['refunded'] = time();
       update_user_meta( $user_id, self::ORDERS, $orders );
-      update_user_meta( $user_id, self::UNTIL, max( 0, self::until( $user_id ) - $order['days'] * DAY_IN_SECONDS ) );
+      $friend = '' !== (string) $order['gift'] ? get_user_by( 'email', $order['gift'] ) : null;
+      $reader = $friend ? $friend->ID : $user_id; // a refunded gift takes the days back from the person who got them
+      update_user_meta( $reader, self::UNTIL, max( 0, self::until( $reader ) - $order['days'] * DAY_IN_SECONDS ) );
     }
     wp_send_json_success( 'ok' );
+  }
+
+  /**
+   * Auto-renew events from Razorpay: each charge adds the plan's days (once per payment); a cancelled,
+   * completed or halted mandate turns auto-renew off (access already paid for stays).
+   */
+  public static function subscription_event( $type, $sub, $payment ) {
+    $user_id = isset( $sub['notes']['user_id'] ) ? (int) $sub['notes']['user_id'] : 0;
+    $sub_id  = isset( $sub['id'] ) ? (string) $sub['id'] : '';
+    $orders  = $user_id ? self::orders( $user_id ) : array();
+    if ( ! isset( $orders[ $sub_id ] ) ) {
+      return;
+    }
+    if ( 'subscription.charged' === $type && isset( $payment['id'], $payment['amount'] ) && preg_match( '/^pay_[A-Za-z0-9]+$/', $payment['id'] ) ) {
+      $pay = (string) $payment['id'];
+      if ( '' === $orders[ $sub_id ]['paid'] ) {
+        self::settle( $user_id, $sub_id, $pay ); // first charge, when the reader closed the page before it was confirmed
+        update_user_meta( $user_id, 'cb_autopay', array( 'id' => $sub_id, 'status' => 'active', 'plan' => $orders[ $sub_id ]['plan'] ) );
+      } elseif ( $orders[ $sub_id ]['paid'] !== $pay && ! isset( $orders[ 'renew_' . $pay ] ) ) {
+        $orders[ 'renew_' . $pay ] = array( 'amount' => (int) $payment['amount'], 'days' => $orders[ $sub_id ]['days'], 'plan' => $orders[ $sub_id ]['plan'], 'time' => time(), 'paid' => '', 'gift' => '', 'autopay' => 1 );
+        update_user_meta( $user_id, self::ORDERS, array_slice( $orders, -20, null, true ) );
+        self::settle( $user_id, 'renew_' . $pay, $pay );
+      }
+    } elseif ( in_array( $type, array( 'subscription.cancelled', 'subscription.completed', 'subscription.halted' ), true ) ) {
+      $auto = self::autopay( $user_id );
+      if ( $auto && $auto['id'] === $sub_id ) {
+        $auto['status'] = 'cancelled';
+        update_user_meta( $user_id, 'cb_autopay', $auto );
+      }
+    }
+  }
+
+  /** "Renew automatically" tick shown with plan buttons (on by default). */
+  public static function autopay_tick() {
+    return '<label class="cb-autopay"><input type="checkbox" class="cb-autopay-check" checked> ' . esc_html__( 'Renew automatically (UPI AutoPay or card). Turn it off any time in My account.', '3d-corporate-book' ) . '</label>';
   }
 
   /**

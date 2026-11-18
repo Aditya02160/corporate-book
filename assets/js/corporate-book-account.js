@@ -87,6 +87,7 @@
           name: order.name,
           description: order.description,
           order_id: order.order_id,
+          subscription_id: order.subscription_id,
           prefill: order.prefill,
           handler: resolve,
           modal: {
@@ -99,7 +100,8 @@
     }).then(function (paid) {
       return post({
         action: 'corporate_book_verify',
-        order_id: paid.razorpay_order_id,
+        order_id: paid.razorpay_order_id || '',
+        subscription_id: paid.razorpay_subscription_id || '',
         payment_id: paid.razorpay_payment_id,
         signature: paid.razorpay_signature
       });
@@ -159,6 +161,16 @@
   });
 
   document.addEventListener('click', function (event) {
+    var off = event.target.closest('.cb-autopay-off');
+    if (off && off.closest('.cb-account')) {
+      event.preventDefault();
+      if (window.confirm(cfg.autopayOff)) {
+        run(off.closest('.cb-account'), off, function () {
+          return post({ action: 'corporate_book_autopay_cancel' });
+        });
+      }
+      return;
+    }
     var target = event.target.closest('.cb-plan, .cb-show-signup, .cb-show-signin');
     var box = target && target.closest('.cb-account');
     if (!box) {
@@ -168,7 +180,9 @@
     if (target.classList.contains('cb-plan')) {
       run(box, target, function () {
         var gift = document.getElementById('cb-gift-email');
-        return post({ action: 'corporate_book_order', plan: target.getAttribute('data-plan'), gift_email: gift && !gift.hidden ? gift.value : '' }).then(pay);
+        var auto = box.querySelector('.cb-autopay-check') || document.querySelector('.cb-autopay-check');
+        var giving = gift && !gift.hidden && gift.value;
+        return post({ action: 'corporate_book_order', plan: target.getAttribute('data-plan'), gift_email: gift && !gift.hidden ? gift.value : '', autopay: auto && auto.checked && !giving ? 1 : 0 }).then(pay);
       });
       return;
     }

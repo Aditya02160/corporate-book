@@ -77,6 +77,7 @@ class Corporate_Book_Shop {
     add_action( 'wp_ajax_corporate_book_print_verify', array( $this, 'ajax_verify' ) );
     add_action( 'wp_ajax_corporate_book_save_address', array( $this, 'ajax_save_address' ) );
     add_action( 'wp_ajax_corporate_book_cancel_order', array( $this, 'ajax_cancel' ) );
+    add_action( 'wp_ajax_corporate_book_return_order', array( $this, 'ajax_return' ) );
     add_action( 'wp_enqueue_scripts', array( $this, 'register_script' ), 20 );
     add_action( 'transition_post_status', array( $this, 'status_changed' ), 10, 3 );
     add_filter( 'wp_insert_post_data', array( $this, 'save_order_form' ), 10, 2 );
@@ -121,6 +122,8 @@ class Corporate_Book_Shop {
       'cb-delivered' => __( 'Delivered', '3d-corporate-book' ),
       'cb-cancelled' => __( 'Cancelled', '3d-corporate-book' ),
       'cb-refunded'  => __( 'Refunded', '3d-corporate-book' ),
+      'cb-return'    => __( 'Return requested', '3d-corporate-book' ),
+      'cb-returned'  => __( 'Returned', '3d-corporate-book' ),
     );
   }
 
@@ -919,10 +922,7 @@ class Corporate_Book_Shop {
       wp_update_post( array( 'ID' => $order, 'post_status' => 'cb-cancelled' ) );
       wp_send_json_success( array( 'message' => __( 'Your order is cancelled.', '3d-corporate-book' ) ) );
     }
-    $totals = (array) get_post_meta( $order, '_cb_totals', true ) + array( 'total' => 0 );
-    $refund = Corporate_Book_Account::api( 'POST', 'payments/' . get_post_meta( $order, '_cb_rzp_payment', true ) . '/refund', array( 'amount' => (int) $totals['total'] ) );
-    if ( ! is_wp_error( $refund ) && ! empty( $refund['id'] ) ) {
-      update_post_meta( $order, '_cb_refund', sanitize_text_field( $refund['id'] ) );
+    if ( self::refund( $order ) ) {
       wp_update_post( array( 'ID' => $order, 'post_status' => 'cb-refunded' ) );
       wp_send_json_success( array( 'message' => __( 'Your order is cancelled and the payment is being refunded (usually 5-7 working days).', '3d-corporate-book' ) ) );
     }
@@ -931,6 +931,67 @@ class Corporate_Book_Shop {
     /* translators: %d: order number */
     wp_mail( $to, sprintf( __( 'Refund needed: order #%d was cancelled', '3d-corporate-book' ), $order ), __( 'The automatic Razorpay refund failed. Please refund this payment in the Razorpay Dashboard.', '3d-corporate-book' ) . "\n\n" . self::summary( $order ) );
     wp_send_json_success( array( 'message' => __( 'Your order is cancelled. We will refund your payment shortly.', '3d-corporate-book' ) ) );
+  }
+
+  /**
+   * Refunds an online-paid order in full through Razorpay, once.
+   *
+   * @return bool True when the refund was accepted (or was already done).
+   */
+  private static function refund( $order ) {
+    if ( get_post_meta( $order, '_cb_refund', true ) ) {
+      return true;
+    }
+    $payment = (string) get_post_meta( $order, '_cb_rzp_payment', true );
+    if ( 'cod' === get_post_meta( $order, '_cb_payment', true ) || '' === $payment ) {
+      return false;
+    }
+    $totals = (array) get_post_meta( $order, '_cb_totals', true ) + array( 'total' => 0 );
+    $refund = Corporate_Book_Account::api( 'POST', 'payments/' . $payment . '/refund', array( 'amount' => (int) $totals['total'] ) );
+    if ( is_wp_error( $refund ) || empty( $refund['id'] ) ) {
+      return false;
+    }
+    update_post_meta( $order, '_cb_refund', sanitize_text_field( $refund['id'] ) );
+    return true;
+  }
+
+  /** Days a delivered order can still be returned (0 when returns are off or the window has passed). */
+  public static function return_days_left( $order ) {
+    $days = (int) self::config( 'print_return_days' );
+    $when = (int) get_post_meta( $order, '_cb_delivered', true );
+    $when = $when ? $when : (int) get_post_modified_time( 'U', true, $order );
+    return 'cb-delivered' === get_post_status( $order ) && $days > 0 ? max( 0, (int) ceil( ( $when + $days * DAY_IN_SECONDS - time() ) / DAY_IN_SECONDS ) ) : 0;
+  }
+
+  /**
+   * Reader asks to return a delivered order (within the return window) and gives a reason.
+   * The shop approves it by setting the order to Returned (refund + stock back) or rejects it by setting Delivered again.
+   */
+  public function ajax_return() {
+    check_ajax_referer( self::NONCE );
+    // phpcs:disable WordPress.Security.NonceVerification.Missing -- checked above.
+    $order  = isset( $_POST['order'] ) ? absint( $_POST['order'] ) : 0;
+    $reason = isset( $_POST['reason'] ) ? substr( sanitize_textarea_field( wp_unslash( $_POST['reason'] ) ), 0, 500 ) : '';
+    // phpcs:enable
+    $post = get_post( $order );
+    if ( ! $post || self::ORDER !== $post->post_type || (int) $post->post_author !== get_current_user_id() || self::return_days_left( $order ) < 1 ) {
+      wp_send_json_error( __( 'This order can no longer be returned. Please contact us.', '3d-corporate-book' ), 400 );
+    }
+    if ( '' === trim( $reason ) ) {
+      wp_send_json_error( __( 'Please tell us why you are returning it.', '3d-corporate-book' ), 400 );
+    }
+    update_post_meta( $order, '_cb_return_reason', $reason );
+    wp_update_post( array( 'ID' => $order, 'post_status' => 'cb-return' ) );
+    $to = is_email( self::config( 'print_email' ) ) ? self::config( 'print_email' ) : get_option( 'admin_email' );
+    /* translators: %d: order number */
+    wp_mail( $to, sprintf( __( 'Return requested: order #%d', '3d-corporate-book' ), $order ), __( 'Reason', '3d-corporate-book' ) . ': ' . $reason . "
+
+" . __( 'To approve, set the order to Returned (the payment is refunded and the copies go back in stock). To reject, set it back to Delivered.', '3d-corporate-book' ) . "
+
+" . self::summary( $order ) . "
+
+" . admin_url( 'post.php?post=' . (int) $order . '&action=edit' ) );
+    wp_send_json_success( array( 'message' => __( 'Return requested. We will email you once we have looked at it.', '3d-corporate-book' ) ) );
   }
 
   private static function thanks( $order ) {
@@ -966,8 +1027,8 @@ class Corporate_Book_Shop {
     $totals = get_post_meta( $order, '_cb_totals', true );
     if ( in_array( $type, array( 'payment.captured', 'order.paid' ), true ) && isset( $payment['amount'], $payment['id'] ) && (int) $payment['amount'] === (int) $totals['total'] ) {
       self::mark_paid( $order, (string) $payment['id'] );
-    } elseif ( in_array( $type, array( 'refund.processed', 'payment.refunded' ), true ) && in_array( get_post_status( $order ), array( 'cb-paid', 'cb-shipped', 'cb-delivered' ), true ) ) {
-      wp_update_post( array( 'ID' => $order, 'post_status' => 'cb-refunded' ) );
+    } elseif ( in_array( $type, array( 'refund.processed', 'payment.refunded' ), true ) && in_array( get_post_status( $order ), array( 'cb-paid', 'cb-shipped', 'cb-delivered', 'cb-return' ), true ) ) {
+      wp_update_post( array( 'ID' => $order, 'post_status' => 'cb-return' === get_post_status( $order ) ? 'cb-returned' : 'cb-refunded' ) );
     }
   }
 
@@ -999,7 +1060,7 @@ class Corporate_Book_Shop {
     if ( in_array( $new, array( 'cb-paid', 'cb-cod' ), true ) && ! $taken ) {
       self::change_stock( $order, -1 );
       update_post_meta( $order, '_cb_stock_taken', 1 );
-    } elseif ( in_array( $new, array( 'cb-cancelled', 'cb-refunded', 'trash' ), true ) && $taken ) {
+    } elseif ( in_array( $new, array( 'cb-cancelled', 'cb-refunded', 'cb-returned', 'trash' ), true ) && $taken ) {
       self::change_stock( $order, 1 );
       delete_post_meta( $order, '_cb_stock_taken' );
     }
@@ -1018,8 +1079,21 @@ class Corporate_Book_Shop {
       $reader = (int) $post->post_author;
       update_user_meta( $reader, Corporate_Book_Account::UNTIL, max( time(), Corporate_Book_Account::until( $reader ) ) + $days * DAY_IN_SECONDS );
     }
-    if ( $placed || in_array( $new, array( 'cb-shipped', 'cb-delivered', 'cb-cancelled', 'cb-refunded' ), true ) ) {
-      self::email_customer( $order, $new );
+    if ( 'cb-delivered' === $new && ! get_post_meta( $order, '_cb_delivered', true ) ) {
+      update_post_meta( $order, '_cb_delivered', time() ); // the return window counts from here
+    }
+    $refund_note = '';
+    if ( 'cb-returned' === $new && ! self::refund( $order ) ) {
+      // Cash on delivery, or the automatic refund failed: the shop pays back by hand.
+      $to = is_email( self::config( 'print_email' ) ) ? self::config( 'print_email' ) : get_option( 'admin_email' );
+      /* translators: %d: order number */
+      wp_mail( $to, sprintf( __( 'Refund needed: order #%d was returned', '3d-corporate-book' ), $order ), __( 'Please refund this order by hand (cash on delivery, or the Razorpay refund failed).', '3d-corporate-book' ) . "\n\n" . self::summary( $order ) );
+      $refund_note = 'manual';
+    }
+    if ( 'cb-delivered' === $new && 'cb-return' === $old ) {
+      self::email_customer( $order, 'cb-return-rejected' );
+    } elseif ( $placed || in_array( $new, array( 'cb-shipped', 'cb-delivered', 'cb-cancelled', 'cb-refunded', 'cb-return', 'cb-returned' ), true ) ) {
+      self::email_customer( $order, 'cb-returned' === $new && $refund_note ? 'cb-returned-manual' : $new );
     }
     if ( $placed ) {
       self::email_shop( $order );
@@ -1057,7 +1131,8 @@ class Corporate_Book_Shop {
       return;
     }
     $site    = wp_specialchars_decode( get_bloginfo( 'name' ), ENT_QUOTES );
-    $label   = self::statuses()[ $status ];
+    $labels  = self::statuses() + array( 'cb-return-rejected' => __( 'Return not approved', '3d-corporate-book' ), 'cb-returned-manual' => __( 'Returned', '3d-corporate-book' ) );
+    $label   = $labels[ $status ];
     $intro   = array(
       'cb-paid'      => __( 'Thank you for your order. We will pack and ship it soon.', '3d-corporate-book' ),
       'cb-cod'       => __( 'Thank you for your order. Please keep the amount ready for the courier.', '3d-corporate-book' ),
@@ -1065,6 +1140,10 @@ class Corporate_Book_Shop {
       'cb-delivered' => __( 'Your books have been delivered. Happy reading!', '3d-corporate-book' ),
       'cb-cancelled' => __( 'Your order has been cancelled.', '3d-corporate-book' ),
       'cb-refunded'  => __( 'Your payment has been refunded.', '3d-corporate-book' ),
+      'cb-return'    => __( 'We have your return request and will reply soon.', '3d-corporate-book' ),
+      'cb-returned'  => __( 'Your return is approved. Your payment is being refunded (usually 5-7 working days).', '3d-corporate-book' ),
+      'cb-returned-manual' => __( 'Your return is approved. We will refund your payment shortly.', '3d-corporate-book' ),
+      'cb-return-rejected' => __( 'We could not approve your return request. Reply to this email if you have questions.', '3d-corporate-book' ),
     );
     $tracking = '';
     if ( 'cb-shipped' === $status ) {
@@ -1161,6 +1240,10 @@ class Corporate_Book_Shop {
     $field = function ( $name, $label, $type = 'text' ) use ( $post ) {
       return '<p><label for="cb_order_' . esc_attr( $name ) . '"><strong>' . esc_html( $label ) . '</strong></label><br><input type="' . esc_attr( $type ) . '" class="widefat" id="cb_order_' . esc_attr( $name ) . '" name="cb_order[' . esc_attr( $name ) . ']" value="' . esc_attr( get_post_meta( $post->ID, '_cb_' . $name, true ) ) . '"/></p>';
     };
+    $reason = (string) get_post_meta( $post->ID, '_cb_return_reason', true );
+    if ( '' !== $reason ) {
+      echo '<div class="notice notice-warning inline"><p><strong>' . esc_html__( 'Return reason', '3d-corporate-book' ) . ':</strong> ' . esc_html( $reason ) . '<br>' . esc_html__( 'Approve: set Returned (refund + stock back). Reject: set Delivered.', '3d-corporate-book' ) . '</p></div>';
+    }
     echo '<p><label for="cb_order_status"><strong>' . esc_html__( 'Status', '3d-corporate-book' ) . '</strong></label><br><select class="widefat" id="cb_order_status" name="cb_order[status]">' . $options . '</select></p>' // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- options escaped above.
       . $field( 'courier', __( 'Courier', '3d-corporate-book' ) ) . $field( 'tracking', __( 'Tracking number', '3d-corporate-book' ) ) . $field( 'tracking_url', __( 'Tracking link', '3d-corporate-book' ), 'url' ) // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- fields escaped in the closure.
       . '<p><label for="cb_order_note"><strong>' . esc_html__( 'Private note', '3d-corporate-book' ) . '</strong></label><br><textarea class="widefat" rows="3" id="cb_order_note" name="cb_order[note]">' . esc_textarea( get_post_meta( $post->ID, '_cb_note', true ) ) . '</textarea></p>'
@@ -1221,6 +1304,9 @@ class Corporate_Book_Shop {
       $track    = $tracking ? esc_html( get_post_meta( $post->ID, '_cb_courier', true ) . ' ' . $tracking ) : '';
       $track    = $url ? '<a href="' . esc_url( $url ) . '" target="_blank" rel="noopener">' . ( $track ? $track : esc_html__( 'Track', '3d-corporate-book' ) ) . '</a>' : $track;
       $actions  = get_post_meta( $post->ID, '_cb_invoice', true ) ? '<a href="' . esc_url( self::document_url( $post->ID, 'invoice' ) ) . '" target="_blank" rel="noopener">' . esc_html__( 'Invoice', '3d-corporate-book' ) . '</a>' : '';
+      $left     = self::return_days_left( $post->ID );
+      /* translators: %d: days left */
+      $actions .= $left > 0 ? ' <button type="button" class="cb-return-order" data-order="' . (int) $post->ID . '" data-ask="' . esc_attr__( 'Why are you returning this order? (We refund the payment once we approve it.)', '3d-corporate-book' ) . '">' . esc_html( sprintf( _n( 'Return (%d day left)', 'Return (%d days left)', $left, '3d-corporate-book' ), $left ) ) . '</button>' : '';
       $actions .= in_array( $post->post_status, array( 'cb-paid', 'cb-cod' ), true ) ? ' <button type="button" class="cb-cancel-order" data-order="' . (int) $post->ID . '" data-confirm="' . esc_attr__( 'Cancel this order? Online payments are refunded.', '3d-corporate-book' ) . '">' . esc_html__( 'Cancel order', '3d-corporate-book' ) . '</button>' : '';
       $rows    .= '<tr><td>#' . (int) $post->ID . '<br><small>' . esc_html( get_the_date( '', $post ) ) . '</small></td><td>' . esc_html( implode( ', ', $books ) ) . '</td><td>' . esc_html( self::money( $totals['total'] ) ) . '</td><td><span class="cb-order-status cb-status-' . esc_attr( $post->post_status ) . '">' . esc_html( self::statuses()[ $post->post_status ] ) . '</span>' . ( $track ? '<br><small>' . $track . '</small>' : '' ) . ( $actions ? '<div class="cb-order-actions">' . $actions . '</div>' : '' ) . '</td></tr>'; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- $track and $actions escaped above.
     }

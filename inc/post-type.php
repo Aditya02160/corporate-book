@@ -413,7 +413,7 @@ class Corporate_Book_Post_Type {
     if ( $tiles ) {
       if ( is_user_logged_in() && Corporate_Book_Account::razorpay_ready() ) {
         Corporate_Book_Account::box( false ); // loads the payment script; its HTML is not needed here
-        $buy_plan = '<button type="button" class="cb-plan cb-ed-subscribe" data-plan="0">' . esc_html__( 'Subscribe', '3d-corporate-book' ) . '</button>';
+        $buy_plan = '<button type="button" class="cb-plan cb-ed-subscribe" data-plan="0">' . esc_html__( 'Subscribe', '3d-corporate-book' ) . '</button>' . Corporate_Book_Account::autopay_tick();
       } elseif ( $sub_url ) {
         $buy_plan = '<a class="cb-ed-subscribe" href="' . esc_url( $sub_url ) . '">' . esc_html__( 'Subscribe', '3d-corporate-book' ) . '</a>';
       }

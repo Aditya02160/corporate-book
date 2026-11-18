@@ -2765,3 +2765,10 @@ input.df-search-text:not(:placeholder-shown) ~ a.df-search-clear {
 .cb-thumb-title a{color:inherit;text-decoration:none}
 .cb-thumb-actions a.cb-preview-button{text-decoration:none;display:inline-block}
 @media(max-width:900px){.cb-library{grid-template-columns:1fr}.cb-library-bar{order:0;position:static}.cb-chip-row{flex-direction:row;align-items:center}}
+/* Auto-renew tick and status */
+.cb-autopay{display:flex;align-items:center;justify-content:center;gap:8px;margin:10px 0;font-size:13px;color:var(--cb-mute,#64748b);cursor:pointer}
+.cb-autopay input{width:16px;height:16px;margin:0;accent-color:#16a34a}
+.cb-ed-row .cb-autopay{flex-basis:100%;justify-content:flex-start;color:#c7d2fe}
+.cb-profile-plans .cb-autopay{justify-content:flex-start}
+.cb-autopay-status{margin:8px 0;padding:10px 12px;border-radius:10px;background:#f0fdf4;color:#166534;font-size:14px}
+.cb-autopay-off{margin-left:6px;padding:4px 10px;border:1px solid #166534;border-radius:999px;background:#fff;color:#166534;font-size:12px;cursor:pointer}

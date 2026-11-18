@@ -479,6 +479,25 @@ async function waitFor(ready, ms) {
     await pay(sign(order.order_id, paymentId));
     await openAccount(has('.cb-account-status'));
     check(until !== '' && await a.$eval('.cb-account-status', (e) => e.textContent).catch(() => '') === until, 'replaying the same payment does not extend the subscription');
+    // Auto-renew: a Razorpay subscription instead of a one-time order; the reader can turn it off and keep access.
+    check(await a.$('.cb-profile-plans .cb-autopay-check:checked') !== null, 'My account offers "Renew automatically", ticked by default');
+    const sub = (await ajax({ action: 'corporate_book_order', plan: '0', autopay: '1' })).data || {};
+    check(/^sub_TEST39900A/.test(sub.subscription_id || '') && !sub.order_id, `auto-renew starts a Razorpay subscription (${sub.subscription_id})`);
+    const subPay = 'pay_TEST39900A' + String(sub.subscription_id).slice(-6);
+    const subSig = require('crypto').createHmac('sha256', 'smokesecret').update(`${subPay}|${sub.subscription_id}`).digest('hex');
+    check((await ajax({ action: 'corporate_book_verify', subscription_id: String(sub.subscription_id), payment_id: subPay, signature: sign(sub.subscription_id, subPay) })).success !== true, 'an auto-renew payment signed the one-time way is refused');
+    let subPaid = {};
+    for (let i = 0; i < 10 && subPaid.success !== true; i++) {
+      subPaid = await ajax({ action: 'corporate_book_verify', subscription_id: String(sub.subscription_id), payment_id: subPay, signature: subSig });
+      if (subPaid.success !== true) await a.waitForTimeout(500);
+    }
+    const autoOn = await openAccount(has('.cb-autopay-off'));
+    check(subPaid.success === true && autoOn && await a.$('.cb-profile-plans') === null, 'a verified auto-renew payment shows "Auto-renew is on" with a turn-off button, and no second plan purchase');
+    a.once('dialog', (dl) => dl.accept());
+    await a.click('.cb-autopay-off').catch(() => {});
+    await a.waitForTimeout(2500);
+    const autoOff = await openAccount(async () => /Auto-renew is off/.test(await a.$eval('.cb-autopay-status', (e) => e.textContent).catch(() => '')));
+    check(autoOff && /Subscription active until/.test(await a.$eval('.cb-account-status', (e) => e.textContent).catch(() => '')), 'turning auto-renew off keeps access until the paid date');
     await page.goto(`${BASE}/wp-admin/edit.php?post_type=corporate_book`);
     const bulkId = new URL(await page.locator('a.row-title', { hasText: /^Bulk Book$/ }).first().getAttribute('href')).searchParams.get('post');
     let subscriberPdf = 0;
@@ -769,6 +788,36 @@ async function waitFor(ready, ms) {
       cancelled = await m.$eval('.cb-print-orders', (e) => e.textContent).catch(() => '');
     }
     check(/Cancelled/.test(cancelled), 'readers can cancel an order that has not shipped');
+    // Returns: delivered order -> reader asks with a reason -> shop approves (Returned) -> refund note for cash on delivery.
+    const setStatus = async (status) => {
+      for (let i = 0; i < 5; i++) {
+        await page.goto(`${BASE}/wp-admin/post.php?post=${giftNo}&action=edit`);
+        await page.selectOption('#cb_order_status', status).catch(() => {});
+        await Promise.all([page.waitForNavigation().catch(() => {}), page.click('#cb_order_manage button[name="save"], button[name="save"][value="update"]').catch(() => {})]);
+        await page.goto(`${BASE}/wp-admin/post.php?post=${giftNo}&action=edit`);
+        if (await page.$eval('#cb_order_status', (e) => e.value).catch(() => '') === status) return true;
+      }
+      return false;
+    };
+    await setStatus('cb-delivered');
+    let returnBtn = null;
+    for (let i = 0; i < 10 && !returnBtn; i++) {
+      await m.goto(`${BASE}/?pagename=my-account`).catch(() => {});
+      returnBtn = await m.$(`.cb-return-order[data-order="${giftNo}"]`);
+    }
+    check(!!returnBtn && /7 days left/.test(await m.$eval(`.cb-return-order[data-order="${giftNo}"]`, (e) => e.textContent).catch(() => '')), 'delivered orders show "Return (7 days left)" in My account');
+    m.once('dialog', (dl) => dl.accept('Pages were torn'));
+    await m.click(`.cb-return-order[data-order="${giftNo}"]`).catch(() => {});
+    await m.waitForTimeout(3500);
+    let returned = '';
+    for (let i = 0; i < 10 && !/Return requested/.test(returned); i++) {
+      await m.goto(`${BASE}/?pagename=my-account`).catch(() => {});
+      returned = await m.$eval('.cb-print-orders', (e) => e.textContent).catch(() => '');
+    }
+    check(/Return requested/.test(returned) && /Pages were torn/.test(lastMail()), 'readers can request a return with a reason, and the shop is emailed');
+    await page.goto(`${BASE}/wp-admin/post.php?post=${giftNo}&action=edit`);
+    check(/Return reason/.test(await page.content()) && /Pages were torn/.test(await page.content()), 'the order screen shows the return reason');
+    check(await setStatus('cb-returned') && /We will refund your payment shortly/.test(lastMail()), `approving a cash-on-delivery return emails the reader that the refund is by hand (${lastMail().slice(0, 60)})`);
     // CSV export.
     await page.goto(`${BASE}/wp-admin/edit.php?post_type=cb_order`);
     const csvUrl = await page.$eval('a:has-text("Export CSV")', (e) => e.href).catch(() => '');

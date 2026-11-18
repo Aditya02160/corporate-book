@@ -40,6 +40,26 @@ class AccountTest extends CB_Unit_Test {
     $this->assertFalse( Corporate_Book_Account::is_active( 5 ) );
   }
 
+  public function test_auto_renew_charges_add_days_once_per_payment() {
+    $sub = 'sub_TESTabc';
+    update_user_meta( 7, Corporate_Book_Account::ORDERS, array( $sub => array( 'amount' => 39900, 'days' => 30, 'plan' => 'Monthly', 'time' => time(), 'paid' => '', 'gift' => '', 'autopay' => 1 ) ) );
+    $entity = array( 'id' => $sub, 'notes' => array( 'user_id' => '7' ) );
+    Corporate_Book_Account::subscription_event( 'subscription.charged', $entity, array( 'id' => 'pay_first1', 'amount' => 39900 ) );
+    $first = Corporate_Book_Account::until( 7 );
+    $this->assertGreaterThan( time() + 29 * DAY_IN_SECONDS, $first, 'first charge starts access' );
+    $this->assertSame( 'active', Corporate_Book_Account::autopay( 7 )['status'] );
+    Corporate_Book_Account::subscription_event( 'subscription.charged', $entity, array( 'id' => 'pay_first1', 'amount' => 39900 ) );
+    $this->assertSame( $first, Corporate_Book_Account::until( 7 ), 'the same payment again adds nothing' );
+    Corporate_Book_Account::subscription_event( 'subscription.charged', $entity, array( 'id' => 'pay_second2', 'amount' => 39900 ) );
+    Corporate_Book_Account::subscription_event( 'subscription.charged', $entity, array( 'id' => 'pay_second2', 'amount' => 39900 ) );
+    $this->assertSame( $first + 30 * DAY_IN_SECONDS, Corporate_Book_Account::until( 7 ), 'a renewal adds one period, once' );
+    Corporate_Book_Account::subscription_event( 'subscription.cancelled', $entity, array() );
+    $this->assertSame( 'cancelled', Corporate_Book_Account::autopay( 7 )['status'] );
+    $this->assertSame( $first + 30 * DAY_IN_SECONDS, Corporate_Book_Account::until( 7 ), 'cancelling keeps the paid days' );
+    Corporate_Book_Account::subscription_event( 'subscription.charged', array( 'id' => 'sub_OTHER', 'notes' => array( 'user_id' => '7' ) ), array( 'id' => 'pay_x', 'amount' => 1 ) );
+    $this->assertSame( $first + 30 * DAY_IN_SECONDS, Corporate_Book_Account::until( 7 ), 'unknown subscriptions are ignored' );
+  }
+
   public function test_webhook_signature() {
     $body = '{"event":"payment.captured"}';
     $sign = hash_hmac( 'sha256', $body, 'whsec' );

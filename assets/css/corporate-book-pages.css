@@ -63,7 +63,7 @@
 .cb-ui .cb-status-cb-paid,.cb-ui .cb-status-cb-cod{background:#e7efff;color:#1f4fd1}
 .cb-ui .cb-status-cb-shipped{background:var(--cb-warn-bg);color:var(--cb-warn)}
 .cb-ui .cb-status-cb-delivered{background:var(--cb-ok-bg);color:var(--cb-ok)}
-.cb-ui .cb-status-cb-cancelled,.cb-ui .cb-status-cb-refunded{background:#fdecec;color:var(--cb-bad)}
+.cb-ui .cb-status-cb-cancelled,.cb-ui .cb-status-cb-refunded,.cb-ui .cb-status-cb-returned{background:#fdecec;color:var(--cb-bad)}
 .cb-ui .cb-order-actions{display:flex;flex-wrap:wrap;gap:12px;margin-top:8px;align-items:center}
 .cb-ui .cb-cancel-order{background:none;box-shadow:none;color:var(--cb-bad);min-height:0;padding:0;text-decoration:underline;font-weight:500}
 /* Guest sign-in boxes */
@@ -197,3 +197,12 @@
 .cb-ui .cb-agree{margin:12px 0 0;font-size:13px;line-height:1.5;color:#6b7280;text-align:center}
 .cb-ui .cb-agree a{color:#2563eb;text-decoration:none;font-weight:600}
 .cb-ui .cb-agree a:hover{text-decoration:underline}
+/* Auto-renew tick and status */
+.cb-autopay{display:flex;align-items:center;justify-content:center;gap:8px;margin:10px 0;font-size:13px;color:var(--cb-mute,#64748b);cursor:pointer}
+.cb-autopay input{width:16px;height:16px;margin:0;accent-color:#16a34a}
+.cb-ed-row .cb-autopay{flex-basis:100%;justify-content:flex-start;color:#c7d2fe}
+.cb-profile-plans .cb-autopay{justify-content:flex-start}
+.cb-autopay-status{margin:8px 0;padding:10px 12px;border-radius:10px;background:#f0fdf4;color:#166534;font-size:14px}
+.cb-autopay-off{margin-left:6px;padding:4px 10px;border:1px solid #166534;border-radius:999px;background:#fff;color:#166534;font-size:12px;cursor:pointer}
+.cb-ui .cb-status-cb-return{background:#fff4e0;color:#9a5b00}
+.cb-return-order{margin-left:6px}

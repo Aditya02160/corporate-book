@@ -39,6 +39,18 @@ add_filter(
 		if ( preg_match( '#^payments/pay_(TEST(\d+)A\d+)$#', $path, $m ) ) {
 			return $answer( array( 'id' => 'pay_' . $m[1], 'order_id' => 'order_' . $m[1], 'amount' => (int) $m[2], 'currency' => 'INR', 'status' => 'captured' ) );
 		}
+		// Fake Razorpay Subscriptions: plans, subscriptions, cancel.
+		if ( 'plans' === $path ) {
+			$body = json_decode( $args['body'], true );
+			return $answer( array( 'id' => 'plan_TEST' . $body['item']['amount'], 'period' => $body['period'], 'interval' => $body['interval'] ) );
+		}
+		if ( 'subscriptions' === $path ) {
+			$body = json_decode( $args['body'], true );
+			return $answer( array( 'id' => 'sub_TEST' . substr( $body['plan_id'], 9 ) . 'A' . wp_rand( 100000, 999999 ), 'plan_id' => $body['plan_id'], 'status' => 'created', 'notes' => $body['notes'] ) );
+		}
+		if ( preg_match( '#^subscriptions/(sub_TEST\w+)/cancel$#', $path, $m ) ) {
+			return $answer( array( 'id' => $m[1], 'status' => 'cancelled' ) );
+		}
 		if ( preg_match( '#^orders/order_TEST\w+/payments$#', $path ) ) {
 			return $answer( array( 'entity' => 'collection', 'count' => 0, 'items' => array() ) );
 		}

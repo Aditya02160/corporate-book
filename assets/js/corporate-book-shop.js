@@ -386,6 +386,27 @@
     });
   });
 
+  // ---- My account: return a delivered order -----------------------------------------------
+
+  document.addEventListener('click', function (event) {
+    var b = event.target.closest('.cb-return-order');
+    if (!b) {
+      return;
+    }
+    var reason = window.prompt(b.getAttribute('data-ask'));
+    if (!reason || !reason.trim()) {
+      return;
+    }
+    b.disabled = true;
+    post({ action: 'corporate_book_return_order', order: b.getAttribute('data-order'), reason: reason }).then(function (r) {
+      b.parentNode.textContent = r.message;
+      setTimeout(function () { window.location.reload(); }, 2500);
+    }, function (e) {
+      b.disabled = false;
+      window.alert(e.message || cfg.failed);
+    });
+  });
+
   // ---- My account: delivery address --------------------------------------------------------
 
   document.addEventListener('submit', function (event) {

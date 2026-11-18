@@ -107,6 +107,7 @@ Readers can buy printed books as well as the digital subscription.
 * **Page links:** anyone can click **Copy link to this page** under a book (or add `?cb_from=20` to the book's address). A reader opening the book for the first time from that link gets the free preview starting at that page; readers who already used their free pages keep them.
 * **Gifts:** tick "This is a gift" at checkout to add a message (printed on the packing slip, no prices). On the Subscription page, "Buy it as a gift" sends the days to another email; an account is made for them if needed.
 * **Cancel:** readers cancel orders that have not shipped from My account; online payments are refunded through Razorpay automatically (you are emailed if the refund fails).
+* **Returns:** for **Return Window (days)** after delivery (Global Settings > Print, default 7, 0 turns it off) readers see **Return** on the order in My account and give a reason. The order becomes **Return requested** and you get an email. Open the order: set **Returned** to approve (online payments are refunded through Razorpay, copies go back in stock, the reader is emailed; for cash on delivery you are asked to refund by hand) or set **Delivered** again to reject (the reader is emailed).
 * **Invoice:** each paid order has an invoice page (Print / Save as PDF) with a running number, your business name, address and GSTIN.
 * **Saved books** ("Save for later") on My account, and **Email me when back in stock** on sold-out books.
 * **Continue reading** from the last page and **bookmarks** under each book, kept in the reader's browser.
@@ -148,13 +149,15 @@ Readers sign in, create an account and sign out inside the book. To sell subscri
 
 1. In **Global Settings > Subscription**, paste your **Razorpay Key ID** and **Razorpay Key Secret**. Use Test Mode keys first.
 2. Set **Subscription Plans**, one per line: `Name | Price | Days of access`, for example `Monthly | 399 | 30`.
-3. Readers pick a plan in the "Your free preview has ended" panel and pay with Razorpay Checkout. Access runs for the plan's days; they pay again to renew.
+3. Readers pick a plan in the "Your free preview has ended" panel and pay with Razorpay Checkout. Access runs for the plan's days.
+4. **Auto-renew:** "Renew automatically" is ticked by default next to the plans. Then Razorpay sets up a UPI AutoPay or card mandate and charges the plan again every period; each charge adds the plan's days. Untick it to pay once. Gifts are always paid once. Turn on **Subscriptions** in your Razorpay account first.
+5. **Cancelling:** readers press **Turn off auto-renew** in My account. Nothing more is charged, they keep reading until the paid date, and there is no refund for the current period.
 
 The plugin creates a **Subscription** page for you (`[corporate_book_subscription]`): one card per plan with its price and a Subscribe button, plus sign in, sign up and sign out. Add `[corporate_book_account]` to any page for a box with sign in, plans and sign out. Administrators see each reader's subscription in the Users list and can change the "Subscription active until" date on the reader's profile.
 
 Readers never see WordPress itself. The plugin creates a **My account** page (`[corporate_book_profile]`) where readers edit their name, email, phone and company, change or reset their password, see their subscription and payment history, and subscribe or renew. New readers get the Corporate Book Reader role. Readers get no WordPress toolbar, and opening the dashboard or the WordPress sign-up, lost-password or reset screens takes them to My account. Staff who can write posts keep the normal WordPress screens.
 
-**Razorpay webhook (recommended):** in Razorpay Dashboard > Webhooks, add the URL shown under Global Settings > Subscription > Razorpay Webhook Secret, with the events payment.captured and refund.processed, and paste the same secret in that field. Payments then count even if the reader closes the tab, and refunds take the paid days back. Use **Test Razorpay connection** to check your keys.
+**Razorpay webhook (recommended):** in Razorpay Dashboard > Webhooks, add the URL shown under Global Settings > Subscription > Razorpay Webhook Secret, with the events payment.captured, refund.processed, subscription.charged, subscription.cancelled, subscription.halted and subscription.completed, and paste the same secret in that field. Payments then count even if the reader closes the tab, and refunds take the paid days back. Use **Test Razorpay connection** to check your keys.
 
 Readers get an emailed receipt after each payment and a reminder 3 days before access ends.
 
