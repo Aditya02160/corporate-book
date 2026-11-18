@@ -449,11 +449,21 @@ async function waitFor(ready, ms) {
     await a.waitForFunction(() => document.querySelector('.cb-account-message').textContent !== '', null, { timeout: 30000 }).catch(() => {});
     check(await a.$eval('.cb-account-message', (e) => e.textContent).catch(() => '') === 'Incorrect email or password.', 'a wrong password is refused with a plain message');
     await a.click('.cb-show-signup').catch(() => {});
+    await a.fill('.cb-signup [name="first_name"]', 'Neha').catch(() => {});
+    await a.fill('.cb-signup [name="last_name"]', 'Kapoor').catch(() => {});
+    await a.fill('.cb-signup [name="company"]', 'Acme Ltd').catch(() => {});
+    await a.fill('.cb-signup [name="job_title"]', 'CFO').catch(() => {});
     await a.fill('.cb-signup [name="email"]', 'newreader@example.com').catch(() => {});
     await a.fill('.cb-signup [name="pwd"]', 'long-password-1').catch(() => {});
     await Promise.all([a.waitForNavigation({ timeout: 30000 }), a.click('.cb-signup button[type="submit"]')]).catch(() => {});
     const offered = await openAccount(has('.cb-plan'));
     check(await a.$('.cb-signout') !== null, 'sign up creates the account and signs the reader in');
+    let details = '';
+    for (let i = 0; i < 10 && details !== 'Neha Kapoor Acme Ltd CFO'; i++) {
+      await a.goto(`${BASE}/?pagename=my-account`).catch(() => {});
+      details = await a.evaluate(() => ['first_name', 'last_name', 'company', 'job_title'].map((n) => (document.querySelector(`.cb-profile-details [name="${n}"]`) || {}).value).join(' ')).catch(() => '');
+    }
+    check(details === 'Neha Kapoor Acme Ltd CFO', `sign up saves name, company and job title (${details})`);
     const plans = await a.$$eval('.cb-plan', (els) => els.map((e) => e.textContent).join(' | ')).catch(() => '');
     check(offered && /Monthly.*399/.test(plans) && /Yearly.*3,?999/.test(plans), `plans are offered with their prices (${plans})`);
     const ajax = (data) => a.evaluate(async (d) => {

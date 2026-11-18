@@ -167,9 +167,19 @@ class Corporate_Book_Account {
         . '<p class="cb-account-links"><a href="' . esc_url( add_query_arg( 'cb_lost', '1', self::profile_url() ) ) . '">' . esc_html__( 'Forgot password?', '3d-corporate-book' ) . '</a>'
         . ( $signup ? ' &middot; <a href="#" class="cb-show-signup">' . esc_html__( 'Create an account', '3d-corporate-book' ) . '</a>' : '' ) . '</p></form>';
       if ( $signup ) {
+        // Sign up asks for the basics: name and email (required), then mobile, company, job title and city.
         $html .= '<form class="cb-signup" method="post" data-action="corporate_book_signup" hidden>'
-          . '<input type="email" name="email" required autocomplete="email" placeholder="' . esc_attr__( 'Email', '3d-corporate-book' ) . '" aria-label="' . esc_attr__( 'Email', '3d-corporate-book' ) . '"/>'
+          . '<div class="cb-signup-head"><strong>' . esc_html__( 'Create your free account', '3d-corporate-book' ) . '</strong><span>' . esc_html__( 'Read previews, save magazines and subscribe in one place.', '3d-corporate-book' ) . '</span></div>'
+          . '<div class="cb-signup-grid">'
+          . '<input type="text" name="first_name" required autocomplete="given-name" placeholder="' . esc_attr__( 'First name', '3d-corporate-book' ) . '" aria-label="' . esc_attr__( 'First name', '3d-corporate-book' ) . '"/>'
+          . '<input type="text" name="last_name" required autocomplete="family-name" placeholder="' . esc_attr__( 'Last name', '3d-corporate-book' ) . '" aria-label="' . esc_attr__( 'Last name', '3d-corporate-book' ) . '"/>'
+          . '<input type="email" name="email" required autocomplete="email" placeholder="' . esc_attr__( 'Work email', '3d-corporate-book' ) . '" aria-label="' . esc_attr__( 'Work email', '3d-corporate-book' ) . '"/>'
+          . '<input type="tel" name="phone" autocomplete="tel" pattern="[0-9+ ()-]{7,20}" placeholder="' . esc_attr__( 'Mobile number', '3d-corporate-book' ) . '" aria-label="' . esc_attr__( 'Mobile number', '3d-corporate-book' ) . '"/>'
+          . '<input type="text" name="company" autocomplete="organization" placeholder="' . esc_attr__( 'Company', '3d-corporate-book' ) . '" aria-label="' . esc_attr__( 'Company', '3d-corporate-book' ) . '"/>'
+          . '<input type="text" name="job_title" autocomplete="organization-title" placeholder="' . esc_attr__( 'Job title', '3d-corporate-book' ) . '" aria-label="' . esc_attr__( 'Job title', '3d-corporate-book' ) . '"/>'
+          . '<input type="text" name="city" autocomplete="address-level2" placeholder="' . esc_attr__( 'City', '3d-corporate-book' ) . '" aria-label="' . esc_attr__( 'City', '3d-corporate-book' ) . '"/>'
           . '<input type="password" name="pwd" required minlength="8" autocomplete="new-password" placeholder="' . esc_attr__( 'Password (8 characters or more)', '3d-corporate-book' ) . '" aria-label="' . esc_attr__( 'Password', '3d-corporate-book' ) . '"/>'
+          . '</div>'
           . '<button type="submit" class="cb-lock-signin">' . esc_html__( 'Create account', '3d-corporate-book' ) . '</button>'
           . '<p class="cb-account-links"><a href="#" class="cb-show-signin">' . esc_html__( 'I already have an account', '3d-corporate-book' ) . '</a></p></form>';
       }
@@ -482,6 +492,8 @@ class Corporate_Book_Account {
       . self::field( 'email', __( 'Email', '3d-corporate-book' ), $user->user_email, 'email', 'required autocomplete="email"' )
       . self::field( 'phone', __( 'Phone', '3d-corporate-book' ), get_user_meta( $user->ID, 'cb_phone', true ), 'tel', 'autocomplete="tel"' )
       . self::field( 'company', __( 'Company', '3d-corporate-book' ), get_user_meta( $user->ID, 'cb_company', true ), 'text', 'autocomplete="organization"' )
+      . self::field( 'job_title', __( 'Job title', '3d-corporate-book' ), get_user_meta( $user->ID, 'cb_job_title', true ), 'text', 'autocomplete="organization-title"' )
+      . self::field( 'city', __( 'City', '3d-corporate-book' ), get_user_meta( $user->ID, 'cb_city', true ), 'text', 'autocomplete="address-level2"' )
       . self::field( 'current', __( 'Current password (only to change your email)', '3d-corporate-book' ), '', 'password', 'autocomplete="current-password"' )
       . '<button type="submit">' . esc_html__( 'Save details', '3d-corporate-book' ) . '</button></form>' . $message . '</div>'
       . '<div class="cb-account cb-profile-card" id="cb-sec-security"><h3>' . esc_html__( 'Change password', '3d-corporate-book' ) . '</h3><form class="cb-profile-password" method="post" data-action="corporate_book_password">'
@@ -564,6 +576,8 @@ class Corporate_Book_Account {
     }
     update_user_meta( $user->ID, 'cb_phone', $get( 'phone' ) );
     update_user_meta( $user->ID, 'cb_company', $get( 'company' ) );
+    update_user_meta( $user->ID, 'cb_job_title', $get( 'job_title' ) );
+    update_user_meta( $user->ID, 'cb_city', $get( 'city' ) );
     wp_send_json_success( array( 'message' => __( 'Your details are saved.', '3d-corporate-book' ) ) );
   }
 
@@ -730,9 +744,24 @@ class Corporate_Book_Account {
       wp_send_json_error( __( 'This email already has an account. Sign in instead.', '3d-corporate-book' ), 400 );
     }
     self::count_try( $key );
-    $user_id = wp_insert_user( array( 'user_login' => $email, 'user_email' => $email, 'user_pass' => $password, 'role' => self::ROLE ) );
+    // phpcs:disable WordPress.Security.NonceVerification.Missing -- checked above.
+    $get   = function ( $key ) {
+      return isset( $_POST[ $key ] ) ? substr( sanitize_text_field( wp_unslash( $_POST[ $key ] ) ), 0, 100 ) : '';
+    };
+    // phpcs:enable
+    $first = $get( 'first_name' );
+    $last  = $get( 'last_name' );
+    if ( '' === $first ) {
+      wp_send_json_error( __( 'Please enter your name.', '3d-corporate-book' ), 400 );
+    }
+    $user_id = wp_insert_user( array( 'user_login' => $email, 'user_email' => $email, 'user_pass' => $password, 'role' => self::ROLE, 'first_name' => $first, 'last_name' => $last, 'display_name' => trim( $first . ' ' . $last ) ) );
     if ( is_wp_error( $user_id ) ) {
       wp_send_json_error( $user_id->get_error_message(), 400 );
+    }
+    foreach ( array( 'phone' => 'cb_phone', 'company' => 'cb_company', 'job_title' => 'cb_job_title', 'city' => 'cb_city' ) as $field => $meta ) {
+      if ( '' !== $get( $field ) ) {
+        update_user_meta( $user_id, $meta, $get( $field ) );
+      }
     }
     wp_set_current_user( $user_id );
     wp_set_auth_cookie( $user_id, true, is_ssl() );
@@ -1175,6 +1204,8 @@ class Corporate_Book_Account {
       $fields = array(
         array( 'name' => __( 'Phone', '3d-corporate-book' ), 'value' => get_user_meta( $user->ID, 'cb_phone', true ) ),
         array( 'name' => __( 'Company', '3d-corporate-book' ), 'value' => get_user_meta( $user->ID, 'cb_company', true ) ),
+        array( 'name' => __( 'Job title', '3d-corporate-book' ), 'value' => get_user_meta( $user->ID, 'cb_job_title', true ) ),
+        array( 'name' => __( 'City', '3d-corporate-book' ), 'value' => get_user_meta( $user->ID, 'cb_city', true ) ),
         array( 'name' => __( 'Subscription active until', '3d-corporate-book' ), 'value' => self::until( $user->ID ) ? self::date( self::until( $user->ID ) ) : '' ),
       );
       $data[] = array( 'group_id' => 'corporate-book', 'group_label' => __( 'Corporate Book account', '3d-corporate-book' ), 'item_id' => 'account-' . $user->ID, 'data' => $fields );
@@ -1206,6 +1237,8 @@ class Corporate_Book_Account {
       // Payment records are kept for tax and accounting; contact details are removed.
       delete_user_meta( $user->ID, 'cb_phone' );
       delete_user_meta( $user->ID, 'cb_company' );
+      delete_user_meta( $user->ID, 'cb_job_title' );
+      delete_user_meta( $user->ID, 'cb_city' );
       delete_user_meta( $user->ID, Corporate_Book_Shop::ADDRESS );
     }
     return array( 'items_removed' => (bool) $user, 'items_retained' => (bool) $user && self::orders( $user->ID ), 'messages' => $user ? array( __( 'Corporate Book payment records were kept for accounting.', '3d-corporate-book' ) ) : array(), 'done' => true );
