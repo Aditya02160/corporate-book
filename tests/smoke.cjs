@@ -190,8 +190,8 @@ async function waitFor(ready, ms) {
     await l.click(`.cb-library-years .cb-filter[data-filter="${year}"]`);
     check(await l.$$eval('.cb-library-item', (e) => e.filter((i) => !i.hidden).length) >= 1
       && await l.$eval(`.cb-library-years .cb-filter[data-filter="${year}"]`, (e) => e.classList.contains('cb-active')), 'year filter keeps that year and marks its chip');
-    await l.click('.cb-library-filter .cb-filter[data-filter="region-asia"]').catch(() => {});
-    check(await l.$$eval('.cb-library-item', (e) => e.filter((i) => !i.hidden).length) === 1 && await l.$('.cb-library-years .cb-filter[data-filter="2019"]') !== null, 'library groups books by Region and by the Year group');
+    await l.click('.cb-library-filter .cb-filter[data-filter="cat-asia"]').catch(() => {});
+    check(await l.$$eval('.cb-library-item', (e) => e.filter((i) => !i.hidden).length) === 1 && await l.$('.cb-library-years .cb-filter[data-filter="2019"]') !== null, 'library filters by category (Asia) and files books under a year category (2019)');
     check(await l.$('.cb-library-bar .cb-library-search [name="cb_q"]') !== null && await l.$('.cb-library aside') === null, 'library has one toolbar with search and chips, no sidebar');
     await lib.close();
     let v = await visit(null);

@@ -103,7 +103,7 @@ class Corporate_Book_Post_Type {
       flush_rewrite_rules();
     }
     
-    // Region (India, Asia...) and Year groups; the All Books page filters by both.
+    // Old Region and Year groups: hidden now (merged into Categories), kept registered so their terms can be copied.
     foreach ( array(
         'corporate_book_region' => array( __( 'Regions', '3d-corporate-book' ), __( 'Region', '3d-corporate-book' ) ),
         'corporate_book_year'   => array( __( 'Years', '3d-corporate-book' ), __( 'Year', '3d-corporate-book' ) ),
@@ -112,9 +112,8 @@ class Corporate_Book_Post_Type {
           'labels'            => array( 'name' => $names[0], 'singular_name' => $names[1], 'menu_name' => $names[0], 'add_new_item' => $names[1] ),
           'hierarchical'      => true,
           'public'            => false,
-          'show_ui'           => true,
-          'show_admin_column' => true,
-          'show_in_rest'      => true,
+          'show_ui'           => false,
+          'show_in_rest'      => false,
       ) );
     }
     register_taxonomy( 'corporate_book_category', 'corporate_book', array(
@@ -126,6 +125,18 @@ class Corporate_Book_Post_Type {
         'show_in_nav_menus'  => true,
 	    'rewrite'            => array( 'slug' => 'book-category' ),
     ) );
+    // Once: Region and Year groups become Categories (India, Asia, 2026...).
+    if ( (int) get_option( 'corporate_book_db_version' ) < 4 ) {
+      foreach ( get_posts( array( 'post_type' => 'corporate_book', 'post_status' => 'any', 'numberposts' => -1, 'fields' => 'ids' ) ) as $book ) {
+        foreach ( array( 'corporate_book_region', 'corporate_book_year' ) as $old ) {
+          $names = wp_get_object_terms( $book, $old, array( 'fields' => 'names' ) );
+          if ( ! is_wp_error( $names ) && $names ) {
+            wp_set_object_terms( $book, $names, 'corporate_book_category', true );
+          }
+        }
+      }
+      update_option( 'corporate_book_db_version', 4 );
+    }
     
     if ( is_admin() ){
       if(!( defined( 'DOING_AJAX' ) && DOING_AJAX ) ) {

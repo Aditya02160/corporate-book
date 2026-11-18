@@ -169,21 +169,25 @@ class Corporate_Book_ShortCode {
     wp_enqueue_style( 'corporate-book-style' );
     wp_enqueue_script( 'corporate-book-library', plugins_url( 'assets/js/corporate-book-library.js', $this->base->file ), array(), $this->base->version, true );
     $years  = array();
-    $groups = array( 'region' => array(), 'cat' => array() );
+    $groups = array( 'cat' => array() );
     $query = isset( $_GET['cb_q'] ) ? sanitize_text_field( wp_unslash( $_GET['cb_q'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- public search.
     $found = get_posts( array( 'post_type' => 'corporate_book', 'post_status' => 'publish', 'numberposts' => -1, 's' => $query ) );
     $note  = '' === $query ? '' : '<p class="cb-library-note">' . esc_html( sprintf( /* translators: 1: number of books, 2: search words */ _n( '%1$d book found for "%2$s"', '%1$d books found for "%2$s"', count( $found ), '3d-corporate-book' ), count( $found ), $query ) ) . ' · <a href="' . esc_url( remove_query_arg( 'cb_q' ) ) . '">' . esc_html__( 'Show all books', '3d-corporate-book' ) . '</a></p>';
     foreach ( $found as $book ) {
-      // The Year group wins over the publish date, so an issue can be filed under its edition year.
-      $year_terms = get_the_terms( $book, 'corporate_book_year' );
-      $year_name  = is_array( $year_terms ) ? $year_terms[0]->name : get_the_date( 'Y', $book );
-      // Filter tokens are space-separated, so "FY 2025-26" becomes "fy-2025-26"; the heading keeps the name.
-      $filters    = array( sanitize_title( $year_name ) );
-      foreach ( array( 'corporate_book_region' => 'region', 'corporate_book_category' => 'cat' ) as $tax => $prefix ) {
-        $found_terms = get_the_terms( $book, $tax );
-        foreach ( is_array( $found_terms ) ? $found_terms : array() as $t ) {
-          $filters[]                       = $prefix . '-' . $t->slug;
-          $groups[ $prefix ][ $t->slug ] = $t->name;
+      // A category named like a year ("2026") files the book under that year; otherwise its publish year.
+      $cats      = get_the_terms( $book, 'corporate_book_category' );
+      $cats      = is_array( $cats ) ? $cats : array();
+      $year_name = get_the_date( 'Y', $book );
+      foreach ( $cats as $t ) {
+        if ( preg_match( '/^\d{4}$/', trim( $t->name ) ) ) {
+          $year_name = trim( $t->name );
+        }
+      }
+      $filters = array( sanitize_title( $year_name ) );
+      foreach ( $cats as $t ) {
+        if ( trim( $t->name ) !== $year_name ) {
+          $filters[]                   = 'cat-' . $t->slug;
+          $groups['cat'][ $t->slug ] = $t->name;
         }
       }
       $years[ $year_name ][] = '<div class="cb-library-item" data-filters="' . esc_attr( implode( ' ', $filters ) ) . '">' . $this->book( array( 'id' => $book->ID, 'type' => 'thumb' ) ) . '</div>';
@@ -199,7 +203,7 @@ class Corporate_Book_ShortCode {
       $main .= '<section class="cb-library-year"><h2>' . esc_html( $year ) . '</h2><div class="cb-library-grid">' . implode( '', $cards ) . '</div></section>';
     }
     $rows = '';
-    foreach ( array( 'region' => __( 'Region', '3d-corporate-book' ), 'cat' => __( 'Category', '3d-corporate-book' ) ) as $prefix => $label ) {
+    foreach ( array( 'cat' => __( 'Category', '3d-corporate-book' ) ) as $prefix => $label ) {
       $chips = '';
       foreach ( $groups[ $prefix ] as $slug => $name ) {
         $chips .= $button( $prefix . '-' . $slug, $name );
