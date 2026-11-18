@@ -157,6 +157,14 @@ class Corporate_Book_Reader {
     return $read;
   }
 
+  /** A signed-in reader opened a book: add it to their history (at most one write every 10 minutes per book). */
+  public static function seen( $user_id, $book ) {
+    $read = self::history( $user_id );
+    if ( ! isset( $read[ $book ] ) || $read[ $book ]['time'] < time() - 10 * MINUTE_IN_SECONDS ) {
+      self::remember( $user_id, $book, 0 );
+    }
+  }
+
   public static function remember( $user_id, $book, $page ) {
     $read          = self::history( $user_id );
     $old           = isset( $read[ $book ] ) ? (int) $read[ $book ]['page'] : 0;

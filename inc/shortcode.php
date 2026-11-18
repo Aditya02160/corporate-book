@@ -558,6 +558,11 @@ class Corporate_Book_ShortCode {
 
     }
 
+    // A book on the page counts as opened for "Books you've read", whichever way its PDF is served.
+    if ( 'book' === $type && $post != null && 'corporate_book' === $post->post_type && is_user_logged_in() && class_exists( 'Corporate_Book_Reader' ) ) {
+      Corporate_Book_Reader::seen( get_current_user_id(), $post->ID );
+    }
+
     // Signed-in readers get a line under a locked book: who they are, their subscription, and sign out.
     if ( 'book' === $type && $post != null && is_user_logged_in() && $base->book_is_locked( $post->ID ) ) {
       $html .= Corporate_Book_Account::bar();

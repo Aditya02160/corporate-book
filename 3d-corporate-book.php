@@ -868,7 +868,7 @@ if ( !class_exists( 'Corporate_Book' ) ) {
      */
     public function no_cache_locked_pages() {
       $post = get_queried_object();
-      $books = $post instanceof WP_Post && ( 'corporate_book' === $post->post_type || has_shortcode( $post->post_content, 'corporate_book' ) || has_shortcode( $post->post_content, 'corporate_book_library' ) );
+      $books = $post instanceof WP_Post && ( 'corporate_book' === $post->post_type || has_shortcode( $post->post_content, 'corporate_book' ) || has_shortcode( $post->post_content, 'corporate_book_library' ) || has_shortcode( $post->post_content, 'corporate_book_profile' ) );
       if ( $books || is_post_type_archive( 'corporate_book' ) ) {
         nocache_headers();
         if ( ! defined( 'DONOTCACHEPAGE' ) ) {

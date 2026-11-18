@@ -114,6 +114,10 @@ class Corporate_Book_Protected_PDF {
     $book    = get_post( $book_id );
     $base    = Corporate_Book::get_instance();
     nocache_headers();
+    // "Books you've read": counted here too, so it works without the page scripts (caching or script-optimizer plugins).
+    if ( $book && 'corporate_book' === $book->post_type && get_current_user_id() && class_exists( 'Corporate_Book_Reader' ) ) {
+      Corporate_Book_Reader::seen( get_current_user_id(), $book_id );
+    }
     if ( ! $book || 'corporate_book' !== $book->post_type
          || ( 'publish' !== $book->post_status && ! current_user_can( 'read_post', $book_id ) )
          || ! $base->user_has_access( $book_id ) ) {
