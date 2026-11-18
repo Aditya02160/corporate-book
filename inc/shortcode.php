@@ -200,7 +200,7 @@ class Corporate_Book_ShortCode {
     $main = '';
     foreach ( $years as $year => $cards ) {
       $top  .= $button( sanitize_title( $year ), $year );
-      $main .= '<section class="cb-library-year"><h2>' . esc_html( $year ) . '</h2><div class="cb-library-grid">' . implode( '', $cards ) . '</div></section>';
+      $main .= '<section class="cb-library-year"><div class="cb-gh"><h2>' . esc_html( $year ) . '</h2><span class="cb-rule"></span></div><div class="cb-library-grid">' . implode( '', $cards ) . '</div></section>';
     }
     $rows = '';
     foreach ( array( 'cat' => __( 'Category', '3d-corporate-book' ) ) as $prefix => $label ) {
@@ -215,7 +215,7 @@ class Corporate_Book_ShortCode {
     $search = '<form class="cb-library-search" role="search" method="get" action="' . esc_url( remove_query_arg( 'cb_q' ) ) . '">'
       . Corporate_Book_Account::query_fields( remove_query_arg( 'cb_q' ) )
       . '<input type="search" name="cb_q" value="' . esc_attr( $query ) . '" placeholder="' . esc_attr__( 'Search magazines…', '3d-corporate-book' ) . '" aria-label="' . esc_attr__( 'Search magazines', '3d-corporate-book' ) . '"><button type="submit">' . esc_html__( 'Search', '3d-corporate-book' ) . '</button></form>';
-    return '<div class="cb-library"><div class="cb-library-bar">' . $search
+    return '<div class="cb-library"><div class="cb-library-bar"><div class="cb-side-h"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M7 12h10M10 18h4"/></svg>' . esc_html__( 'Filter', '3d-corporate-book' ) . '</div>' . $search
       . '<div class="cb-chip-row"><span class="cb-chip-label">' . esc_html__( 'Year', '3d-corporate-book' ) . '</span><div class="cb-library-years">' . $top . '</div></div>'
       . $rows
       . '</div><div class="cb-library-main">' . $note . $main . '</div></div>';
@@ -522,7 +522,8 @@ class Corporate_Book_ShortCode {
         $page_link = isset( $attr['link'] ) && 'page' === $attr['link'] && is_numeric( $post_id ) && is_post_type_viewable( 'corporate_book' ) ? get_permalink( (int) $post_id ) : '';
         if ( $page_link ) {
           // All Magazines: the cover and button lead to the magazine's own page, which has the reader and the prices.
-          $cover = empty( $thumb_url ) ? '' : '<a class="cb-cover" href="' . esc_url( $page_link ) . '"><img src="' . esc_url( $thumb_url ) . '" alt="' . esc_attr( $title ) . '" loading="lazy"/></a>';
+          // 3D book: cover, spine shade, page edges and a light sheen that sweeps across on hover.
+          $cover = empty( $thumb_url ) ? '' : '<a class="cb-cover cb-book" href="' . esc_url( $page_link ) . '"><span class="cb-book-in"><img src="' . esc_url( $thumb_url ) . '" alt="' . esc_attr( $title ) . '" loading="lazy"/><span class="cb-spine"></span><span class="cb-pages"></span><span class="cb-sheen"></span></span></a>';
           return '<div class="cb-thumb-card">' . $cover . '<div class="cb-thumb-title"><a href="' . esc_url( $page_link ) . '">' . esc_html( $title ) . '</a></div>' . $this->free_note( $post_id, 'cb-free-badge' )
             . '<div class="cb-thumb-actions"><a class="cb-preview-button" href="' . esc_url( $page_link ) . '">' . esc_html( $base->get_translate( 'text_preview' ) ) . '</a></div></div>';
         }
