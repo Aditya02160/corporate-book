@@ -42,7 +42,19 @@
     control.disabled = true;
     say(box, '');
     request().then(function (data) {
-      if (data && data.reload) {
+      if (data && data.otp) {
+        // Sign up step 2: show the code box; the next submit sends the code.
+        var code = box.querySelector('.cb-otp');
+        if (code) {
+          code.hidden = false;
+          code.disabled = false;
+          code.required = true;
+          code.focus();
+          control.textContent = cfg.verify || control.textContent;
+        }
+        control.disabled = false;
+        say(box, data.message);
+      } else if (data && data.reload) {
         say(box, data.message);
         setTimeout(function () {
           window.location.reload();
@@ -151,7 +163,7 @@
     event.preventDefault();
     var data = { action: form.getAttribute('data-action') };
     Array.prototype.forEach.call(form.elements, function (field) {
-      if (field.name) {
+      if (field.name && !field.disabled) {
         data[field.name] = field.value;
       }
     });

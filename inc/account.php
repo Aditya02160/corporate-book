@@ -52,6 +52,8 @@ class Corporate_Book_Account {
     add_action( 'wp_ajax_corporate_book_order', array( $this, 'order' ) );
     add_action( 'wp_ajax_corporate_book_verify', array( $this, 'verify' ) );
     add_action( 'wp_ajax_corporate_book_autopay_cancel', array( $this, 'autopay_cancel' ) );
+    add_action( 'phpmailer_init', array( $this, 'smtp' ) );
+    add_action( 'wp_ajax_corporate_book_test_email', array( $this, 'test_email' ) );
     add_shortcode( 'corporate_book_account', array( $this, 'shortcode' ) );
     add_shortcode( 'corporate_book_subscription', array( $this, 'subscription_page' ) );
     add_action( 'wp_body_open', array( $this, 'site_header' ) );
@@ -143,6 +145,7 @@ class Corporate_Book_Account {
           'nonce'     => wp_create_nonce( self::NONCE ),
           'failed'    => __( 'Something went wrong. Try again.', '3d-corporate-book' ),
           'cancelled' => __( 'Payment cancelled.', '3d-corporate-book' ),
+          'verify'     => __( 'Verify and create account', '3d-corporate-book' ),
           'autopayOff' => __( 'Turn off auto-renew? You keep reading until your paid period ends. No refund and no more charges.', '3d-corporate-book' ),
         )
       );
@@ -179,6 +182,7 @@ class Corporate_Book_Account {
           . '<input type="text" name="job_title" autocomplete="organization-title" placeholder="' . esc_attr__( 'Job title', '3d-corporate-book' ) . '" aria-label="' . esc_attr__( 'Job title', '3d-corporate-book' ) . '"/>'
           . '<input type="text" name="city" autocomplete="address-level2" placeholder="' . esc_attr__( 'City', '3d-corporate-book' ) . '" aria-label="' . esc_attr__( 'City', '3d-corporate-book' ) . '"/>'
           . '<input type="password" name="pwd" required minlength="8" autocomplete="new-password" placeholder="' . esc_attr__( 'Password (8 characters or more)', '3d-corporate-book' ) . '" aria-label="' . esc_attr__( 'Password', '3d-corporate-book' ) . '"/>'
+          . '<input type="text" name="otp" class="cb-otp" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="' . esc_attr__( '6-digit code from your email', '3d-corporate-book' ) . '" aria-label="' . esc_attr__( 'Verification code', '3d-corporate-book' ) . '" hidden disabled/>'
           . '</div>'
           . '<button type="submit" class="cb-lock-signin">' . esc_html__( 'Create account', '3d-corporate-book' ) . '</button>'
           . '<p class="cb-account-links"><a href="#" class="cb-show-signin">' . esc_html__( 'I already have an account', '3d-corporate-book' ) . '</a></p></form>';
@@ -754,6 +758,35 @@ class Corporate_Book_Account {
     if ( '' === $first ) {
       wp_send_json_error( __( 'Please enter your name.', '3d-corporate-book' ), 400 );
     }
+    if ( 'true' === self::config( 'signup_otp' ) ) {
+      $slot = 'cb_otp_' . md5( strtolower( $email ) );
+      $code = isset( $_POST['otp'] ) ? preg_replace( '/\D/', '', sanitize_text_field( wp_unslash( $_POST['otp'] ) ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Missing -- checked above.
+      $sent = get_transient( $slot );
+      if ( '' === $code || ! is_array( $sent ) ) {
+        // Step 1: email a 6-digit code (valid 10 minutes, 5 tries).
+        $otp = (string) wp_rand( 100000, 999999 );
+        set_transient( $slot, array( 'hash' => wp_hash( $otp . '|' . strtolower( $email ) ), 'tries' => 0 ), 10 * MINUTE_IN_SECONDS );
+        $site = wp_specialchars_decode( get_bloginfo( 'name' ), ENT_QUOTES );
+        /* translators: 1: code, 2: site name */
+        $ok = wp_mail( $email, sprintf( __( '%1$s is your %2$s verification code', '3d-corporate-book' ), $otp, $site ), sprintf( __( "Hi %1\$s,\n\nYour verification code is: %2\$s\n\nIt is valid for 10 minutes. If you did not sign up, ignore this email.", '3d-corporate-book' ), $first, $otp ) );
+        if ( ! $ok ) {
+          delete_transient( $slot );
+          wp_send_json_error( __( 'We could not send the code to this email. Check the address and try again.', '3d-corporate-book' ), 502 );
+        }
+        /* translators: %s: email */
+        wp_send_json_success( array( 'otp' => true, 'message' => sprintf( __( 'We sent a 6-digit code to %s. Enter it below to finish.', '3d-corporate-book' ), $email ) ) );
+      }
+      if ( $sent['tries'] >= 5 ) {
+        delete_transient( $slot );
+        wp_send_json_error( __( 'Too many wrong codes. Press the button again to get a new code.', '3d-corporate-book' ), 400 );
+      }
+      if ( ! hash_equals( $sent['hash'], wp_hash( $code . '|' . strtolower( $email ) ) ) ) {
+        ++$sent['tries'];
+        set_transient( $slot, $sent, 10 * MINUTE_IN_SECONDS );
+        wp_send_json_error( __( 'That code is not right. Check the email and try again.', '3d-corporate-book' ), 400 );
+      }
+      delete_transient( $slot );
+    }
     $user_id = wp_insert_user( array( 'user_login' => $email, 'user_email' => $email, 'user_pass' => $password, 'role' => self::ROLE, 'first_name' => $first, 'last_name' => $last, 'display_name' => trim( $first . ' ' . $last ) ) );
     if ( is_wp_error( $user_id ) ) {
       wp_send_json_error( $user_id->get_error_message(), 400 );
@@ -1162,6 +1195,52 @@ class Corporate_Book_Account {
         update_user_meta( $user_id, 'cb_autopay', $auto );
       }
     }
+  }
+
+  /**
+   * Sends every site email through the SMTP account in Global Settings, when one is set.
+   *
+   * @param PHPMailer\PHPMailer\PHPMailer $mailer Mailer.
+   */
+  public function smtp( $mailer ) {
+    $host = self::config( 'smtp_host' );
+    if ( '' === $host ) {
+      return;
+    }
+    $mailer->isSMTP();
+    $mailer->Host     = $host; // phpcs:ignore WordPress.NamingConventions.ValidVariableName.UsedPropertyNotSnakeCase -- PHPMailer API.
+    $mailer->Port     = (int) self::config( 'smtp_port' ) ? (int) self::config( 'smtp_port' ) : 587; // phpcs:ignore WordPress.NamingConventions.ValidVariableName.UsedPropertyNotSnakeCase
+    $secure           = self::config( 'smtp_secure' );
+    $mailer->SMTPSecure = 'none' === $secure ? '' : $secure; // phpcs:ignore WordPress.NamingConventions.ValidVariableName.UsedPropertyNotSnakeCase
+    $mailer->SMTPAutoTLS = 'none' !== $secure; // phpcs:ignore WordPress.NamingConventions.ValidVariableName.UsedPropertyNotSnakeCase
+    $user = self::config( 'smtp_user' );
+    if ( '' !== $user ) {
+      $mailer->SMTPAuth = true; // phpcs:ignore WordPress.NamingConventions.ValidVariableName.UsedPropertyNotSnakeCase
+      $mailer->Username = $user; // phpcs:ignore WordPress.NamingConventions.ValidVariableName.UsedPropertyNotSnakeCase
+      $mailer->Password = str_replace( ' ', '', self::config( 'smtp_pass' ) ); // phpcs:ignore WordPress.NamingConventions.ValidVariableName.UsedPropertyNotSnakeCase -- Google shows app passwords in groups of 4.
+      if ( is_email( $user ) ) {
+        $name = self::config( 'smtp_from_name' );
+        $mailer->setFrom( $user, '' !== $name ? $name : wp_specialchars_decode( get_bloginfo( 'name' ), ENT_QUOTES ), false );
+      }
+    }
+  }
+
+  /** Admin: "Send test email" next to the email settings. */
+  public function test_email() {
+    check_ajax_referer( 'corporate_book_test_email' );
+    if ( ! current_user_can( 'manage_options' ) ) {
+      wp_send_json_error( 'no', 403 );
+    }
+    $error = '';
+    $catch = function ( $e ) use ( &$error ) {
+      $error = $e->get_error_message();
+    };
+    add_action( 'wp_mail_failed', $catch );
+    $to = wp_get_current_user()->user_email;
+    $ok = wp_mail( $to, __( 'Test email from Corporate Book', '3d-corporate-book' ), __( 'Your email settings work. Sign-up codes and receipts will be sent this way.', '3d-corporate-book' ) );
+    remove_action( 'wp_mail_failed', $catch );
+    /* translators: %s: email */
+    $ok ? wp_send_json_success( sprintf( __( 'Sent to %s. Check the inbox (and spam).', '3d-corporate-book' ), $to ) ) : wp_send_json_error( __( 'Not sent', '3d-corporate-book' ) . ( $error ? ': ' . $error : '' ) );
   }
 
   /** "Renew automatically" tick shown with plan buttons (on by default). */

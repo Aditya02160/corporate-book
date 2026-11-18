@@ -580,6 +580,37 @@ async function waitFor(ready, ms) {
       await Promise.all([lost.waitForNavigation({ timeout: 30000 }), lost.click('form.cb-reset button[type="submit"]')]).catch(() => {});
     }
     check(await lost.$('.cb-profile form.cb-profile-details') !== null, 'resetting the password signs the reader in on My account');
+    // Email check on sign up: a 6-digit code is emailed; the account is made only with the right code.
+    await saveSettings({ signup_otp: 'true' }).catch(() => '');
+    const oc = await browser.newContext(); const o = await oc.newPage(); o.setDefaultTimeout(90000);
+    let otpForm = false;
+    for (let i = 0; i < 10 && !otpForm; i++) {
+      await o.goto(`${BASE}/?pagename=account-test`).catch(() => {});
+      await o.click('.cb-show-signup').catch(() => {});
+      otpForm = await o.$('.cb-signup [name="first_name"]') !== null;
+    }
+    await o.fill('.cb-signup [name="first_name"]', 'Otto').catch(() => {});
+    await o.fill('.cb-signup [name="email"]', 'otp-reader@example.com').catch(() => {});
+    await o.fill('.cb-signup [name="pwd"]', 'long-password-2').catch(() => {});
+    await o.click('.cb-signup button[type="submit"]').catch(() => {});
+    await o.waitForSelector('.cb-signup .cb-otp:not([hidden])', { timeout: 30000 }).catch(() => {});
+    const otpMail = (() => { try { return fs.readFileSync(path.join(fixtures, 'mail.txt'), 'utf8'); } catch (e) { return ''; } })();
+    const otpCode = (otpMail.match(/^(\d{6}) is your/) || [])[1] || '';
+    check(/^\d{6}$/.test(otpCode) && await o.$('.cb-signout') === null, `sign up emails a 6-digit code before making the account (${otpMail.slice(0, 40)})`);
+    await o.fill('.cb-signup .cb-otp', otpCode === '000000' ? '111111' : '000000').catch(() => {});
+    await o.click('.cb-signup button[type="submit"]').catch(() => {});
+    await o.waitForFunction(() => /not right/i.test(document.querySelector('.cb-account-message').textContent), null, { timeout: 30000 }).catch(() => {});
+    check(/not right/i.test(await o.$eval('.cb-account-message', (e) => e.textContent).catch(() => '')), 'a wrong code is refused');
+    await o.fill('.cb-signup .cb-otp', otpCode).catch(() => {});
+    await Promise.all([o.waitForNavigation({ timeout: 30000 }), o.click('.cb-signup button[type="submit"]')]).catch(() => {});
+    let otpIn = false;
+    for (let i = 0; i < 10 && !otpIn; i++) {
+      await o.goto(`${BASE}/?pagename=account-test`).catch(() => {});
+      otpIn = await o.$('.cb-signout') !== null;
+    }
+    check(otpIn, 'the right code creates the account and signs the reader in');
+    await oc.close();
+    await saveSettings({ signup_otp: 'false' }).catch(() => '');
     const hook = await fetch(`${BASE}/wp-admin/admin-ajax.php?action=corporate_book_webhook`, { method: 'POST', body: '{"event":"payment.captured"}', headers: { 'X-Razorpay-Signature': 'bad' } });
     check(hook.status === 401, `Razorpay webhook rejects a bad signature (${hook.status})`);
     await page.goto(`${BASE}/wp-admin/post-new.php?post_type=corporate_book`);
