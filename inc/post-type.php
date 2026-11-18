@@ -441,7 +441,13 @@ class Corporate_Book_Post_Type {
       $trust .= '<div><b aria-hidden="true">' . $t[0] . '</b><span>' . esc_html( $t[1] ) . '<br>' . esc_html( $t[2] ) . '</span></div>';
     }
 
-    $share = '<button type="button" class="cb-ed-share" title="' . esc_attr__( 'Copy link', '3d-corporate-book' ) . '" onclick="navigator.clipboard&&navigator.clipboard.writeText(location.href.split(\'#\')[0]);this.classList.add(\'cb-done\')">⤴ ' . esc_html__( 'Share', '3d-corporate-book' ) . '</button>';
+    // Share: the phone's share sheet when there is one, else copy the link (with a fallback for http sites and old browsers).
+    $share = '<button type="button" class="cb-ed-share" data-done="' . esc_attr__( 'Link copied', '3d-corporate-book' ) . '" title="' . esc_attr__( 'Share', '3d-corporate-book' ) . '">&#x2934; ' . esc_html__( 'Share', '3d-corporate-book' ) . '</button>'
+      . '<script data-no-optimize="1" data-cfasync="false" data-no-defer="1">document.addEventListener("click",function(e){var b=e.target.closest(".cb-ed-share");if(!b){return;}e.preventDefault();var u=location.href.split("#")[0],t=document.title;'
+      . 'function done(){var o=b.innerHTML;b.textContent=b.getAttribute("data-done");b.classList.add("cb-done");setTimeout(function(){b.innerHTML=o;b.classList.remove("cb-done");},2000);}'
+      . 'function copy(){var a=document.createElement("textarea");a.value=u;a.setAttribute("readonly","");a.style.position="fixed";a.style.opacity="0";document.body.appendChild(a);a.select();var ok=false;try{ok=document.execCommand("copy");}catch(x){}document.body.removeChild(a);ok?done():window.prompt(b.getAttribute("data-done"),u);}'
+      . 'if(navigator.share&&matchMedia("(pointer:coarse)").matches){navigator.share({title:t,url:u}).catch(function(){});return;}'
+      . 'if(navigator.clipboard&&window.isSecureContext){navigator.clipboard.writeText(u).then(done,copy);}else{copy();}});</script>';
     $custom = isset( $data['custom_html'] ) && '' !== trim( $data['custom_html'] ) ? '<section class="cb-ed-custom">' . do_shortcode( $data['custom_html'] ) . '</section>' : '';
 
     return '<div class="cb-edition"><div class="cb-ed-cover">' . do_shortcode( '[corporate_book id="' . (int) $book_id . '" type="thumb"][/corporate_book]' ) . '</div>'
