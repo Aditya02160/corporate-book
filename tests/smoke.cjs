@@ -505,7 +505,7 @@ async function waitFor(ready, ms) {
     await a.click('.cb-autopay-off').catch(() => {});
     await a.waitForTimeout(2500);
     const autoOff = await myAccount(async () => /Auto-renew is off/.test(await a.$eval('.cb-autopay-status', (e) => e.textContent).catch(() => '')));
-    check(autoOff && /Subscription active until/.test(await a.$eval('.cb-account-status', (e) => e.textContent).catch(() => '')), 'turning auto-renew off keeps access until the paid date');
+    check(autoOff && /subscription is active until/i.test(await a.$eval('.cb-account-status', (e) => e.textContent).catch(() => '')), 'turning auto-renew off keeps access until the paid date');
     await page.goto(`${BASE}/wp-admin/edit.php?post_type=corporate_book`);
     const bulkId = new URL(await page.locator('a.row-title', { hasText: /^Bulk Book$/ }).first().getAttribute('href')).searchParams.get('post');
     let subscriberPdf = 0;
