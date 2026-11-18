@@ -380,10 +380,21 @@ class Corporate_Book_Post_Type {
     $money   = array( 'Corporate_Book_Account', 'price' );
 
     // Plans: one tile each; Subscribe pays with Razorpay for signed-in readers, or opens the Subscription page.
-    $tiles = '';
-    foreach ( Corporate_Book_Account::plans() as $i => $plan ) {
-      $month  = $plan['days'] >= 300 ? '<small>' . esc_html( sprintf( /* translators: %s: price */ __( '%s/month', '3d-corporate-book' ), call_user_func( $money, round( $plan['price'] / 12 ) ) ) ) . '</small>' : '';
-      $tiles .= '<button type="button" class="cb-ed-tile' . ( 0 === $i ? ' cb-ed-picked' : '' ) . '" data-plan="' . (int) $i . '"><span>' . esc_html( $plan['name'] ) . '</span><strong>' . esc_html( call_user_func( $money, $plan['price'] ) ) . '</strong>' . $month . '</button>';
+    $tiles   = '';
+    $plans   = Corporate_Book_Account::plans();
+    $monthly = 0;
+    foreach ( $plans as $plan ) {
+      if ( $plan['days'] <= 31 ) {
+        $monthly = $plan['price'] * 30 / $plan['days'];
+      }
+    }
+    foreach ( $plans as $i => $plan ) {
+      $per_month = $plan['price'] * 30 / $plan['days'];
+      $save      = $monthly > 0 && $plan['days'] > 31 ? (int) round( 100 * ( 1 - $per_month / $monthly ) ) : 0;
+      $month     = $plan['days'] > 31 ? '<small>' . esc_html( sprintf( /* translators: %s: price */ __( '%s/month', '3d-corporate-book' ), call_user_func( $money, round( $per_month ) ) ) ) . '</small>' : '<small>' . esc_html( sprintf( /* translators: %d: days */ _n( '%d day of access', '%d days of access', $plan['days'], '3d-corporate-book' ), $plan['days'] ) ) . '</small>';
+      $tiles    .= '<button type="button" class="cb-ed-tile' . ( 0 === $i ? ' cb-ed-picked' : '' ) . '" data-plan="' . (int) $i . '">'
+        . ( $save > 0 ? '<em class="cb-ed-best">' . esc_html( sprintf( /* translators: %d: percent */ __( 'Best value · Save %d%%', '3d-corporate-book' ), $save ) ) . '</em>' : '' )
+        . '<i class="cb-ed-tick" aria-hidden="true"></i><span>' . esc_html( $plan['name'] ) . '</span><strong>' . esc_html( call_user_func( $money, $plan['price'] ) ) . '</strong>' . $month . '</button>';
     }
     $buy_plan = '';
     if ( $tiles ) {
@@ -410,23 +421,32 @@ class Corporate_Book_Post_Type {
 
     $trust = '';
     foreach ( array(
-        array( '⊘', __( 'Cancel anytime', '3d-corporate-book' ), __( 'No commitments', '3d-corporate-book' ) ),
-        array( '⚡', __( 'Digital subscription', '3d-corporate-book' ), __( 'Instant access', '3d-corporate-book' ) ),
-        array( '✔', __( 'Verified secure', '3d-corporate-book' ), __( 'payment', '3d-corporate-book' ) ),
+        array( '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M6 18 18 6"/></svg>', __( 'Cancel anytime', '3d-corporate-book' ), __( 'No commitments', '3d-corporate-book' ) ),
+        array( '<svg viewBox="0 0 24 24"><path d="M13 2 4 14h7l-1 8 9-12h-7z"/></svg>', __( 'Instant access', '3d-corporate-book' ), __( 'Read on any device', '3d-corporate-book' ) ),
+        array( '<svg viewBox="0 0 24 24"><path d="M12 2 4 5v6c0 5 3.4 9.4 8 11 4.6-1.6 8-6 8-11V5z"/><path d="m8.5 12 2.5 2.5 4.5-5"/></svg>', __( 'Secure payment', '3d-corporate-book' ), __( 'Powered by Razorpay', '3d-corporate-book' ) ),
     ) as $t ) {
       $trust .= '<div><b aria-hidden="true">' . $t[0] . '</b><span>' . esc_html( $t[1] ) . '<br>' . esc_html( $t[2] ) . '</span></div>';
     }
-    $gift = $sub_url && $tiles ? '<a class="cb-ed-gift" href="' . esc_url( $sub_url ) . '">🎁 ' . esc_html( sprintf( /* translators: %s: book title */ __( 'Gift %s', '3d-corporate-book' ), $site ) ) . '</a>' : '';
 
     $share = '<button type="button" class="cb-ed-share" title="' . esc_attr__( 'Copy link', '3d-corporate-book' ) . '" onclick="navigator.clipboard&&navigator.clipboard.writeText(location.href.split(\'#\')[0]);this.classList.add(\'cb-done\')">⤴ ' . esc_html__( 'Share', '3d-corporate-book' ) . '</button>';
     $custom = isset( $data['custom_html'] ) && '' !== trim( $data['custom_html'] ) ? '<section class="cb-ed-custom">' . do_shortcode( $data['custom_html'] ) . '</section>' : '';
 
     return '<div class="cb-edition"><div class="cb-ed-cover">' . do_shortcode( '[corporate_book id="' . (int) $book_id . '" type="thumb"][/corporate_book]' ) . '</div>'
-      . '<div class="cb-ed-main"><h1 class="cb-ed-title">' . esc_html( $site ) . ' <span>- ' . esc_html( $title ) . '</span></h1>'
+      . '<div class="cb-ed-main">' . self::edition_tags( $book_id ) . '<h1 class="cb-ed-title">' . esc_html( $site ) . ' <span>' . esc_html( $title ) . '</span></h1>'
       . '<div class="cb-ed-tools">' . ( class_exists( 'Corporate_Book_Reader' ) ? Corporate_Book_Reader::save_button( $book_id ) : '' ) . $share . '</div>'
       . ( $plans_box || $issue ? '<div class="cb-ed-box">' . $plans_box . $or . $issue . '</div>' : '' )
-      . $gift . '<div class="cb-ed-trust">' . $trust . '</div></div></div>' . $custom
+      . '<div class="cb-ed-trust">' . $trust . '</div></div></div>' . $custom
       . '<script>document.addEventListener("click",function(e){var t=e.target.closest(".cb-ed-tile[data-plan]");if(!t){return;}var box=t.closest(".cb-ed-block");box.querySelectorAll(".cb-ed-tile").forEach(function(x){x.classList.toggle("cb-ed-picked",x===t);});var b=box.querySelector(".cb-ed-subscribe[data-plan]");if(b){b.setAttribute("data-plan",t.getAttribute("data-plan"));}});</script>';
+  }
+
+  /** Category chips above an edition's title. */
+  private static function edition_tags( $book_id ) {
+    $terms = get_the_terms( $book_id, 'corporate_book_category' );
+    $chips = '';
+    foreach ( is_array( $terms ) ? $terms : array() as $t ) {
+      $chips .= '<span>' . esc_html( $t->name ) . '</span>';
+    }
+    return '<div class="cb-ed-tags"><span class="cb-ed-new">' . esc_html__( 'Digital + Print edition', '3d-corporate-book' ) . '</span>' . $chips . '</div>';
   }
 
   /**
