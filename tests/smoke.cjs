@@ -480,7 +480,15 @@ async function waitFor(ready, ms) {
     await openAccount(has('.cb-account-status'));
     check(until !== '' && await a.$eval('.cb-account-status', (e) => e.textContent).catch(() => '') === until, 'replaying the same payment does not extend the subscription');
     // Auto-renew: a Razorpay subscription instead of a one-time order; the reader can turn it off and keep access.
-    check(await a.$('.cb-profile-plans .cb-autopay-check:checked') !== null, 'My account offers "Renew automatically", ticked by default');
+    const myAccount = async (ready) => {
+      for (let i = 0; i < 10; i++) {
+        await a.goto(`${BASE}/?pagename=my-account`);
+        if (await ready()) return true;
+        await a.waitForTimeout(500);
+      }
+      return false;
+    };
+    check(await myAccount(has('.cb-profile-plans .cb-autopay-check:checked')), 'My account offers "Renew automatically", ticked by default');
     const sub = (await ajax({ action: 'corporate_book_order', plan: '0', autopay: '1' })).data || {};
     check(/^sub_TEST39900A/.test(sub.subscription_id || '') && !sub.order_id, `auto-renew starts a Razorpay subscription (${sub.subscription_id})`);
     const subPay = 'pay_TEST39900A' + String(sub.subscription_id).slice(-6);
@@ -491,12 +499,12 @@ async function waitFor(ready, ms) {
       subPaid = await ajax({ action: 'corporate_book_verify', subscription_id: String(sub.subscription_id), payment_id: subPay, signature: subSig });
       if (subPaid.success !== true) await a.waitForTimeout(500);
     }
-    const autoOn = await openAccount(has('.cb-autopay-off'));
+    const autoOn = await myAccount(has('.cb-autopay-off'));
     check(subPaid.success === true && autoOn && await a.$('.cb-profile-plans') === null, 'a verified auto-renew payment shows "Auto-renew is on" with a turn-off button, and no second plan purchase');
     a.once('dialog', (dl) => dl.accept());
     await a.click('.cb-autopay-off').catch(() => {});
     await a.waitForTimeout(2500);
-    const autoOff = await openAccount(async () => /Auto-renew is off/.test(await a.$eval('.cb-autopay-status', (e) => e.textContent).catch(() => '')));
+    const autoOff = await myAccount(async () => /Auto-renew is off/.test(await a.$eval('.cb-autopay-status', (e) => e.textContent).catch(() => '')));
     check(autoOff && /Subscription active until/.test(await a.$eval('.cb-account-status', (e) => e.textContent).catch(() => '')), 'turning auto-renew off keeps access until the paid date');
     await page.goto(`${BASE}/wp-admin/edit.php?post_type=corporate_book`);
     const bulkId = new URL(await page.locator('a.row-title', { hasText: /^Bulk Book$/ }).first().getAttribute('href')).searchParams.get('post');
@@ -725,7 +733,7 @@ async function waitFor(ready, ms) {
     const m = await fx.newPage();
     m.setDefaultTimeout(90000);
     const fxErrors = []; m.on('pageerror', (e) => fxErrors.push(e.message));
-    m.on('dialog', (d) => d.accept());
+    m.on('dialog', (d) => d.accept(d.type() === 'prompt' ? 'Pages were torn' : undefined));
     await m.goto(`${BASE}/wp-login.php`);
     await m.fill('#user_login', 'member'); await m.fill('#user_pass', 'password');
     await Promise.all([m.waitForNavigation(), m.click('#wp-submit')]);
@@ -806,7 +814,6 @@ async function waitFor(ready, ms) {
       returnBtn = await m.$(`.cb-return-order[data-order="${giftNo}"]`);
     }
     check(!!returnBtn && /7 days left/.test(await m.$eval(`.cb-return-order[data-order="${giftNo}"]`, (e) => e.textContent).catch(() => '')), 'delivered orders show "Return (7 days left)" in My account');
-    m.once('dialog', (dl) => dl.accept('Pages were torn'));
     await m.click(`.cb-return-order[data-order="${giftNo}"]`).catch(() => {});
     await m.waitForTimeout(3500);
     let returned = '';
