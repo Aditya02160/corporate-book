@@ -590,6 +590,7 @@ async function waitFor(ready, ms) {
       otpForm = await o.$('.cb-signup [name="first_name"]') !== null;
     }
     await o.fill('.cb-signup [name="first_name"]', 'Otto').catch(() => {});
+    await o.fill('.cb-signup [name="last_name"]', 'Mann').catch(() => {});
     await o.fill('.cb-signup [name="email"]', 'otp-reader@example.com').catch(() => {});
     await o.fill('.cb-signup [name="pwd"]', 'long-password-2').catch(() => {});
     await o.click('.cb-signup button[type="submit"]').catch(() => {});
