@@ -482,7 +482,7 @@ async function waitFor(ready, ms) {
     // Auto-renew: a Razorpay subscription instead of a one-time order; the reader can turn it off and keep access.
     const myAccount = async (ready) => {
       for (let i = 0; i < 10; i++) {
-        await a.goto(`${BASE}/?pagename=my-account`);
+        await a.goto(`${BASE}/?pagename=my-account`).catch(() => {}); // a reload from the last click can abort this
         if (await ready()) return true;
         await a.waitForTimeout(500);
       }
