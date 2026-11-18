@@ -2772,3 +2772,24 @@ input.df-search-text:not(:placeholder-shown) ~ a.df-search-clear {
 .cb-profile-plans .cb-autopay{justify-content:flex-start}
 .cb-autopay-status{margin:8px 0;padding:10px 12px;border-radius:10px;background:#f0fdf4;color:#166534;font-size:14px}
 .cb-autopay-off{margin-left:6px;padding:4px 10px;border:1px solid #166534;border-radius:999px;background:#fff;color:#166534;font-size:12px;cursor:pointer}
+
+/* Edition page v3: full width, medium sizes */
+.cb-edition{width:100vw;max-width:100vw;margin-left:calc(50% - 50vw);margin-right:calc(50% - 50vw);box-sizing:border-box;padding:40px max(24px,calc((100vw - 1320px)/2));border-radius:0;grid-template-columns:minmax(220px,320px) 1fr;gap:40px}
+.cb-ed-cover .cb-cover img{max-width:320px}
+.cb-ed-cover .cb-preview-button{padding:11px 22px!important;font-size:13px}
+.cb-ed-tags span{font-size:11px;padding:3px 10px}
+.cb-ed-title{font-size:30px}
+.cb-ed-title span{font-size:17px}
+.cb-ed-block{padding:20px 22px}
+.cb-ed-block h2{font-size:21px}
+.cb-ed-lead{font-size:14px}
+.cb-ed-tile{min-width:140px;padding:14px 16px 10px}
+.cb-ed-tile strong{font-size:23px}
+.cb-ed-tile span,.cb-ed-tile small{font-size:12px}
+.cb-ed-best{font-size:10px;top:-10px}
+.cb-ed-subscribe{padding:12px 24px!important;font-size:14px}
+.cb-ed-box .cb-add-cart{padding:11px 22px;font-size:14px}
+.cb-ed-trust>div{padding:12px;font-size:12px}
+.cb-ed-trust b{flex-basis:34px;width:34px;height:34px}
+@media(max-width:800px){.cb-edition{grid-template-columns:1fr;padding:20px 16px}.cb-ed-title{font-size:24px}.cb-ed-cover .cb-cover img{max-width:260px}}
+body:has(.cb-edition){overflow-x:clip}
