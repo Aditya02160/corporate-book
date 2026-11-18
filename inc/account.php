@@ -324,7 +324,7 @@ class Corporate_Book_Account {
       }
     }
     $query = isset( $_GET['cb_q'] ) ? sanitize_text_field( wp_unslash( $_GET['cb_q'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- public search.
-    echo '<div class="cb-site-head"><div class="cb-site-head-in"><a class="cb-site-name" href="' . esc_url( home_url( '/' ) ) . '">' . esc_html( get_bloginfo( 'name' ) ) . '</a>'
+    echo '<div class="cb-site-head"><div class="cb-site-head-in"><a class="cb-site-name" href="' . esc_url( $books ? $books : home_url( '/' ) ) . '"><span class="cb-site-mark" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 5.5C4 4.7 4.7 4 5.5 4H11v16H5.5C4.7 20 4 19.3 4 18.5zM13 4h5.5c.8 0 1.5.7 1.5 1.5v13c0 .8-.7 1.5-1.5 1.5H13z"/></svg></span><span class="cb-site-text">' . esc_html__( 'Business Magazine', '3d-corporate-book' ) . '</span></a>'
       . ( $books ? '<form class="cb-head-search" role="search" method="get" action="' . esc_url( $books ) . '">' . self::query_fields( $books ) . '<input type="search" name="cb_q" value="' . esc_attr( $query ) . '" placeholder="' . esc_attr__( 'Search books…', '3d-corporate-book' ) . '" aria-label="' . esc_attr__( 'Search books', '3d-corporate-book' ) . '"><button type="submit">' . esc_html__( 'Search', '3d-corporate-book' ) . '</button></form>' : '' )
       . '<nav class="cb-head-nav" aria-label="' . esc_attr__( 'Corporate Book', '3d-corporate-book' ) . '">' . $nav . '</nav></div></div>'; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- built from escaped parts.
   }
