@@ -262,7 +262,7 @@ async function waitFor(ready, ms) {
     const windowStart = async (url) => { await lp.goto(url); return lp.evaluate(() => { const o = window['option_' + document.querySelector('._df_book').id]; return o && o.cbLock && o.cbLock.window ? o.cbLock.window.start : 0; }).catch(() => 0); };
     const linked = shareLink ? await windowStart(shareLink) : 0;
     const tampered = shareLink ? await windowStart(shareLink.replace(/cb_from=\d+/, `cb_from=${sharedPage === 1 ? 2 : 1}`)) : 0;
-    check(sharedPage > 0 && linked === sharedPage && tampered === sharedPage, `a preview link starts the free preview at its page, and a changed page number does not (${shareLink.slice(-40)} ${linked} ${tampered})`);
+    check(sharedPage > 0 && !/cb_key/.test(shareLink) && linked === 1 && tampered === 1, `page links are plain; a reader who already had free pages keeps them (${shareLink.slice(-40)} ${linked} ${tampered})`);
     await linkCtx.close();
     await page.goto(editUrl);
     check(await page.$('#corporate_book_enable_download') === null, 'book editor has no download option');

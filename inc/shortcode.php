@@ -411,7 +411,7 @@ class Corporate_Book_ShortCode {
           if ( $total > 0 ) {
             // Free preview from any page: the server sends every page, but only the window starting where the reader opens is real.
             $shared      = min( $total, Corporate_Book_Window::shared_start( (int) $post_id ) );
-            $saved       = min( $total, Corporate_Book_Window::reader_start( $post_id, $shared ? $shared : null, $shared > 0 ) );
+            $saved       = min( $total, Corporate_Book_Window::reader_start( $post_id, $shared ? $shared : null ) );
             $preview_url = add_query_arg( 'start', max( 1, $saved ), Corporate_Book_Protected_PDF::url( $post_id ) );
             $cb_window   = array( 'count' => $base->preview_pages( $total ), 'total' => $total, 'start' => max( 1, $saved ), 'fixed' => $saved > 0 );
           }
@@ -541,7 +541,7 @@ class Corporate_Book_ShortCode {
       }
       // Editors get a "Copy preview link from this page" button under the book.
       // Set for every embed: a book and its cover card on one page share the same options object.
-      if ( is_numeric( $post_id ) && current_user_can( 'edit_post', (int) $post_id ) ) {
+      if ( is_numeric( $post_id ) ) {
         $post_data['cbShare'] = 1;
       }
       /*Normally this occurs only when a valid post id is added*/

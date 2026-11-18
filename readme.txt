@@ -104,7 +104,7 @@ Readers can buy printed books as well as the digital subscription.
 * **Coupons:** Global Settings > Shipping & Selling > Coupon Codes, one per line (`WELCOME10 | 10%`, `FLAT100 | 100`, optionally `| 2026-12-31` as the last day).
 * **Delivery estimate:** the Delivery days column of the courier-rate table shows "Delivery in about 1-2 days" in the cart.
 * **Free for limited days:** set a book's Subscription to **Free until a date**, or Global Settings > Subscription > **Everyone Reads Free Until** for every book; a "Free to read until" badge shows meanwhile.
-* **Preview links:** editors click **Copy preview link from this page** under a book (or use **Preview link from page** in the book editor); whoever opens the link gets the free preview starting at that page. Links are signed, so changing the page number does not work.
+* **Page links:** anyone can click **Copy link to this page** under a book (or add `?cb_from=20` to the book's address). A reader opening the book for the first time from that link gets the free preview starting at that page; readers who already used their free pages keep them.
 * **Gifts:** tick "This is a gift" at checkout to add a message (printed on the packing slip, no prices). On the Subscription page, "Buy it as a gift" sends the days to another email; an account is made for them if needed.
 * **Cancel:** readers cancel orders that have not shipped from My account; online payments are refunded through Razorpay automatically (you are emailed if the refund fails).
 * **Invoice:** each paid order has an invoice page (Print / Save as PDF) with a running number, your business name, address and GSTIN.

@@ -46,16 +46,13 @@ class AccessTest extends CB_Unit_Test {
     $this->assertTrue( $cb->book_is_locked( $this->book( 3 ) ) );
   }
 
-  public function test_preview_links_are_signed_per_book_and_page() {
-    $key = Corporate_Book_Window::share_key( 7, 20 );
-    $_GET = array( 'cb_from' => '20', 'cb_key' => $key );
-    $this->assertSame( 20, Corporate_Book_Window::shared_start( 7 ) );
-    $this->assertSame( 0, Corporate_Book_Window::shared_start( 8 ), 'another book' );
-    $_GET = array( 'cb_from' => '40', 'cb_key' => $key );
-    $this->assertSame( 0, Corporate_Book_Window::shared_start( 7 ), 'a changed page number is refused' );
+  public function test_page_links_name_the_starting_page() {
     $_GET = array( 'cb_from' => '20' );
+    $this->assertSame( 20, Corporate_Book_Window::shared_start( 7 ) );
+    $_GET = array( 'cb_from' => 'abc' );
     $this->assertSame( 0, Corporate_Book_Window::shared_start( 7 ) );
     $_GET = array();
+    $this->assertSame( 0, Corporate_Book_Window::shared_start( 7 ) );
   }
 
   public function test_guest_reads_only_the_preview_of_a_locked_book() {
