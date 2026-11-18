@@ -2836,3 +2836,12 @@ body:has(.cb-edition){overflow-x:clip}
 .cb-library .cb-preview-button:hover svg{stroke:var(--cb-navy)}
 @media(max-width:899px){.cb-library{grid-template-columns:minmax(0,1fr);gap:26px}.cb-library .cb-library-bar{position:static;padding:16px 14px 14px;border-radius:14px}.cb-library .cb-library-years,.cb-library .cb-library-filter{flex-direction:row;flex-wrap:wrap;gap:8px}.cb-library .cb-library-years .cb-filter,.cb-library .cb-library-filter .cb-filter{width:auto;height:40px;padding:0 18px;border:1px solid rgba(10,36,99,.16);border-radius:999px;background:#fff}.cb-library .cb-filter:after{display:none}.cb-library .cb-library-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(prefers-reduced-motion:reduce){.cb-book-in,.cb-sheen,.cb-library .cb-preview-button{transition:none}}
+
+/* Edition page v4: fill the content area without spilling off the right edge */
+.cb-edition{width:100%;max-width:100%;margin-left:0;margin-right:0;padding:36px clamp(16px,3vw,40px);border-radius:20px;grid-template-columns:minmax(200px,320px) minmax(0,1fr)}
+.cb-ed-main,.cb-ed-box,.cb-ed-block{min-width:0;max-width:100%}
+.cb-ed-row{flex-wrap:wrap}
+.cb-ed-tiles{display:flex;flex-wrap:wrap;gap:14px;min-width:0}
+.cb-ed-tile{padding-top:22px}
+.cb-ed-best{white-space:nowrap;left:50%;right:auto;transform:translateX(-50%)}
+.cb-ed-title{font-size:32px;line-height:1.2}

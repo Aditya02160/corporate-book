@@ -451,7 +451,7 @@ class Corporate_Book_Post_Type {
     $custom = isset( $data['custom_html'] ) && '' !== trim( $data['custom_html'] ) ? '<section class="cb-ed-custom">' . do_shortcode( $data['custom_html'] ) . '</section>' : '';
 
     return '<div class="cb-edition"><div class="cb-ed-cover">' . do_shortcode( '[corporate_book id="' . (int) $book_id . '" type="thumb"][/corporate_book]' ) . '</div>'
-      . '<div class="cb-ed-main">' . self::edition_tags( $book_id ) . '<h1 class="cb-ed-title">' . esc_html( $site ) . ' <span>' . esc_html( $title ) . '</span></h1>'
+      . '<div class="cb-ed-main">' . self::edition_tags( $book_id ) . '<h1 class="cb-ed-title">' . esc_html( $title ) . '</h1>'
       . '<div class="cb-ed-tools">' . ( class_exists( 'Corporate_Book_Reader' ) ? Corporate_Book_Reader::save_button( $book_id ) : '' ) . $share . '</div>'
       . ( $plans_box || $issue ? '<div class="cb-ed-box">' . $plans_box . $or . $issue . '</div>' : '' )
       . '<div class="cb-ed-trust">' . $trust . '</div></div></div>' . $custom
