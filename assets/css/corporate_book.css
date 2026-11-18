@@ -2669,3 +2669,40 @@ input.df-search-text:not(:placeholder-shown) ~ a.df-search-clear {
 .cb-free-note{max-width:640px;margin:0 auto 12px;padding:10px 16px;border-radius:10px;background:#e7f6ec;color:#0a7a3d;font-weight:700;text-align:center}
 .cb-reader-bar .cb-share{margin-left:8px;padding:6px 12px;border:1px solid #0b1f5c;border-radius:999px;background:#fff;color:#0b1f5c;font-size:13px;cursor:pointer}
 .cb-reader-bar .cb-share-out{display:block;width:100%;max-width:560px;margin:8px auto 0;padding:6px 10px;font-size:12px}
+
+/* Edition page */
+.cb-edition{display:grid;grid-template-columns:minmax(220px,420px) 1fr;gap:36px;align-items:start;margin:10px 0 36px;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+.cb-ed-cover .cb-thumb-card{max-width:none;margin:0}
+.cb-ed-cover .cb-cover img{width:100%;border-radius:4px;box-shadow:0 14px 34px rgba(13,31,92,.25)!important}
+.cb-ed-cover .cb-thumb-title,.cb-ed-cover .cb-thumb-price,.cb-ed-cover .cb-free-badge,.cb-ed-cover .cb-add-cart,.cb-ed-cover .cb-in-cart{display:none!important}
+.cb-ed-cover .cb-thumb-actions{width:100%;margin-top:22px}
+.cb-ed-cover .cb-preview-button{display:block;width:100%;box-sizing:border-box;padding:13px!important;border:1px solid #1f2937!important;border-radius:6px!important;background:#fff!important;color:#111!important;font-weight:800!important;letter-spacing:.06em;text-transform:uppercase;text-align:center;box-shadow:none!important}
+.cb-ed-title{margin:0 0 6px;font-size:30px;font-weight:600;line-height:1.25;color:#111}
+.cb-ed-title span{font-weight:400;color:#6b7280;font-size:.8em}
+.cb-ed-tools{display:flex;gap:10px;margin-bottom:18px}
+.cb-ed-tools button{padding:4px 10px;border:1px solid #d5dbe8;border-radius:999px;background:#fff;color:#374151;font-size:13px;cursor:pointer}
+.cb-ed-tools .cb-done{border-color:#0a7a3d;color:#0a7a3d}
+.cb-ed-box{border:1px solid #dbe3f0;border-radius:10px;overflow:hidden;background:#fff}
+.cb-ed-block{padding:18px 20px}
+.cb-ed-block:first-child{background:linear-gradient(180deg,#eef5ff,#fff 70%)}
+.cb-ed-block h2{margin:0 0 8px;font-size:26px;font-weight:500;color:#1d4ed8}
+.cb-ed-lead{margin:0 0 14px;color:#374151;font-size:15px}
+.cb-ed-lead a{float:right;margin-left:12px;color:#1d4ed8;font-weight:600}
+.cb-ed-row{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap}
+.cb-ed-tiles{display:flex;gap:16px;flex-wrap:wrap}
+.cb-ed-tile{display:flex;flex-direction:column;align-items:center;min-width:150px;padding:12px 18px;border:2px solid transparent;border-radius:8px;background:#f2f3f5;color:#111;font:inherit;cursor:pointer}
+.cb-ed-tile span{color:#6b7280;font-size:14px}
+.cb-ed-tile strong{font-size:26px;font-weight:800}
+.cb-ed-tile small{color:#6b7280;font-size:13px}
+.cb-ed-tile.cb-ed-picked{border-color:#111;background:#f7f7f8}
+.cb-ed-static{cursor:default}
+.cb-ed-subscribe{display:inline-block;padding:12px 18px!important;border:0;border-radius:6px;background:#f5c518!important;color:#111!important;font-weight:800;text-transform:uppercase;text-decoration:none;cursor:pointer}
+.cb-ed-box .cb-add-cart{padding:12px 18px;border:1px solid #6b7280;border-radius:6px;background:#fff;color:#374151;font-weight:800;text-transform:uppercase;cursor:pointer}
+.cb-ed-box .cb-in-cart{flex-basis:100%;text-align:right}
+.cb-ed-or{position:relative;margin:0 20px;border-top:1px solid #e5e7eb;text-align:center}
+.cb-ed-or span{position:relative;top:-10px;padding:0 8px;background:#fff;color:#6b7280;font-size:12px}
+.cb-ed-gift{display:block;margin:12px 0;text-align:right;color:#111;font-size:15px;font-weight:600;text-decoration:none}
+.cb-ed-trust{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:10px;text-align:center;font-size:14px;color:#111}
+.cb-ed-trust b{display:block;font-size:22px;color:#16a34a;margin-bottom:4px}
+.cb-ed-custom{clear:both;width:100%;margin:10px 0 30px}
+@media(max-width:800px){.cb-edition{grid-template-columns:1fr}.cb-ed-cover{max-width:360px;margin:0 auto}.cb-ed-title{font-size:24px}.cb-ed-row{flex-direction:column;align-items:stretch}.cb-ed-tile{flex:1}.cb-ed-trust{grid-template-columns:1fr}}

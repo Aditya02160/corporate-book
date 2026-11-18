@@ -386,8 +386,8 @@ async function waitFor(ready, ms) {
     const rings = await page.evaluate(`(() => { const v = (${lightboxViewer})(); return v && v.spiral ? v.spiral.children.length : 0; })()`);
     check(rings > 0, `spiral rings are drawn (${rings})`);
     check(jsErrors.length === 0, `extras page has no JavaScript errors ${jsErrors.join(' | ')}`);
-    const bookPage = await reloadUntil(`${BASE}/?corporate_book=test-book`, async () => (await page.content()).includes('_df_book'));
-    check(bookPage.includes('_df_book'), 'book has its own page');
+    const bookPage = await reloadUntil(`${BASE}/?corporate_book=test-book`, async () => (await page.content()).includes('cb-edition'));
+    check(/cb-edition/.test(bookPage) && /cb-ed-cover[\s\S]*cb-cover/.test(bookPage) && /Go Unlimited with/.test(bookPage), 'book has its own edition page: cover card that opens the book, and the ways to buy');
     const calendar = { calendar_mode: 'true', spiral: 'false', bg_image: 'https://example.com/bg.jpg', bg_color: '#112233' };
     await saveSettings(calendar, calendar).catch(() => '');
     jsErrors.length = 0;

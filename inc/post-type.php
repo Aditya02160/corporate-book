@@ -191,7 +191,21 @@ class Corporate_Book_Post_Type {
             . '<!-- wp:template-part {"slug":"footer","tagName":"footer"} /-->',
         )
       );
+      // A book's own page: the full-width edition layout, without the theme's post title, image and byline.
+      register_block_template(
+        '3d-corporate-book//single-corporate_book',
+        array(
+          'title'   => __( 'Corporate Book edition', '3d-corporate-book' ),
+          'content' => '<!-- wp:template-part {"slug":"header","tagName":"header"} /-->'
+            . '<!-- wp:group {"tagName":"main","align":"full","layout":{"type":"constrained","contentSize":"1200px"}} --><main class="wp-block-group alignfull">'
+            . '[corporate_book_edition]</main><!-- /wp:group -->'
+            . '<!-- wp:template-part {"slug":"footer","tagName":"footer"} /-->',
+        )
+      );
     }
+    add_shortcode( 'corporate_book_edition', function () {
+      return is_singular( 'corporate_book' ) ? self::edition_page( get_queried_object_id() ) : '';
+    } );
     
   }
   
@@ -330,7 +344,13 @@ class Corporate_Book_Post_Type {
 
   public function library_template( $template ) {
     $ours = dirname( __FILE__ ) . '/../assets/templates/library.php';
-    return is_post_type_archive( 'corporate_book' ) && ! wp_is_block_theme() ? $ours : $template;
+    if ( wp_is_block_theme() ) {
+      return $template;
+    }
+    if ( is_singular( 'corporate_book' ) ) {
+      return dirname( __FILE__ ) . '/../assets/templates/edition.php';
+    }
+    return is_post_type_archive( 'corporate_book' ) ? $ours : $template;
   }
 
   public function book_page_content( $content ) {
@@ -338,9 +358,75 @@ class Corporate_Book_Post_Type {
       return $content;
     }
     if ( is_singular( 'corporate_book' ) && is_main_query() ) {
-      return do_shortcode( '[corporate_book id="' . get_the_ID() . '"][/corporate_book]' );
+      return self::edition_page( get_the_ID() );
     }
     return $this->book_card( get_the_ID() );
+  }
+
+  /**
+   * A book's own page: cover card (opens the book in a pop-up), the ways to buy, and the editor's own HTML below.
+   *
+   * @param int $book_id Book post ID.
+   *
+   * @return string HTML.
+   */
+  public static function edition_page( $book_id ) {
+    $data    = get_post_meta( $book_id, '_corporate_book_data', true );
+    $data    = is_array( $data ) ? $data : array();
+    $site    = get_bloginfo( 'name' );
+    $title   = get_the_title( $book_id );
+    $sub     = (int) get_option( 'corporate_book_subscription_page' );
+    $sub_url = $sub ? (string) get_permalink( $sub ) : '';
+    $money   = array( 'Corporate_Book_Account', 'price' );
+
+    // Plans: one tile each; Subscribe pays with Razorpay for signed-in readers, or opens the Subscription page.
+    $tiles = '';
+    foreach ( Corporate_Book_Account::plans() as $i => $plan ) {
+      $month  = $plan['days'] >= 300 ? '<small>' . esc_html( sprintf( /* translators: %s: price */ __( '%s/month', '3d-corporate-book' ), call_user_func( $money, round( $plan['price'] / 12 ) ) ) ) . '</small>' : '';
+      $tiles .= '<button type="button" class="cb-ed-tile' . ( 0 === $i ? ' cb-ed-picked' : '' ) . '" data-plan="' . (int) $i . '"><span>' . esc_html( $plan['name'] ) . '</span><strong>' . esc_html( call_user_func( $money, $plan['price'] ) ) . '</strong>' . $month . '</button>';
+    }
+    $buy_plan = '';
+    if ( $tiles ) {
+      if ( is_user_logged_in() && Corporate_Book_Account::razorpay_ready() ) {
+        Corporate_Book_Account::box( false ); // loads the payment script; its HTML is not needed here
+        $buy_plan = '<button type="button" class="cb-plan cb-ed-subscribe" data-plan="0">' . esc_html__( 'Subscribe', '3d-corporate-book' ) . '</button>';
+      } elseif ( $sub_url ) {
+        $buy_plan = '<a class="cb-ed-subscribe" href="' . esc_url( $sub_url ) . '">' . esc_html__( 'Subscribe', '3d-corporate-book' ) . '</a>';
+      }
+    }
+    $plans_box = $tiles ? '<div class="cb-ed-block"><h2>' . esc_html( sprintf( /* translators: %s: site name */ __( 'Go Unlimited with %s', '3d-corporate-book' ), $site ) ) . '</h2>'
+      . '<p class="cb-ed-lead">' . esc_html( sprintf( /* translators: %s: book title */ __( 'Read %s along with every other edition with just one subscription.', '3d-corporate-book' ), $title ) ) . ( $sub_url ? ' <a href="' . esc_url( get_post_type_archive_link( 'corporate_book' ) ) . '">' . esc_html__( 'View catalog', '3d-corporate-book' ) . '</a>' : '' ) . '</p>'
+      . '<div class="cb-ed-row"><div class="cb-ed-tiles">' . $tiles . '</div>' . $buy_plan . '</div></div>' : '';
+
+    // This issue in print.
+    $issue = '';
+    $info  = class_exists( 'Corporate_Book_Shop' ) ? Corporate_Book_Shop::book_info( $book_id ) : null;
+    if ( $info ) {
+      $issue = '<div class="cb-ed-block"><h2>' . esc_html( sprintf( /* translators: %s: book title */ __( 'Buy only %s', '3d-corporate-book' ), $title ) ) . '</h2>'
+        . '<div class="cb-ed-row"><div class="cb-ed-tiles"><div class="cb-ed-tile cb-ed-static"><span>' . esc_html__( 'Printed copy', '3d-corporate-book' ) . '</span><strong>' . esc_html( Corporate_Book_Shop::money( $info['price'] ) ) . '</strong><small>' . esc_html__( 'Delivered in India', '3d-corporate-book' ) . '</small></div></div>'
+        . Corporate_Book_Shop::buy_button( $book_id, __( 'Add to cart', '3d-corporate-book' ) ) . '</div></div>';
+    }
+    $or = $plans_box && $issue ? '<div class="cb-ed-or"><span>' . esc_html__( '(OR)', '3d-corporate-book' ) . '</span></div>' : '';
+
+    $trust = '';
+    foreach ( array(
+        array( '⊘', __( 'Cancel anytime', '3d-corporate-book' ), __( 'No commitments', '3d-corporate-book' ) ),
+        array( '⚡', __( 'Digital subscription', '3d-corporate-book' ), __( 'Instant access', '3d-corporate-book' ) ),
+        array( '✔', __( 'Verified secure', '3d-corporate-book' ), __( 'payment', '3d-corporate-book' ) ),
+    ) as $t ) {
+      $trust .= '<div><b aria-hidden="true">' . $t[0] . '</b><span>' . esc_html( $t[1] ) . '<br>' . esc_html( $t[2] ) . '</span></div>';
+    }
+    $gift = $sub_url && $tiles ? '<a class="cb-ed-gift" href="' . esc_url( $sub_url ) . '">🎁 ' . esc_html( sprintf( /* translators: %s: book title */ __( 'Gift %s', '3d-corporate-book' ), $site ) ) . '</a>' : '';
+
+    $share = '<button type="button" class="cb-ed-share" title="' . esc_attr__( 'Copy link', '3d-corporate-book' ) . '" onclick="navigator.clipboard&&navigator.clipboard.writeText(location.href.split(\'#\')[0]);this.classList.add(\'cb-done\')">⤴ ' . esc_html__( 'Share', '3d-corporate-book' ) . '</button>';
+    $custom = isset( $data['custom_html'] ) && '' !== trim( $data['custom_html'] ) ? '<section class="cb-ed-custom">' . do_shortcode( $data['custom_html'] ) . '</section>' : '';
+
+    return '<div class="cb-edition"><div class="cb-ed-cover">' . do_shortcode( '[corporate_book id="' . (int) $book_id . '" type="thumb"][/corporate_book]' ) . '</div>'
+      . '<div class="cb-ed-main"><h1 class="cb-ed-title">' . esc_html( $site ) . ' <span>- ' . esc_html( $title ) . '</span></h1>'
+      . '<div class="cb-ed-tools">' . ( class_exists( 'Corporate_Book_Reader' ) ? Corporate_Book_Reader::save_button( $book_id ) : '' ) . $share . '</div>'
+      . ( $plans_box || $issue ? '<div class="cb-ed-box">' . $plans_box . $or . $issue . '</div>' : '' )
+      . $gift . '<div class="cb-ed-trust">' . $trust . '</div></div></div>' . $custom
+      . '<script>document.addEventListener("click",function(e){var t=e.target.closest(".cb-ed-tile[data-plan]");if(!t){return;}var box=t.closest(".cb-ed-block");box.querySelectorAll(".cb-ed-tile").forEach(function(x){x.classList.toggle("cb-ed-picked",x===t);});var b=box.querySelector(".cb-ed-subscribe[data-plan]");if(b){b.setAttribute("data-plan",t.getAttribute("data-plan"));}});</script>';
   }
 
   /**

@@ -275,6 +275,8 @@ class Corporate_Book_Meta_boxes {
     foreach ( array( 'print_sell', 'print_price', 'print_stock', 'print_weight', 'print_cost' ) as $key ) {
       $this->create_normal_setting( $key, $post );
     }
+    echo '<h3 class="cb-settings-section">' . esc_html__( 'Edition page', '3d-corporate-book' ) . '</h3>';
+    $this->create_normal_setting( 'custom_html', $post );
 
     ?>
 
@@ -610,6 +612,9 @@ class Corporate_Book_Meta_boxes {
     foreach ( array( 'print_price', 'print_cost' ) as $key ) {
       $sanitized_data[ $key ] = isset( $print[ $key ] ) && is_numeric( $print[ $key ] ) && $print[ $key ] >= 0 ? (string) round( (float) $print[ $key ], 2 ) : '';
     }
+    // Editors who may post raw HTML keep it as is (scripts, iframes); others get the safe post HTML.
+    $custom_html                   = isset( $print['custom_html'] ) ? (string) $print['custom_html'] : '';
+    $sanitized_data['custom_html'] = current_user_can( 'unfiltered_html' ) ? $custom_html : wp_kses_post( $custom_html );
     $sanitized_data['print_weight'] = isset( $print['print_weight'] ) && is_numeric( $print['print_weight'] ) && $print['print_weight'] > 0 ? (string) (int) $print['print_weight'] : '';
     $sanitized_data['print_stock'] = isset( $print['print_stock'] ) && '' !== trim( (string) $print['print_stock'] ) && is_numeric( $print['print_stock'] ) ? (string) max( 0, (int) $print['print_stock'] ) : '';
     // A book may only use files its editor may use: not another book's protected PDF, not someone else's preview.
