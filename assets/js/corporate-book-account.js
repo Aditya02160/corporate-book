@@ -204,3 +204,22 @@
     say(box, '');
   });
 })();
+
+// My account: highlight the menu item of the section in view.
+(function () {
+  var links = document.querySelectorAll('.cb-dash-nav a[href^="#"]');
+  if (!links.length || !('IntersectionObserver' in window)) {
+    return;
+  }
+  var byId = {};
+  Array.prototype.forEach.call(links, function (a) { byId[a.getAttribute('href').slice(1)] = a; });
+  var io = new IntersectionObserver(function (entries) {
+    entries.forEach(function (en) {
+      if (en.isIntersecting && byId[en.target.id]) {
+        Array.prototype.forEach.call(links, function (a) { a.classList.remove('is-on'); });
+        byId[en.target.id].classList.add('is-on');
+      }
+    });
+  }, { rootMargin: '-30% 0px -60% 0px' });
+  Object.keys(byId).forEach(function (id) { var el = document.getElementById(id); if (el) { io.observe(el); } });
+})();
