@@ -190,9 +190,17 @@ async function waitFor(ready, ms) {
     await l.click(`.cb-library-years .cb-filter[data-filter="${year}"]`);
     check(await l.$$eval('.cb-library-item', (e) => e.filter((i) => !i.hidden).length) >= 1
       && await l.$eval(`.cb-library-years .cb-filter[data-filter="${year}"]`, (e) => e.classList.contains('cb-active')), 'year filter keeps that year and marks its chip');
+    await l.click('.cb-library-years .cb-filter[data-filter="all"]').catch(() => {});
     await l.click('.cb-library-filter .cb-filter[data-filter="cat-asia"]').catch(() => {});
     check(await l.$$eval('.cb-library-item', (e) => e.filter((i) => i.offsetParent).length) === 1 && await l.$('.cb-library-years .cb-filter[data-filter="2019"]') !== null, 'library filters by category (Asia) and files books under a year category (2019)');
-    check(await l.$('.cb-library-bar .cb-library-search [name="cb_q"]') !== null && await l.$('.cb-library aside') === null, 'library has one toolbar with search and chips, no sidebar');
+    const asiaYear = await l.$$eval('.cb-library-item', (e) => (e.find((i) => i.offsetParent) || { getAttribute: () => '' }).getAttribute('data-filters').split(' ')[0]).catch(() => '');
+    const otherYear = await l.$$eval('.cb-library-years .cb-filter', (b, y) => (b.map((x) => x.getAttribute('data-filter')).find((f) => f !== 'all' && f !== y) || ''), asiaYear).catch(() => '');
+    if (otherYear) await l.click(`.cb-library-years .cb-filter[data-filter="${otherYear}"]`).catch(() => {});
+    const noneShown = await l.$$eval('.cb-library-item', (e) => e.filter((i) => i.offsetParent).length);
+    await l.click(`.cb-library-years .cb-filter[data-filter="${asiaYear}"]`).catch(() => {});
+    check((!otherYear || noneShown === 0) && await l.$$eval('.cb-library-item', (e) => e.filter((i) => i.offsetParent).length) === 1
+      && await l.$eval('.cb-library-filter .cb-filter[data-filter="cat-asia"]', (e) => e.classList.contains('cb-active')).catch(() => false), `year and brand filter together (${asiaYear}/${otherYear}: ${noneShown})`);
+    check(await l.$('.cb-library-bar .cb-library-search') === null && /Brand/.test(await l.$eval('.cb-library-bar', (e) => e.textContent).catch(() => '')), 'filter panel has Year and Brand, no search box');
     await lib.close();
     let v = await visit(null);
     check(hasFile(v.body, 'corporate_book_pdf=') && hasFile(v.body, 'start=1') && !hasFile(v.body, 'cb-test/sample.pdf') && !v.body.includes('cb-sign-in'), 'guest gets the free preview (from the protected link, never the file)');

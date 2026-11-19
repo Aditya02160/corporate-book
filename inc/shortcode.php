@@ -203,8 +203,8 @@ class Corporate_Book_ShortCode {
       $main .= '<section class="cb-library-year"><div class="cb-gh"><h2>' . esc_html( $year ) . '</h2><span class="cb-rule"></span></div><div class="cb-library-grid">' . implode( '', $cards ) . '</div></section>';
     }
     $rows = '';
-    foreach ( array( 'cat' => __( 'Category', '3d-corporate-book' ) ) as $prefix => $label ) {
-      $chips = '';
+    foreach ( array( 'cat' => __( 'Brand', '3d-corporate-book' ) ) as $prefix => $label ) {
+      $chips = $groups[ $prefix ] ? $button( 'cat-all', __( 'All brands', '3d-corporate-book' ), true ) : '';
       foreach ( $groups[ $prefix ] as $slug => $name ) {
         $chips .= $button( $prefix . '-' . $slug, $name );
       }
@@ -212,10 +212,7 @@ class Corporate_Book_ShortCode {
         $rows .= '<div class="cb-chip-row"><span class="cb-chip-label">' . esc_html( $label ) . '</span><div class="cb-library-filter">' . $chips . '</div></div>';
       }
     }
-    $search = '<form class="cb-library-search" role="search" method="get" action="' . esc_url( remove_query_arg( 'cb_q' ) ) . '">'
-      . Corporate_Book_Account::query_fields( remove_query_arg( 'cb_q' ) )
-      . '<input type="search" name="cb_q" value="' . esc_attr( $query ) . '" placeholder="' . esc_attr__( 'Search magazines…', '3d-corporate-book' ) . '" aria-label="' . esc_attr__( 'Search magazines', '3d-corporate-book' ) . '"><button type="submit">' . esc_html__( 'Search', '3d-corporate-book' ) . '</button></form>';
-    return '<div class="cb-library"><div class="cb-library-bar"><div class="cb-side-h"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M7 12h10M10 18h4"/></svg>' . esc_html__( 'Filter', '3d-corporate-book' ) . '</div>' . $search
+    return '<div class="cb-library"><div class="cb-library-bar"><div class="cb-side-h"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M7 12h10M10 18h4"/></svg>' . esc_html__( 'Filter', '3d-corporate-book' ) . '</div>'
       . '<div class="cb-chip-row"><span class="cb-chip-label">' . esc_html__( 'Year', '3d-corporate-book' ) . '</span><div class="cb-library-years">' . $top . '</div></div>'
       . $rows
       . '</div><div class="cb-library-main">' . $note . $main . '</div></div>';

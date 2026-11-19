@@ -1,6 +1,5 @@
 /**
- * Corporate Book library: the year buttons and the filter list show only the books
- * of one year or one category.
+ * Corporate Book library: pick a year and a brand together; a book shows when it matches both.
  */
 document.addEventListener('click', function (event) {
   'use strict';
@@ -9,14 +8,22 @@ document.addEventListener('click', function (event) {
     return;
   }
   var library = button.closest('.cb-library');
-  var filter = button.getAttribute('data-filter');
-  Array.prototype.forEach.call(library.querySelectorAll('.cb-filter'), function (other) {
-    other.classList.toggle('cb-active', other.getAttribute('data-filter') === filter);
+  var group = button.closest('.cb-library-years, .cb-library-filter') || library;
+  Array.prototype.forEach.call(group.querySelectorAll('.cb-filter'), function (other) {
+    other.classList.toggle('cb-active', other === button);
+  });
+  var picked = [];
+  Array.prototype.forEach.call(library.querySelectorAll('.cb-filter.cb-active'), function (b) {
+    var f = b.getAttribute('data-filter');
+    if (f !== 'all' && f !== 'cat-all') {
+      picked.push(f);
+    }
   });
   Array.prototype.forEach.call(library.querySelectorAll('.cb-library-year'), function (section) {
     var shown = 0;
     Array.prototype.forEach.call(section.querySelectorAll('.cb-library-item'), function (item) {
-      var match = filter === 'all' || (' ' + item.getAttribute('data-filters') + ' ').indexOf(' ' + filter + ' ') !== -1;
+      var tokens = ' ' + item.getAttribute('data-filters') + ' ';
+      var match = picked.every(function (f) { return tokens.indexOf(' ' + f + ' ') !== -1; });
       item.hidden = !match;
       shown += match ? 1 : 0;
     });
