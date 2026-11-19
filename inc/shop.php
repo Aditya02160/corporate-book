@@ -959,8 +959,8 @@ class Corporate_Book_Shop {
   public static function return_days_left( $order ) {
     $days = (int) self::config( 'print_return_days' );
     $when = (int) get_post_meta( $order, '_cb_delivered', true );
-    $when = $when ? $when : (int) get_post_modified_time( 'U', true, $order );
-    return 'cb-delivered' === get_post_status( $order ) && $days > 0 ? max( 0, (int) ceil( ( $when + $days * DAY_IN_SECONDS - time() ) / DAY_IN_SECONDS ) ) : 0;
+    // Orders delivered before the return window existed have no delivery date: they cannot be returned online.
+    return 'cb-delivered' === get_post_status( $order ) && $days > 0 && $when > 0 ? max( 0, (int) ceil( ( $when + $days * DAY_IN_SECONDS - time() ) / DAY_IN_SECONDS ) ) : 0;
   }
 
   /**

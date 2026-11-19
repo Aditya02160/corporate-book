@@ -511,6 +511,8 @@ async function waitFor(ready, ms) {
     }
     const autoOn = await myAccount(has('.cb-autopay-off'));
     check(subPaid.success === true && autoOn && await a.$('.cb-profile-plans') === null, 'a verified auto-renew payment shows "Auto-renew is on" with a turn-off button, and no second plan purchase');
+    const twice = await ajax({ action: 'corporate_book_order', plan: '0', autopay: '1' });
+    check(twice.success !== true && /already on/i.test(String(twice.data)), `a second auto-renew is refused while one is on (${String(twice.data).slice(0, 40)})`);
     a.once('dialog', (dl) => dl.accept());
     await a.click('.cb-autopay-off').catch(() => {});
     await a.waitForTimeout(2500);

@@ -909,7 +909,7 @@ class Corporate_Book_Account {
     $looked = 0;
     foreach ( array_reverse( $orders, true ) as $order_id => $order ) {
       $checked = isset( $order['checked'] ) ? $order['checked'] : 0;
-      if ( '' !== $order['paid'] || $order['time'] < time() - DAY_IN_SECONDS || $checked > time() - 5 * MINUTE_IN_SECONDS || ++$looked > 3 ) {
+      if ( 0 !== strpos( (string) $order_id, 'order_' ) || '' !== $order['paid'] || $order['time'] < time() - DAY_IN_SECONDS || $checked > time() - 5 * MINUTE_IN_SECONDS || ++$looked > 3 ) {
         continue;
       }
       $orders[ $order_id ]['checked'] = time();
@@ -943,6 +943,10 @@ class Corporate_Book_Account {
     }
     $amount = (int) round( $plan['price'] * 100 );
     // Auto-renew: a Razorpay subscription (UPI AutoPay / card mandate) charges the plan every period.
+    $auto = self::autopay( $user->ID );
+    if ( ! empty( $_POST['autopay'] ) && '' === $gift && $auto && 'active' === $auto['status'] && self::is_active( $user->ID ) ) {
+      wp_send_json_error( __( 'Auto-renew is already on for your account, so you will not be charged twice. Untick "Renew automatically" to add extra days once.', '3d-corporate-book' ), 400 );
+    }
     if ( ! empty( $_POST['autopay'] ) && '' === $gift && $plan['days'] >= 7 ) {
       $plan_id = self::razorpay_plan( $plan, $amount );
       $sub     = is_wp_error( $plan_id ) ? $plan_id : self::api( 'POST', 'subscriptions', array(
