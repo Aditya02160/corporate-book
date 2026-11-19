@@ -228,6 +228,11 @@ class Corporate_Book_ShortCode {
     return '' === $last ? '' : '<div class="' . esc_attr( $class ) . '">' . esc_html( sprintf( __( 'Free to read until %s', '3d-corporate-book' ), date_i18n( get_option( 'date_format' ), strtotime( $last . ' 12:00:00' ) ) ) ) . '</div>';
   }
 
+  /** "FREE" ribbon on a cover while the book can be read in full for free. */
+  public function free_tag( $post_id ) {
+    return is_numeric( $post_id ) && '' !== $this->base->free_until( (int) $post_id ) ? '<span class="cb-free-tag">' . esc_html__( 'Free', '3d-corporate-book' ) . '</span>' : '';
+  }
+
   /** "Print copy · ₹499" line on a cover card, when the book is sold in print. */
   private function card_price( $post_id ) {
     $info = is_numeric( $post_id ) && class_exists( 'Corporate_Book_Shop' ) ? Corporate_Book_Shop::book_info( (int) $post_id ) : null;
@@ -523,7 +528,7 @@ class Corporate_Book_ShortCode {
         if ( $page_link ) {
           // All Magazines: the cover and button lead to the magazine's own page, which has the reader and the prices.
           // 3D book: cover, spine shade, page edges and a light sheen that sweeps across on hover.
-          $cover = empty( $thumb_url ) ? '' : '<a class="cb-cover cb-book" href="' . esc_url( $page_link ) . '"><span class="cb-book-in"><img src="' . esc_url( $thumb_url ) . '" alt="' . esc_attr( $title ) . '" loading="lazy"/><span class="cb-spine"></span><span class="cb-pages"></span><span class="cb-sheen"></span></span></a>';
+          $cover = empty( $thumb_url ) ? '' : '<a class="cb-cover cb-book" href="' . esc_url( $page_link ) . '"><span class="cb-book-in"><img src="' . esc_url( $thumb_url ) . '" alt="' . esc_attr( $title ) . '" loading="lazy"/><span class="cb-spine"></span><span class="cb-pages"></span><span class="cb-sheen"></span>' . $this->free_tag( $post_id ) . '</span></a>';
           return '<div class="cb-thumb-card">' . $cover . '<div class="cb-thumb-title"><a href="' . esc_url( $page_link ) . '">' . esc_html( $title ) . '</a></div>' . $this->free_note( $post_id, 'cb-free-badge' )
             . '<div class="cb-thumb-actions"><a class="cb-preview-button" href="' . esc_url( $page_link ) . '">' . esc_html( $base->get_translate( 'text_preview' ) ) . '</a></div></div>';
         }

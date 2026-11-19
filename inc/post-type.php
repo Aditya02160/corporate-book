@@ -450,7 +450,7 @@ class Corporate_Book_Post_Type {
       . 'if(navigator.clipboard&&window.isSecureContext){navigator.clipboard.writeText(u).then(done,copy);}else{copy();}});</script>';
     $custom = isset( $data['custom_html'] ) && '' !== trim( $data['custom_html'] ) ? '<section class="cb-ed-custom">' . do_shortcode( $data['custom_html'] ) . '</section>' : '';
 
-    return '<div class="cb-edition"><div class="cb-ed-cover">' . do_shortcode( '[corporate_book id="' . (int) $book_id . '" type="thumb"][/corporate_book]' ) . '</div>'
+    return '<div class="cb-edition"><div class="cb-ed-cover">' . ( '' !== Corporate_Book::get_instance()->free_until( (int) $book_id ) ? '<span class="cb-free-tag">' . esc_html__( 'Free', '3d-corporate-book' ) . '</span>' : '' ) . do_shortcode( '[corporate_book id="' . (int) $book_id . '" type="thumb"][/corporate_book]' ) . '</div>'
       . '<div class="cb-ed-main">' . self::edition_tags( $book_id ) . '<h1 class="cb-ed-title">' . esc_html( $title ) . '</h1>'
       . '<div class="cb-ed-tools">' . ( class_exists( 'Corporate_Book_Reader' ) ? Corporate_Book_Reader::save_button( $book_id ) : '' ) . $share . '</div>'
       . ( $plans_box || $issue ? '<div class="cb-ed-box">' . $plans_box . $or . $issue . '</div>' : '' )

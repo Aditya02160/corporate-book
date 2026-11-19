@@ -322,3 +322,9 @@ body.admin-bar .cb-site-head{top:32px}
 .cb-dash .cb-profile-orders tbody tr:hover td{background:#fafcff}
 .cb-dash .cb-autopay-status{border:1px solid #bbf7d0}
 @media(max-width:900px){.cb-dash .cb-dash-nav{position:static;display:flex;flex-wrap:wrap;gap:6px}.cb-dash .cb-dash-nav a{height:38px;border:1px solid rgba(10,36,99,.12);border-radius:999px;background:#fff}.cb-dash .cb-dash-nav a:after{display:none}.cb-dash .cb-dash-nav a.cb-dash-out{margin-top:0;border-radius:999px}.cb-dash .cb-dash-head{padding:20px}}
+
+/* "Free" ribbon on covers of books readers can read in full for free */
+.cb-ed-cover{position:relative}
+.cb-free-tag{position:absolute;z-index:3;top:12px;left:-6px;padding:6px 14px 6px 12px;border-radius:0 999px 999px 0;background:linear-gradient(135deg,#22c55e,#15803d);color:#fff;font:800 12px/1 Poppins,system-ui,sans-serif;letter-spacing:.14em;text-transform:uppercase;box-shadow:0 8px 16px -8px rgba(21,128,61,.9);pointer-events:none}
+.cb-free-tag:before{content:"";position:absolute;left:0;bottom:-6px;border-top:6px solid #14532d;border-left:6px solid transparent}
+.cb-ed-cover .cb-free-tag{top:18px;left:-8px;padding:8px 18px 8px 14px;font-size:14px}

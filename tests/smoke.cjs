@@ -655,6 +655,12 @@ async function waitFor(ready, ms) {
       if (!/cb-free-note/.test(freeHtml)) await new Promise((r) => setTimeout(r, 1500));
     }
     check(freed && /Free to read until/.test(freeHtml) && !/start=\d/.test(freeHtml), 'a book free until a date opens in full for everyone, with a "Free to read until" note');
+    let libFree = '';
+    for (let i = 0; i < 6 && !/cb-free-tag/.test(libFree); i++) {
+      libFree = await (await fetch(`${BASE}/?post_type=corporate_book`)).text();
+      if (!/cb-free-tag/.test(libFree)) await new Promise((r) => setTimeout(r, 1500));
+    }
+    check(/class="cb-free-tag">Free</.test(libFree), 'free books carry a "Free" tag on their cover in All Magazines');
     await setPrint(editUrl, { subscription: 'required', free_until: '', print_price: '499' });    const shopCtx = await browser.newContext();
     await shopCtx.exposeBinding('cbSign', (src, o, p) => require('crypto').createHmac('sha256', 'smokesecret').update(`${o}|${p}`).digest('hex'));
     // Razorpay Checkout stand-in: "pays" at once with a correctly signed payment.
