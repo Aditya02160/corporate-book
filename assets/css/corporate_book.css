@@ -2925,3 +2925,32 @@ body.admin-bar .cb-site-head{top:32px}
 .cb-free-tag{position:absolute;z-index:3;top:12px;left:-6px;padding:6px 14px 6px 12px;border-radius:0 999px 999px 0;background:linear-gradient(135deg,#22c55e,#15803d);color:#fff;font:800 12px/1 Poppins,system-ui,sans-serif;letter-spacing:.14em;text-transform:uppercase;box-shadow:0 8px 16px -8px rgba(21,128,61,.9);pointer-events:none}
 .cb-free-tag:before{content:"";position:absolute;left:0;bottom:-6px;border-top:6px solid #14532d;border-left:6px solid transparent}
 .cb-ed-cover .cb-free-tag{top:18px;left:-8px;padding:8px 18px 8px 14px;font-size:14px}
+
+/* Edition page v5: compact buy panel, about the height of the cover */
+.cb-edition{align-items:center;gap:36px;padding:28px clamp(16px,3vw,36px)}
+.cb-ed-main{max-width:620px}
+.cb-ed-tags{margin-bottom:8px}
+.cb-ed-title{font-size:26px;margin:0 0 6px}
+.cb-ed-main .cb-ed-actions,.cb-ed-main .cb-ed-save,.cb-ed-main .cb-ed-share{font-size:12px}
+.cb-ed-box{margin-top:12px;border-radius:14px}
+.cb-ed-block{padding:14px 16px}
+.cb-ed-block h2{font-size:16px;margin:0 0 2px}
+.cb-ed-lead{font-size:12px;margin:0 0 10px}
+.cb-ed-row{gap:10px;align-items:center}
+.cb-ed-tiles{gap:10px}
+.cb-ed-tile{min-width:108px;padding:16px 12px 8px;border-radius:10px}
+.cb-ed-tile strong{font-size:18px}
+.cb-ed-tile span,.cb-ed-tile small{font-size:11px}
+.cb-ed-tick{top:6px;left:6px;width:14px;height:14px}
+.cb-ed-picked .cb-ed-tick{background-size:9px}
+.cb-ed-best{font-size:9px;padding:2px 8px;top:-9px}
+.cb-ed-subscribe{padding:10px 20px!important;font-size:12px!important;margin-left:auto}
+.cb-ed-row .cb-autopay{font-size:11px;margin:4px 0 0}
+.cb-ed-or{margin:0 16px}
+.cb-ed-or span{font-size:10px;top:-9px;padding:1px 10px}
+.cb-ed-box .cb-add-cart{padding:9px 18px;font-size:12px;margin-left:auto}
+.cb-ed-trust{margin-top:12px;gap:8px}
+.cb-ed-trust>div{padding:8px 10px;gap:8px;font-size:11px;border-radius:10px}
+.cb-ed-trust b{flex-basis:26px;width:26px;height:26px;border-radius:8px}
+.cb-ed-trust svg{width:15px;height:15px}
+@media(max-width:800px){.cb-ed-main{max-width:none}.cb-ed-title{font-size:22px}.cb-ed-subscribe,.cb-ed-box .cb-add-cart{margin-left:0}}
