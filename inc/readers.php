@@ -20,7 +20,33 @@ class Corporate_Book_Readers {
     add_action( 'set_logged_in_cookie', array( $this, 'remember_login' ), 10, 4 );
     add_action( 'admin_menu', array( $this, 'menu' ), 20 );
     add_action( 'admin_post_corporate_book_export_readers', array( $this, 'export' ) );
+    add_action( 'admin_post_corporate_book_free_access', array( $this, 'free_access' ) );
+    add_action( 'admin_notices', array( $this, 'free_access_notice' ) );
     add_action( 'admin_head', array( $this, 'order_screen_css' ) );
+  }
+
+  private static function free_link( $user_id, $days ) {
+    return wp_nonce_url( admin_url( 'admin-post.php?action=corporate_book_free_access&user=' . (int) $user_id . '&days=' . (int) $days ), 'cb_free_access_' . (int) $user_id );
+  }
+
+  /** Admin: give a reader a free month or year (added after any time they already have). */
+  public function free_access() {
+    $user_id = isset( $_GET['user'] ) ? absint( $_GET['user'] ) : 0; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- checked next.
+    check_admin_referer( 'cb_free_access_' . $user_id );
+    $days = isset( $_GET['days'] ) && 365 === absint( $_GET['days'] ) ? 365 : 30;
+    if ( ! current_user_can( 'edit_users' ) || ! get_userdata( $user_id ) ) {
+      wp_die( esc_html__( 'Not allowed.', '3d-corporate-book' ), '', array( 'response' => 403 ) );
+    }
+    Corporate_Book_Account::give_free( $user_id, $days );
+    wp_safe_redirect( add_query_arg( 'cb_free_given', $days, wp_get_referer() ? wp_get_referer() : admin_url( 'edit.php?post_type=corporate_book&page=corporate_book-readers' ) ) );
+    exit;
+  }
+
+  public function free_access_notice() {
+    $days = isset( $_GET['cb_free_given'] ) ? absint( $_GET['cb_free_given'] ) : 0; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- display only.
+    if ( $days ) {
+      echo '<div class="notice notice-success is-dismissible"><p>' . esc_html( 365 === $days ? __( 'Free year given. The reader was emailed.', '3d-corporate-book' ) : __( 'Free month given. The reader was emailed.', '3d-corporate-book' ) ) . '</p></div>';
+    }
   }
 
   public function remember_login( $cookie, $expire, $expiration, $user_id ) {
@@ -164,7 +190,9 @@ class Corporate_Book_Readers {
         . '<td>' . (int) $r['saved'] . '</td>'
         . '<td>' . esc_html( self::date( $r['joined'] ) ) . '</td>'
         . '<td>' . esc_html( $r['login'] ? human_time_diff( $r['login'] ) . ' ' . __( 'ago', '3d-corporate-book' ) : '—' ) . '</td>'
-        . '<td><a class="button button-small" href="' . esc_url( get_edit_user_link( $user->ID ) ) . '">' . esc_html__( 'Edit', '3d-corporate-book' ) . '</a></td>'
+        . '<td class="cbr-actions"><a class="button button-small" href="' . esc_url( get_edit_user_link( $user->ID ) ) . '">' . esc_html__( 'Edit', '3d-corporate-book' ) . '</a>'
+        . ( current_user_can( 'edit_users' ) ? ' <a class="button button-small" href="' . esc_url( self::free_link( $user->ID, 30 ) ) . '" onclick="return confirm(this.title)" title="' . esc_attr( sprintf( /* translators: %s: name */ __( 'Give %s one month of free access?', '3d-corporate-book' ), $r['name'] ) ) . '">' . esc_html__( '+1 month free', '3d-corporate-book' ) . '</a>'
+        . ' <a class="button button-small" href="' . esc_url( self::free_link( $user->ID, 365 ) ) . '" onclick="return confirm(this.title)" title="' . esc_attr( sprintf( /* translators: %s: name */ __( 'Give %s one year of free access?', '3d-corporate-book' ), $r['name'] ) ) . '">' . esc_html__( '+1 year free', '3d-corporate-book' ) . '</a>' : '' ) . '</td>'
         . '</tr>';
     }
     $tab = function ( $key, $label, $n ) use ( $status, $base ) {

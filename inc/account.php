@@ -1247,6 +1247,25 @@ class Corporate_Book_Account {
     $ok ? wp_send_json_success( sprintf( __( 'Sent to %s. Check the inbox (and spam).', '3d-corporate-book' ), $to ) ) : wp_send_json_error( __( 'Not sent', '3d-corporate-book' ) . ( $error ? ': ' . $error : '' ) );
   }
 
+  /**
+   * Admin gift: adds free days after the reader's current end date, logs it in their payments and emails them.
+   */
+  public static function give_free( $user_id, $days ) {
+    $until = max( time(), self::until( $user_id ) ) + $days * DAY_IN_SECONDS;
+    update_user_meta( $user_id, self::UNTIL, $until );
+    $orders = self::orders( $user_id );
+    $label  = 365 === (int) $days ? __( 'Free year (from the team)', '3d-corporate-book' ) : __( 'Free month (from the team)', '3d-corporate-book' );
+    $orders[ 'free_' . time() . '_' . $days ] = array( 'amount' => 0, 'days' => (int) $days, 'plan' => $label, 'time' => time(), 'paid' => 'admin', 'gift' => '' );
+    update_user_meta( $user_id, self::ORDERS, array_slice( $orders, -20, null, true ) );
+    $user = get_userdata( $user_id );
+    if ( $user ) {
+      $site = wp_specialchars_decode( get_bloginfo( 'name' ), ENT_QUOTES );
+      /* translators: %s: site name */
+      wp_mail( $user->user_email, sprintf( __( 'You have free access to %s', '3d-corporate-book' ), $site ), sprintf( /* translators: 1: plan, 2: date, 3: link */ __( "Good news! We have given you %1\$s.\n\nYou can read every magazine until %2\$s.\n\nStart reading: %3\$s", '3d-corporate-book' ), $label, self::date( $until ), (string) get_post_type_archive_link( 'corporate_book' ) ) );
+    }
+    return $until;
+  }
+
   /** "Renew automatically" tick shown with plan buttons (on by default). */
   public static function autopay_tick() {
     return '<label class="cb-autopay"><input type="checkbox" class="cb-autopay-check" checked> ' . esc_html__( 'Renew automatically (UPI AutoPay or card). Turn it off any time in My account.', '3d-corporate-book' ) . '</label>';
@@ -1357,6 +1376,7 @@ class Corporate_Book_Account {
           <?php if ( current_user_can( 'edit_users' ) ) : ?>
             <input type="date" name="corporate_book_until" id="corporate_book_until" value="<?php echo esc_attr( $date ); ?>"/>
             <p class="description"><?php esc_html_e( 'Clear the date to end the subscription.', '3d-corporate-book' ); ?></p>
+            <p><label><?php esc_html_e( 'Give free access:', '3d-corporate-book' ); ?> <select name="corporate_book_free"><option value=""><?php esc_html_e( 'No', '3d-corporate-book' ); ?></option><option value="30"><?php esc_html_e( '+1 month', '3d-corporate-book' ); ?></option><option value="365"><?php esc_html_e( '+1 year', '3d-corporate-book' ); ?></option></select></label></p>
           <?php else : ?>
             <?php echo esc_html( '' !== $date ? $date : __( 'No subscription', '3d-corporate-book' ) ); ?>
           <?php endif; ?>
@@ -1378,6 +1398,10 @@ class Corporate_Book_Account {
       update_user_meta( $user_id, self::UNTIL, $time );
     } else {
       delete_user_meta( $user_id, self::UNTIL );
+    }
+    $free = isset( $_POST['corporate_book_free'] ) ? absint( $_POST['corporate_book_free'] ) : 0; // phpcs:ignore WordPress.Security.NonceVerification.Missing
+    if ( in_array( $free, array( 30, 365 ), true ) ) {
+      self::give_free( $user_id, $free );
     }
   }
 }

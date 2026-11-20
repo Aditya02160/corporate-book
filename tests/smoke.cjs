@@ -918,6 +918,9 @@ async function waitFor(ready, ms) {
     check(/Print sales/.test(sales) && /₹/.test(sales) && /Test Book|Book Test/.test(sales.slice(sales.indexOf('Reading'))), 'Sales page shows sales and reading statistics');
     const readersPage = await (await page.goto(`${BASE}/wp-admin/edit.php?post_type=corporate_book&page=corporate_book-readers`)).text();
     check(/Reader accounts/.test(readersPage) && /member@example.com/.test(readersPage) && /Active subscribers/.test(readersPage), 'Readers page lists reader accounts with their details');
+    const freeHref = await page.$$eval('.cbr-actions a', (links) => (links.find((x) => /days=365/.test(x.href) && /user=\d+/.test(x.href) && x.closest('tr').textContent.includes('member@example.com')) || {}).href || '').catch(() => '');
+    const gave = freeHref ? await (await page.goto(freeHref)).text() : '';
+    check(/Free year given/.test(gave) && /free access to/i.test(lastMail()), 'admin can give a reader a free year from the Readers page; the reader is emailed');
     const myAccount = await (await m.goto(`${BASE}/?pagename=my-account`)).text();
     check(/cb-dash-head/.test(myAccount) && /corporate-book-pages\.css/.test(myAccount), 'My account uses the dashboard layout and its stylesheet');
     check(/id="cb-sec-read"[\s\S]*cb-read-item[\s\S]*Continue reading/.test(myAccount), 'My account lists the books the reader opened');

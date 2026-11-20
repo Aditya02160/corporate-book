@@ -60,6 +60,17 @@ class AccountTest extends CB_Unit_Test {
     $this->assertSame( $first + 30 * DAY_IN_SECONDS, Corporate_Book_Account::until( 7 ), 'unknown subscriptions are ignored' );
   }
 
+  public function test_admin_free_access_adds_after_current_end() {
+    $end = time() + 10 * DAY_IN_SECONDS;
+    update_user_meta( 8, Corporate_Book_Account::UNTIL, $end );
+    $this->assertSame( $end + 30 * DAY_IN_SECONDS, Corporate_Book_Account::give_free( 8, 30 ) );
+    $this->assertSame( $end + 395 * DAY_IN_SECONDS, Corporate_Book_Account::give_free( 8, 365 ), 'a year stacks on the month' );
+    $orders = $this->call( 'orders', 8 );
+    $this->assertCount( 2, $orders );
+    $this->assertSame( 0, end( $orders )['amount'] );
+    $this->assertGreaterThan( time() + 29 * DAY_IN_SECONDS, Corporate_Book_Account::give_free( 9, 30 ), 'starts today for a reader with no time' );
+  }
+
   public function test_webhook_signature() {
     $body = '{"event":"payment.captured"}';
     $sign = hash_hmac( 'sha256', $body, 'whsec' );
